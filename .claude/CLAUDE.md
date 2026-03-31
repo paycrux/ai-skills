@@ -1,32 +1,51 @@
 ## Task Planning Rules
 
-### /task-plan Skill 사용 규칙
+### /task-plan Skill Usage
 
-사용자가 새로운 기능 개발, 버그 수정 등 작업을 요청하면:
+When the user requests new feature development, bug fixes, or similar tasks, always ask first:
 
 > "/task-plan skill을 사용해서 작업 계획을 먼저 세울까요, 아니면 바로 진행할까요?"
 
-를 반드시 먼저 물어본다.
+- If the user says no planning is needed → proceed directly
+- If the user wants a plan → run `/task-plan` skill
+- If the user attaches a design doc or requirements → analyze and feed into the skill flow
 
-- 사용자가 계획이 필요없다고 하면 → 바로 수정 진행
-- 사용자가 계획 작성을 원하면 → `/task-plan` skill 실행
-- 사용자가 기획 문서나 요구사항을 첨부한 경우 → 해당 내용을 분석하여 skill 흐름에 반영
+### Task-plan Document Sync
 
-### 작업중
+If the root cause or approach diverges from the task-plan during implementation:
 
-구현 중 task-plan의 원인 분석이나 접근 방식이 실제와 다르다고 판단되면, 구현을 계속하기 전에 해당 task-plan 문서를 먼저 최신화하고 사용자에게 변경 사항을 알릴 것
+1. Pause and ask the user: "Root cause appears to be Y, not X. Should I update the task-plan docs?"
+2. On approval, update the following:
+   - **findings.md** — revise root cause analysis (primary target)
+   - **tasks.md** — adjust implementation steps to match the new cause
+   - **progress.md** — record why and when the direction changed
+3. README.md describes symptoms/requirements only — do not update
 
-### 세션 이어받기
+## Implementation Rules
 
-진행 중인 작업이 있는 프로젝트에서 새 세션이 시작되면:
+### Use Specialized Agents for Code Changes
 
-1. `docs/plans/` 하위 폴더 중 상태가 "진행중"인 작업의 progress.md를 읽는다
-2. 마지막 세션의 현재 상태를 확인하고 사용자에게 보고한다
-3. 사용자 승인 후 이어서 진행한다
+When the user requests code changes (implementation, modification, bug fix, refactoring — any action that creates/updates/deletes code), **always use specialized agents.**
 
-### PR 생성 규칙
+#### Agent Selection Criteria
 
-PR 생성 시 task 폴더의 5개 파일을 모두 참조하여 작성한다:
+| Work Type                                                                                             | Agent                                                               |
+| ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| Type/interface definitions, API clients, utilities, services, state management setup, data transforms | `implement-engineering`                                             |
+| Components, hooks, styling, screens, navigation, UI state handling                                    | `implement-react`                                                   |
+| Mixed (data layer + UI)                                                                               | `implement-engineering` first → then `implement-react` sequentially |
 
-- PR 제목에 지라 이슈 번호 포함 (README.md 참조)
-- PR 본문: 개요(README) / 변경점(tasks + 변경 파일) / 리뷰 중점사항(findings 기술 결정)
+### Session Handoff
+
+When a new session starts in a project with ongoing work:
+
+1. Read `progress.md` from `docs/plans/` subfolders where status is "진행중"
+2. Check the last session's current state and report to the user
+3. Continue after user approval
+
+### PR Creation Rules
+
+When creating a PR, reference all 5 files in the task folder:
+
+- Include the Jira issue number in the PR title (from README.md)
+- PR body: overview (README) / changes (tasks + changed files) / review focus (findings technical decisions)
