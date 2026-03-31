@@ -15,6 +15,7 @@ Writes a study report from the current conversation. Think of this as a **resear
 - `/study <requirements>` — Adjust report scope/perspective based on requirements, save to `<project-root>/.claude/study/`
 
 Parse `$ARGUMENTS` to distinguish the 3 cases:
+
 - If it looks like a file path (starts with `/`, `./`, `../`, `~`, or `@`, or contains file extensions like `.md`, `.txt`) → treat as file path (remove leading `@` if present)
 - Other text → treat as requirements
 - Empty → save to `<project-root>/.claude/study/`
@@ -22,6 +23,7 @@ Parse `$ARGUMENTS` to distinguish the 3 cases:
 ## Default Save Location
 
 When no file path is specified (both empty args and requirements-only args), save the report as a new markdown file:
+
 - Path: `<project-root>/.claude/study/{topic-slug}.md`
 - File name: descriptive kebab-case slug derived from the topic (e.g., `react-native-animation-reanimated.md`, `zustand-state-management.md`)
 - If the file already exists, append to it following the "When Appending to a File" rules below
@@ -45,6 +47,7 @@ Before writing, **read the target file first** (if appending). Analyze what's al
 Write two parts:
 
 **Part 1: Technical Foundation**
+
 - What is this technology/concept?
 - Core APIs/methods with usage examples and visual diagrams (use ASCII art for stack/state diagrams)
 - Common patterns and when to use each

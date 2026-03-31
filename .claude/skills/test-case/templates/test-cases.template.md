@@ -9,12 +9,12 @@
 ## Test Environment
 
 ### Prerequisites
-<!-- List login requirements, necessary permissions, device/browser requirements -->
--
+
+## <!-- List login requirements, necessary permissions, device/browser requirements -->
 
 ### Test Data
-<!-- Specific data needed: accounts, products, settings, etc. -->
--
+
+## <!-- Specific data needed: accounts, products, settings, etc. -->
 
 ---
 
@@ -23,14 +23,14 @@
 > Purpose: {what this test verifies — 1 line}
 
 ### Initial State
-<!-- Required app/page state before starting this test -->
--
+
+## <!-- Required app/page state before starting this test -->
 
 ### Steps
 
-| # | Done | Action | Target | Expected Result |
-|---|------|--------|--------|-----------------|
-| 1 | [ ]  | {verb} | `{selector-hint}` {description} | {specific result} |
+| #   | Done | Action | Target                          | Expected Result   |
+| --- | ---- | ------ | ------------------------------- | ----------------- |
+| 1   | [ ]  | {verb} | `{selector-hint}` {description} | {specific result} |
 
 <!--
 Action verbs (use only these):
@@ -46,7 +46,9 @@ Selector hint priority:
 -->
 
 ### Verification Points
+
 <!-- Checkable assertions after completing all steps -->
+
 - [ ] {checkpoint}
 
 ---
@@ -64,22 +66,22 @@ Rules:
 -->
 
 | Condition A | Condition B | Expected Result | Related TC |
-|-------------|-------------|-----------------|------------|
-| | | | TC-{N} |
+| ----------- | ----------- | --------------- | ---------- |
+|             |             |                 | TC-{N}     |
 
 ---
 
 ## Automation Metadata
 
 ```yaml
-feature: {feature-name}
-base_url: {base-url or "TBD"}
-auth_required: {true/false}
+feature: { feature-name }
+base_url: { base-url or "TBD" }
+auth_required: { true/false }
 test_data:
-  - type: {data type}
-    description: {description}
+  - type: { data type }
+    description: { description }
 selectors:
-  - name: {element name}
-    hint: {CSS selector or data-testid or role description}
-    type: {button | input | link | text | checkbox | select}
+  - name: { element name }
+    hint: { CSS selector or data-testid or role description }
+    type: { button | input | link | text | checkbox | select }
 ```

@@ -17,6 +17,7 @@ Output is formatted for three audiences: humans doing manual testing, agent-brow
 - `/test-case <feature description>` — generate based on the user's feature description
 
 Parse `$ARGUMENTS`:
+
 - If a matching folder exists in `docs/plans/` → task-plan based
 - If it looks like a file path (`/`, `./`, `../`, `~`, or contains file extensions) → direct file analysis
 - Otherwise → treat as feature description
@@ -26,6 +27,7 @@ Parse `$ARGUMENTS`:
 ### When task-plan based
 
 Read the following files:
+
 - `README.md` — background, goals, scope
 - `spec.md` — behavior flows, state definitions
 - `ui-spec.md` — (if exists) screen structure, components, state×display matrix
@@ -41,6 +43,7 @@ Read the following files:
 ### When description based
 
 Extract from the user's description:
+
 - Screens/pages involved
 - User actions (click, input, navigation)
 - State transitions (loading, success, error, etc.)
@@ -59,6 +62,7 @@ Extract from the user's description:
 When there are multiple states or options, write a **combination matrix** instead of a single case.
 
 **Identify combination targets:**
+
 - 2+ buttons (e.g., Save/Cancel, Approve/Reject)
 - 2+ states (e.g., logged-in/logged-out, data exists/empty)
 - 2+ options (e.g., free tier/premium, domestic/international)
@@ -70,7 +74,7 @@ When there are multiple states or options, write a **combination matrix** instea
 #### Combination Matrix: {Feature Name}
 
 | Condition A | Condition B | Expected Result |
-|-------------|-------------|-----------------|
+| ----------- | ----------- | --------------- |
 | State 1     | State 1     | Result          |
 | State 1     | State 2     | Result          |
 | State 2     | State 1     | Result          |
@@ -82,6 +86,7 @@ When there are 3+ conditions, use pairwise combinations instead of exhaustive (2
 ### 3. Dual Format: Human + Machine
 
 Each test case must serve two audiences:
+
 - **Humans**: natural language steps that can be followed manually
 - **agent-browser / e2e**: structured data that can be parsed for automation
 
@@ -90,6 +95,7 @@ To achieve this, include a **selector hint** in each step.
 ## Output
 
 **Save path:** depends on source
+
 - Task-plan based: `docs/plans/<task-folder-name>/test-cases.md`
 - File/description based: `test-cases-{feature-slug}.md` in the current directory
 
@@ -111,19 +117,19 @@ Read `templates/test-cases.template.md` and use it as the base structure.
 
 Use only these verbs to enable agent-browser parsing and e2e conversion:
 
-| Verb | Meaning | e2e Mapping |
-|------|---------|-------------|
-| `navigate` | Go to a URL | `page.goto()` |
-| `click` | Click an element | `page.click()` |
-| `type` | Enter text | `page.fill()` |
-| `select` | Choose from dropdown | `page.selectOption()` |
-| `toggle` | Switch checkbox/toggle | `page.check()` / `page.uncheck()` |
-| `scroll` | Scroll the page | `page.evaluate(() => window.scrollTo())` |
-| `wait` | Wait for element/state | `page.waitForSelector()` |
-| `verify` | Assert (not an action, validation only) | `expect()` |
-| `hover` | Mouse over | `page.hover()` |
-| `drag` | Drag and drop | `page.dragAndDrop()` |
-| `upload` | Upload a file | `page.setInputFiles()` |
+| Verb       | Meaning                                 | e2e Mapping                              |
+| ---------- | --------------------------------------- | ---------------------------------------- |
+| `navigate` | Go to a URL                             | `page.goto()`                            |
+| `click`    | Click an element                        | `page.click()`                           |
+| `type`     | Enter text                              | `page.fill()`                            |
+| `select`   | Choose from dropdown                    | `page.selectOption()`                    |
+| `toggle`   | Switch checkbox/toggle                  | `page.check()` / `page.uncheck()`        |
+| `scroll`   | Scroll the page                         | `page.evaluate(() => window.scrollTo())` |
+| `wait`     | Wait for element/state                  | `page.waitForSelector()`                 |
+| `verify`   | Assert (not an action, validation only) | `expect()`                               |
+| `hover`    | Mouse over                              | `page.hover()`                           |
+| `drag`     | Drag and drop                           | `page.dragAndDrop()`                     |
+| `upload`   | Upload a file                           | `page.setInputFiles()`                   |
 
 ### Selector Hint Priority
 
@@ -166,6 +172,7 @@ Report after writing:
 > {N} test cases / {M} combination matrices
 >
 > Usage:
+>
 > - Manual testing: follow the step tables
 > - agent-browser: `/agent-browser run TC-1 through TC-N from test-cases.md`
 > - e2e conversion: generate Playwright/Cypress code from automation metadata + step tables
