@@ -1,86 +1,250 @@
-# AI 엔지니어링
+# AI Skills
 
-## 개요
+AI 엔지니어링을 더 효과적으로 하기 위한 skills, agents, rules 모음입니다.
 
-- AI 엔지니어링을 조금더 효과적으로 하기 위해 만들어진 레포입니다. 문서입니다.
+## 하네스 엔지니어링 (Harness Engineering)
 
-## 하네스 엔지니어링(harness engineering)
+- 개발 맥락을 개인에서 팀으로 확장할 수 있습니다.
+- AI를 팀 컨텍스트로 확장하여 엔지니어링 경험 및 산출물 품질을 향상할 수 있습니다.
 
-- 개발 맥락을 개인에서 팀으로 확장할수 있습니다.
-- AI를 팀 컨텍스트로 확장하여 엔지니어링 경험 및 산출물 품질을 향상 할수 있습니다.
+## 설치
 
-## 셋업
+### 원라인 설치 (권장)
 
-1. 레포를 클론한다.
-2. ~/\*\* 경로 .claude에 rules, skills, CLAUDE.md, CURSOR_SETUP_GUIDE.md를 넣는다.
-3. 클로드 코드는 바로 사용이 가능하다.
-4. 커서 셋업
+```bash
+curl -fsSL https://raw.githubusercontent.com/paycrux/ai-skills/main/install.sh | bash
+```
 
-- .claude를 먼저 루트에 넣고난뒤 CURSOR_SETUP_GUIDE.md를 cursor 에이전트에게 주고 셋업을 명령한다.
-- .cursor/ 와 AGENTS.md가 자동으로 생성된다.
-- 커서는 반드시 명시적으로 스킬을 호출해야한다.
+실행하면 대화형으로 에디터(Claude Code / Cursor)와 설치 범위(Global / Project)를 선택합니다.
 
-## SKILLS
+### 옵션 지정 설치
 
-### task-plans
+대화형 선택 대신, 옵션을 직접 지정할 수도 있습니다. 두 가지를 조합합니다:
 
-#### 설명
+**1) 에디터 선택** — 둘 중 하나를 필수로 지정합니다.
 
-- 5가지 문서를 작성해 구현 계획을 구체적으로 만든다.
-   - README.md
-      - 개발자, 비개발자가 서로 의사소통을 위해서 README.md를 작성에 사전에 무엇을 구현할지 명시한다. 
-   - finding.md
-      - 기술적으로 구현에 필요한 사항을 코드베이스에서 탐색을 한다.
-   - spec.md, ui-spec.md
-      - 기술 명세, spec.md는 도메인 로직, ui-spec.md는 ui 구현을 하기 위해 생성되었다.
-   - tasks.md
-      - 구현 단계 명시
-   - progress.md
-      - 구현 진행상황 명시
+| 옵션       | 설명                   |
+| ---------- | ---------------------- |
+| `--claude` | Claude Code용으로 설치 |
+| `--cursor` | Cursor용으로 설치      |
 
-#### 사용방법
+**2) 설치 범위** — 어디에 설치할지 선택합니다.
 
-1. `/task-plan <이슈번호(선택)> <구체적인 내용>`을 프롬프트에 입력한다.
-   - 에이전트가 구현 요건에 따른 README.md, findings, progress, spec, ui-spec, tasks를 생성한다.
-   - 문서를 읽어보고 수정사항을 문서에 직접 기입하거나 에이전트에게 요구한다.
-2. 새로운 컨텍스트에서 해당 폴더를 에이전트에게 통째로 입력후 구현을 진행하라고 하면 컨텍스트를 참조하여 구현한다.
+| 옵션        | 설치 경로                      | 적용 범위                                 |
+| ----------- | ------------------------------ | ----------------------------------------- |
+| `--global`  | `~/.claude/` 또는 `~/.cursor/` | 내 모든 프로젝트에 적용                   |
+| `--project` | `./.claude/` 또는 `./.cursor/` | 현재 프로젝트에만 적용 (팀원과 공유 가능) |
 
-##### 클로드 코드
+**조합 예시:**
 
-- 클로드는 알아서 새로운 기능이나 버그 등을 상세하게 설명후 구현해달라고 하면 /task-plans로 계획 후 구현할꺼냐고 물어본다.
-- 하지만 `/task-plan <이슈번호(선택)> <구체적인 내용>`를 호출하는편이 가장 정확하다.
+Claude Code + 전역 (가장 일반적):
 
-##### 커서
+```bash
+curl -fsSL https://raw.githubusercontent.com/paycrux/ai-skills/main/install.sh | bash -s -- --claude --global
+```
 
-- .claude를 먼저 루트에 넣고난뒤 CURSOR_SETUP_GUIDE.md를 cursor 에이전트에게 주고 셋업을 명령한다.
-- .cursor/ 와 AGENTS.md가 자동으로 생성된다.
-- 커서는 반드시 명시적으로 스킬을 호출해야한다. `/task-plan <이슈번호(선택)> <구체적인 내용>`
+Claude Code + 현재 프로젝트만:
 
-### study
+```bash
+curl -fsSL https://raw.githubusercontent.com/paycrux/ai-skills/main/install.sh | bash -s -- --claude --project
+```
 
-#### 설명
+Cursor + 전역:
 
-개발 후 내가 익히고 싶은 내용이 있다면 이 스킬을 사용한다. task-plans와 함께 사용해 task-plans에서 작성한 문서를 이 스킬로 분석하면 더 빠르게 원하는 결과를 얻을수 있다.
+```bash
+curl -fsSL https://raw.githubusercontent.com/paycrux/ai-skills/main/install.sh | bash -s -- --cursor --global
+```
 
-#### 사용방법
+Cursor + 현재 프로젝트만:
 
-1. `/study <문서 혹은 요구사항>`을 입력한다.
+```bash
+curl -fsSL https://raw.githubusercontent.com/paycrux/ai-skills/main/install.sh | bash -s -- --cursor --project
+```
 
-### test-case
+### 추가 옵션
 
-#### 설명
+위 조합에 아래 옵션을 추가로 붙일 수 있습니다.
 
-개발 후 복잡한 테스트를 문서로 작성해 개발자가 놓치지 않는 또 반복해서 테스트하지 않도록 하기 위해 도움을 주는 skill이다. 
+| 옵션            | 설명                                       | 언제 사용하나요?              |
+| --------------- | ------------------------------------------ | ----------------------------- |
+| `--update`      | 이미 설치된 파일을 최신 버전으로 덮어쓰기  | ai-skills가 업데이트되었을 때 |
+| `--only <type>` | `skills`, `agents`, `rules` 중 하나만 설치 | 특정 항목만 필요할 때         |
 
-#### 사용방법
+이미 설치했는데 새 버전이 나왔을 때:
 
-1. `/test-case <문서 혹은 요구사항>`을 입력한다.
+```bash
+curl -fsSL https://raw.githubusercontent.com/paycrux/ai-skills/main/install.sh | bash -s -- --claude --global --update
+```
 
-### qa-guide
+skills만 따로 설치하고 싶을 때:
 
-#### 설명
+```bash
+curl -fsSL https://raw.githubusercontent.com/paycrux/ai-skills/main/install.sh | bash -s -- --claude --global --only skills
+```
 
-QA 팀에게 알려야하는 사항을 문서로 작성해준다. 
+agents만 업데이트하고 싶을 때:
 
-#### 사용방법
-1. `/qa-guide <문서 혹은 요구사항>`을 입력한다.
+```bash
+curl -fsSL https://raw.githubusercontent.com/paycrux/ai-skills/main/install.sh | bash -s -- --cursor --project --only agents --update
+```
+
+### 수동 설치
+
+1. 레포를 클론합니다.
+2. `.claude/` 디렉토리를 `~/.claude/` (전역) 또는 프로젝트 루트의 `.claude/` (프로젝트)에 복사합니다.
+3. Cursor 사용 시: `CURSOR_SETUP_GUIDE.md`를 Cursor 에이전트에게 전달하여 셋업을 진행합니다.
+
+---
+
+## Skills
+
+슬래시 커맨드(`/skill-name`)로 호출하는 워크플로우입니다.
+
+### /task-plan
+
+**작업 계획 수립 + 문서 생성**
+
+5가지 문서를 작성해 구현 계획을 구체적으로 만듭니다.
+
+| 문서        | 역할                                                 |
+| ----------- | ---------------------------------------------------- |
+| README.md   | 개발자·비개발자 간 의사소통용 — 무엇을 구현할지 명시 |
+| findings.md | 코드베이스 탐색 결과 — 기술적 구현 사항 정리         |
+| spec.md     | 도메인 로직 기술 명세                                |
+| ui-spec.md  | UI 구현 명세                                         |
+| tasks.md    | 구현 단계 명시                                       |
+| progress.md | 구현 진행 상황 추적                                  |
+
+```
+/task-plan <이슈번호(선택)> <구체적인 내용>
+```
+
+- Claude Code: 새 기능이나 버그 수정을 상세히 설명하면 자동으로 `/task-plan` 사용 여부를 물어봅니다.
+- Cursor: 반드시 명시적으로 `/task-plan`을 호출해야 합니다.
+
+### /implement
+
+**문서 기반 단계별 구현**
+
+task-plan에서 생성한 문서(spec, tasks, findings, ui-spec)를 읽고, 단계별로 구현을 진행합니다.
+
+```
+/implement <task-folder-name>    # docs/plans/<task-folder-name>/ 참조
+/implement                       # 상태가 "진행중"인 작업 자동 감지
+```
+
+구현 사이클: 단계별 접근 요약 → 사용자 승인 → 전문 에이전트 실행 → 진행 상황 업데이트
+
+### /evaluate
+
+**코드 품질 종합 평가**
+
+`evaluate-react`와 `evaluate-engineering` 에이전트를 병렬로 실행하여 코드 품질을 평가합니다.
+
+```
+/evaluate                        # 최근 변경 파일 자동 감지
+/evaluate <file-or-directory>    # 특정 파일/디렉토리 평가
+/evaluate <task-folder-name>     # task-plan 기반 평가
+```
+
+### /study
+
+**학습 보고서 작성**
+
+개발 후 익히고 싶은 내용을 분석하여 학습 문서를 작성합니다. task-plan 문서와 함께 사용하면 더 효과적입니다.
+
+```
+/study <문서 혹은 요구사항>
+```
+
+### /test-case
+
+**테스트 케이스 생성**
+
+구현된 코드나 요구사항에서 테스트 케이스를 생성합니다. Happy path와 조합 상태를 커버합니다.
+
+```
+/test-case <문서 혹은 요구사항>
+```
+
+### /qa-guide
+
+**QA 테스트 가이드 생성**
+
+QA 팀에게 전달할 테스트 가이드를 문서로 작성합니다.
+
+```
+/qa-guide <문서 혹은 요구사항>
+```
+
+### /skill-creator
+
+**스킬 생성/리팩토링**
+
+새로운 Claude Code 스킬을 스캐폴딩하거나, 기존 스킬을 리팩토링/리뷰합니다.
+
+```
+/skill-creator <new-skill-name>       # 새 스킬 생성
+/skill-creator <existing-skill-path>  # 기존 스킬 리팩토링
+/skill-creator                        # 대화형 모드
+```
+
+---
+
+## Agents
+
+코드 변경 시 자동으로 사용되는 전문 에이전트입니다. 직접 호출하지 않고, skills이나 CLAUDE.md 규칙에 의해 자동으로 선택됩니다.
+
+### 구현 에이전트
+
+| 에이전트              | 담당 영역                                                                     |
+| --------------------- | ----------------------------------------------------------------------------- |
+| implement-engineering | 타입/인터페이스, API 클라이언트, 유틸리티, 서비스, 상태관리 셋업, 데이터 변환 |
+| implement-react       | 컴포넌트, 훅, 스타일링, 화면, 네비게이션, UI 상태 처리                        |
+
+혼합 작업(데이터 레이어 + UI)인 경우 `implement-engineering` → `implement-react` 순서로 실행됩니다.
+
+### 평가 에이전트
+
+| 에이전트             | 담당 영역                                                                |
+| -------------------- | ------------------------------------------------------------------------ |
+| evaluate-docs        | task-plan 문서 품질 평가                                                 |
+| evaluate-react       | React/React Native 코드 품질 평가 (안티패턴, 룰 위반, 성능 이슈)         |
+| evaluate-engineering | TypeScript/JavaScript 엔지니어링 품질 평가 (함수형, 순환참조, 코드 구조) |
+
+---
+
+## Rules
+
+프로젝트에 자동 적용되는 코딩 규칙입니다.
+
+| 규칙             | 적용 대상                                                             |
+| ---------------- | --------------------------------------------------------------------- |
+| react-typescript | React + TypeScript 구현 시 (Hooks, 불변성, 컴포넌트 패턴, 성능, 타입) |
+| frontend-design  | 디자인 레퍼런스 없이 UI를 직접 만들 때 (AI Slop 방지, 맥락 기반 선택) |
+
+---
+
+## 프로젝트 구조
+
+```
+.claude/
+├── CLAUDE.md              # 프로젝트 규칙 (task planning, 구현, 세션 이어받기, PR)
+├── agents/
+│   ├── implement-engineering.md
+│   ├── implement-react.md
+│   ├── evaluate-docs.md
+│   ├── evaluate-react.md
+│   └── evaluate-engineering.md
+├── skills/
+│   ├── task-plan/SKILL.md
+│   ├── implement/SKILL.md
+│   ├── evaluate/SKILL.md
+│   ├── study/SKILL.md
+│   ├── test-case/SKILL.md
+│   ├── qa-guide/SKILL.md
+│   └── skill-creator/SKILL.md
+└── rules/
+    ├── react-typescript.md
+    └── frontend-design.md
+```
