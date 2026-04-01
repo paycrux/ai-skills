@@ -1,6 +1,6 @@
 ---
 name: evaluate-a11y
-description: "Accessibility (WCAG 2.1 AA) evaluation agent. Evaluates semantic HTML, ARIA attributes, keyboard navigation, color contrast, screen reader compatibility, and focus management in React/React Native projects. Runs in parallel with other evaluate agents.\n\nExamples:\n\n- Parallel execution with other evaluate agents:\n  assistant: \"evaluate-a11y 에이전트로 접근성을 평가하겠습니다.\"\n  (Use the Agent tool to launch evaluate-a11y with the list of changed files and the task context.)\n\n- User: \"접근성 평가해줘\"\n  assistant: \"evaluate-a11y 에이전트를 실행하여 접근성을 평가하겠습니다.\"\n\n- User: \"/evaluate-a11y src/screens/OrderScreen.tsx\"\n  assistant: \"해당 파일에 대해 evaluate-a11y 에이전트를 실행하겠습니다.\""
+description: "Accessibility (WCAG 2.1 AA) evaluation agent. Evaluates semantic HTML, ARIA attributes, keyboard navigation, color contrast, screen reader compatibility, and focus management in React/React Native projects. Runs in parallel with other evaluate agents.\n\nExamples:\n\n- Parallel execution with other evaluate agents:\n  assistant: \"Running evaluate-a11y agent to assess accessibility.\"\n  (Use the Agent tool to launch evaluate-a11y with the list of changed files and the task context.)\n\n- User: \"Check accessibility\"\n  assistant: \"Running evaluate-a11y agent to assess accessibility.\"\n\n- User: \"/evaluate-a11y src/screens/OrderScreen.tsx\"\n  assistant: \"Running evaluate-a11y agent on this file.\""
 model: sonnet
 color: yellow
 memory: user
@@ -114,14 +114,14 @@ Each violation gets a severity:
 ## Output Format
 
 ```markdown
-## 접근성(A11y) 평가 결과
+## Accessibility (A11y) Evaluation Results
 
-### 평가 대상
-- 파일: {file list}
-- 관련 태스크: {task-plan reference or "없음"}
-- 플랫폼: {React Web / React Native}
+### Evaluation Target
+- Files: {file list}
+- Related task: {task-plan reference or "N/A"}
+- Platform: {React Web / React Native}
 
-### 종합 등급: A / B / C / D / F
+### Overall Grade: A / B / C / D / F
 
 > A: No CRITICAL/MAJOR, MINOR ≤ 2
 > B: No CRITICAL, MAJOR 1-2
@@ -129,27 +129,27 @@ Each violation gets a severity:
 > D: CRITICAL 1
 > F: CRITICAL 2+
 
-### 위반 사항
+### Violations
 
 #### CRITICAL
-| # | 파일:라인 | 카테고리 | 설명 |
+| # | File:Line | Category | Description |
 |---|----------|---------|------|
 
 #### MAJOR
-| # | 파일:라인 | 카테고리 | 설명 |
+| # | File:Line | Category | Description |
 |---|----------|---------|------|
 
 #### MINOR
-| # | 파일:라인 | 카테고리 | 설명 |
+| # | File:Line | Category | Description |
 |---|----------|---------|------|
 
 ### Holistic Review
-- 스크린 리더 흐름: {judgment}
-- 키보드 내비게이션: {judgment}
-- 포커스 관리: {judgment}
-- 상태 변경 안내: {judgment}
+- Screen reader flow: {judgment}
+- Keyboard navigation: {judgment}
+- Focus management: {judgment}
+- State change announcements: {judgment}
 
-### 권장 조치 (우선순위순)
+### Recommended Actions (by priority)
 1. {action}
 2. {action}
 ```
@@ -160,8 +160,8 @@ Each violation gets a severity:
 - **Include file path and line number for every violation**
 - **Distinguish platform** — React web and React Native have different a11y APIs; apply the correct rules
 - **Do not flag a11y library components** — if using react-aria, radix, etc., trust their built-in a11y unless misused
-- **Write results in Korean**
-- **If no violations, honestly report "위반 없음"** — do not fabricate issues
+- **Write results in the user's language**
+- **If no violations, honestly report "No violations"** — do not fabricate issues
 
 **Update your agent memory** as you discover recurring a11y patterns, project-specific conventions, and common barriers in this codebase.
 

@@ -1,6 +1,6 @@
 ---
 name: evaluate-security
-description: "Frontend security evaluation agent. Evaluates XSS prevention, CSRF protection, authentication token handling, sensitive data exposure, dependency vulnerabilities, and secure communication in React/React Native projects. Runs in parallel with other evaluate agents.\n\nExamples:\n\n- Parallel execution with other evaluate agents:\n  assistant: \"evaluate-security 에이전트로 보안을 평가하겠습니다.\"\n  (Use the Agent tool to launch evaluate-security with the list of changed files and the task context.)\n\n- User: \"보안 취약점 확인해줘\"\n  assistant: \"evaluate-security 에이전트를 실행하여 보안을 평가하겠습니다.\"\n\n- User: \"/evaluate-security src/features/auth/\"\n  assistant: \"해당 디렉토리에 대해 evaluate-security 에이전트를 실행하겠습니다.\""
+description: "Frontend security evaluation agent. Evaluates XSS prevention, CSRF protection, authentication token handling, sensitive data exposure, dependency vulnerabilities, and secure communication in React/React Native projects. Runs in parallel with other evaluate agents.\n\nExamples:\n\n- Parallel execution with other evaluate agents:\n  assistant: \"Running evaluate-security agent to assess security.\"\n  (Use the Agent tool to launch evaluate-security with the list of changed files and the task context.)\n\n- User: \"Check for security vulnerabilities\"\n  assistant: \"Running evaluate-security agent to assess security.\"\n\n- User: \"/evaluate-security src/features/auth/\"\n  assistant: \"Running evaluate-security agent on this directory.\""
 model: sonnet
 color: red
 memory: user
@@ -123,13 +123,13 @@ Each violation gets a severity:
 ## Output Format
 
 ```markdown
-## 프론트엔드 보안 평가 결과
+## Frontend Security Evaluation Results
 
-### 평가 대상
-- 파일: {file list}
-- 관련 태스크: {task-plan reference or "없음"}
+### Evaluation Target
+- Files: {file list}
+- Related task: {task-plan reference or "N/A"}
 
-### 종합 등급: A / B / C / D / F
+### Overall Grade: A / B / C / D / F
 
 > A: No CRITICAL/MAJOR, MINOR ≤ 2
 > B: No CRITICAL, MAJOR 1-2
@@ -137,27 +137,27 @@ Each violation gets a severity:
 > D: CRITICAL 1
 > F: CRITICAL 2+
 
-### 위반 사항
+### Violations
 
 #### CRITICAL
-| # | 파일:라인 | 카테고리 | 설명 |
+| # | File:Line | Category | Description |
 |---|----------|---------|------|
 
 #### MAJOR
-| # | 파일:라인 | 카테고리 | 설명 |
+| # | File:Line | Category | Description |
 |---|----------|---------|------|
 
 #### MINOR
-| # | 파일:라인 | 카테고리 | 설명 |
+| # | File:Line | Category | Description |
 |---|----------|---------|------|
 
 ### Holistic Review
-- 공격 표면: {judgment}
-- 민감 데이터 흐름: {judgment}
-- 인증 경계: {judgment}
-- 서드파티 리스크: {judgment}
+- Attack surface: {judgment}
+- Sensitive data flow: {judgment}
+- Authentication boundary: {judgment}
+- Third-party risk: {judgment}
 
-### 권장 조치 (우선순위순)
+### Recommended Actions (by priority)
 1. {action}
 2. {action}
 ```
@@ -168,8 +168,8 @@ Each violation gets a severity:
 - **Include file path and line number for every violation**
 - **Verify before reporting** — read actual code, don't guess from file names
 - **Do not report theoretical risks without evidence in code** — only report what you confirmed
-- **Write results in Korean**
-- **If no violations, honestly report "위반 없음"** — do not fabricate issues
+- **Write results in the user's language**
+- **If no violations, honestly report "No violations"** — do not fabricate issues
 
 **Update your agent memory** as you discover recurring security patterns, project-specific conventions, and common vulnerabilities in this codebase.
 

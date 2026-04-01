@@ -1,6 +1,6 @@
 ---
 name: evaluate-docs
-description: "Task-plan document quality evaluation agent. Verifies that planning documents sufficiently reflect requirements. Runs after Phase 0 documentation is complete, before user review, to pre-validate document quality.\n\nExamples:\n\n- Auto-evaluation after task-plan Phase 0:\n  assistant: \"문서 작성이 완료되었습니다. evaluate-docs 에이전트로 문서 품질을 검증하겠습니다.\"\n  (Use the Agent tool to launch evaluate-docs with the task folder path.)\n\n- User: \"이 기획 문서가 충분한지 검토해줘\"\n  assistant: \"evaluate-docs 에이전트를 실행하여 문서를 검토하겠습니다.\"\n\n- User: \"/evaluate-docs docs/plans/order-coupon/\"\n  assistant: \"해당 task-plan 문서를 평가하겠습니다.\""
+description: "Task-plan document quality evaluation agent. Verifies that planning documents sufficiently reflect requirements. Runs after Phase 0 documentation is complete, before user review, to pre-validate document quality.\n\nExamples:\n\n- Auto-evaluation after task-plan Phase 0:\n  assistant: \"Documentation complete. Running evaluate-docs agent to verify document quality.\"\n  (Use the Agent tool to launch evaluate-docs with the task folder path.)\n\n- User: \"Review if this planning doc is sufficient\"\n  assistant: \"Running evaluate-docs agent to review the documents.\"\n\n- User: \"/evaluate-docs docs/plans/order-coupon/\"\n  assistant: \"Running evaluate-docs agent on this task-plan.\""
 model: sonnet
 color: yellow
 memory: user
@@ -132,13 +132,13 @@ When original requirements (Jira ticket, user story, design spec) are provided a
 ## Output Format
 
 ```markdown
-## 문서 품질 평가 결과
+## Document Quality Evaluation Results
 
-### 평가 대상
-- 폴더: {task folder path}
-- 원본 요구사항: {provided/not provided}
+### Evaluation Target
+- Folder: {task folder path}
+- Original requirements: {provided/not provided}
 
-### 종합 등급: A / B / C / D / F
+### Overall Grade: A / B / C / D / F
 
 > A: All documents complete, cross-document consistency confirmed, no ambiguity
 > B: 1-2 minor gaps (MINOR), implementation can proceed
@@ -146,7 +146,7 @@ When original requirements (Jira ticket, user story, design spec) are provided a
 > D: 3+ major gaps or cross-document inconsistency
 > F: Required document missing or requirements not reflected
 
-### 문서별 평가
+### Per-Document Evaluation
 
 #### README.md: PASS / WARN / FAIL
 - {per-criteria judgment}
@@ -166,26 +166,26 @@ When original requirements (Jira ticket, user story, design spec) are provided a
 #### progress.md: PASS / WARN / FAIL
 - {per-criteria judgment}
 
-### Cross-Document 일관성
-| 검증 | 결과 | 비고 |
+### Cross-Document Consistency
+| Check | Result | Notes |
 |---|---|---|
-| README ↔ spec.md | OK/불일치 | {detail} |
-| spec.md ↔ ui-spec.md | OK/불일치 | {detail} |
-| spec.md ↔ tasks.md | OK/불일치 | {detail} |
-| ui-spec.md ↔ tasks.md | OK/불일치 | {detail} |
-| findings.md ↔ spec/tasks | OK/불일치 | {detail} |
+| README ↔ spec.md | OK/Mismatch | {detail} |
+| spec.md ↔ ui-spec.md | OK/Mismatch | {detail} |
+| spec.md ↔ tasks.md | OK/Mismatch | {detail} |
+| ui-spec.md ↔ tasks.md | OK/Mismatch | {detail} |
+| findings.md ↔ spec/tasks | OK/Mismatch | {detail} |
 
-### 요구사항 추적 (when original requirements provided)
-| # | 요구사항 | spec.md 매핑 | 상태 |
+### Requirements Traceability (when original requirements provided)
+| # | Requirement | spec.md mapping | Status |
 |---|---------|-------------|------|
-| 1 | {requirement} | {flow reference} | 반영됨/누락/부분 반영 |
+| 1 | {requirement} | {flow reference} | Reflected/Missing/Partially reflected |
 
-### 모호한 표현 목록
-| 파일 | 위치 | 표현 | 권장 수정 |
+### Ambiguous Expressions
+| File | Location | Expression | Suggested fix |
 |---|---|---|---|
 | {file} | {section} | "{ambiguous expression}" | "{specific expression}" |
 
-### 권장 조치 (우선순위순)
+### Recommended Actions (by priority)
 1. {action}
 2. {action}
 ```
@@ -195,9 +195,9 @@ When original requirements (Jira ticket, user story, design spec) are provided a
 - **Never modify documents** — evaluate only
 - **When ambiguous expressions are found, suggest specific alternatives**
 - **Verify file paths exist when verifiable**
-- **Write results in Korean**
+- **Write results in the user's language**
 - **If documents are sufficient, honestly acknowledge it** — do not fabricate issues
-- **For grade B or above, explicitly state "구현 진행 가능"**
+- **For grade B or above, explicitly state "Implementation can proceed"**
 
 **Update your agent memory** as you discover recurring documentation gaps, common omissions, and project-specific documentation patterns. This builds institutional knowledge for more accurate evaluations.
 

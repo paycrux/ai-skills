@@ -29,8 +29,12 @@ task-plan 문서를 기반으로 browse 헤드리스 브라우저를 사용해 �
 ```bash
 B=""
 _ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
+# 프로젝트 로컬 (.claude → .cursor 순)
 [ -n "$_ROOT" ] && [ -x "$_ROOT/.claude/skills/browse/dist/browse" ] && B="$_ROOT/.claude/skills/browse/dist/browse"
+[ -z "$B" ] && [ -n "$_ROOT" ] && [ -x "$_ROOT/.cursor/skills/browse/dist/browse" ] && B="$_ROOT/.cursor/skills/browse/dist/browse"
+# 글로벌 (.claude → .cursor 순)
 [ -z "$B" ] && [ -x "$HOME/.claude/skills/browse/dist/browse" ] && B="$HOME/.claude/skills/browse/dist/browse"
+[ -z "$B" ] && [ -x "$HOME/.cursor/skills/browse/dist/browse" ] && B="$HOME/.cursor/skills/browse/dist/browse"
 if [ -x "$B" ]; then
   echo "READY: $B"
 else
@@ -198,6 +202,16 @@ QA 검증이 완료되었습니다.
    ```
 
 4. qa-report.md 업데이트: 이슈 상태를 `FIXED` / `VERIFIED`로 변경
+
+## Task-plan 연동
+
+QA 리포트 작성 완료 후, 관련 task-plan 폴더(`docs/plans/*/`)가 존재하면 `progress.md`에 결과 요약을 append한다:
+
+```markdown
+### /qa 결과 — {YYYY-MM-DD}
+- Critical: {N}건, High: {N}건, Medium: {N}건, Low: {N}건
+- 리포트: `{qa-report.md 경로}`
+```
 
 ## 규칙
 

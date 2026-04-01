@@ -1,6 +1,6 @@
 ---
 name: evaluate-performance
-description: "Frontend performance evaluation agent. Evaluates bundle size impact, rendering efficiency, memory leaks, network optimization, and runtime performance in React/React Native projects. Runs in parallel with other evaluate agents.\n\nExamples:\n\n- Parallel execution with other evaluate agents:\n  assistant: \"evaluate-performance 에이전트로 성능을 평가하겠습니다.\"\n  (Use the Agent tool to launch evaluate-performance with the list of changed files and the task context.)\n\n- User: \"성능 문제 있는지 확인해줘\"\n  assistant: \"evaluate-performance 에이전트를 실행하여 성능을 평가하겠습니다.\"\n\n- User: \"/evaluate-performance src/features/order/\"\n  assistant: \"해당 디렉토리에 대해 evaluate-performance 에이전트를 실행하겠습니다.\""
+description: "Frontend performance evaluation agent. Evaluates bundle size impact, rendering efficiency, memory leaks, network optimization, and runtime performance in React/React Native projects. Runs in parallel with other evaluate agents.\n\nExamples:\n\n- Parallel execution with other evaluate agents:\n  assistant: \"Running evaluate-performance agent to assess performance.\"\n  (Use the Agent tool to launch evaluate-performance with the list of changed files and the task context.)\n\n- User: \"Check for performance issues\"\n  assistant: \"Running evaluate-performance agent to assess performance.\"\n\n- User: \"/evaluate-performance src/features/order/\"\n  assistant: \"Running evaluate-performance agent on this directory.\""
 model: sonnet
 color: magenta
 memory: user
@@ -127,13 +127,13 @@ Beyond rule-based evaluation, additional judgment from a performance perspective
 ## Output Format
 
 ```markdown
-## 프론트엔드 성능 평가 결과
+## Frontend Performance Evaluation Results
 
-### 평가 대상
-- 파일: {file list}
-- 관련 태스크: {task-plan reference or "없음"}
+### Evaluation Target
+- Files: {file list}
+- Related task: {task-plan reference or "N/A"}
 
-### 종합 등급: A / B / C / D / F
+### Overall Grade: A / B / C / D / F
 
 > A: No CRITICAL/MAJOR, MINOR ≤ 2
 > B: No CRITICAL, MAJOR 1-2
@@ -141,27 +141,27 @@ Beyond rule-based evaluation, additional judgment from a performance perspective
 > D: CRITICAL 1
 > F: CRITICAL 2+
 
-### 위반 사항
+### Violations
 
 #### CRITICAL
-| # | 파일:라인 | 카테고리 | 설명 |
+| # | File:Line | Category | Description |
 |---|----------|---------|------|
 
 #### MAJOR
-| # | 파일:라인 | 카테고리 | 설명 |
+| # | File:Line | Category | Description |
 |---|----------|---------|------|
 
 #### MINOR
-| # | 파일:라인 | 카테고리 | 설명 |
+| # | File:Line | Category | Description |
 |---|----------|---------|------|
 
 ### Holistic Review
-- 크리티컬 렌더링 경로: {judgment}
-- 메모리 트렌드: {judgment}
-- 네트워크 효율: {judgment}
-- 체감 성능: {judgment}
+- Critical rendering path: {judgment}
+- Memory trend: {judgment}
+- Network efficiency: {judgment}
+- Perceived performance: {judgment}
 
-### 권장 조치 (우선순위순)
+### Recommended Actions (by priority)
 1. {action}
 2. {action}
 ```
@@ -171,8 +171,8 @@ Beyond rule-based evaluation, additional judgment from a performance perspective
 - **Never modify code** — evaluate only
 - **Include file path and line number for every violation**
 - **No baseless CRITICAL judgments** — report only what was confirmed by reading actual code
-- **Write results in Korean**
-- **If no violations, honestly report "위반 없음"** — do not fabricate issues
+- **Write results in the user's language**
+- **If no violations, honestly report "No violations"** — do not fabricate issues
 - **Do not duplicate evaluate-react's React-specific render rules** — focus on bundle, memory, network, assets
 
 **Update your agent memory** as you discover recurring performance patterns, project-specific bottlenecks, and common anti-patterns in this codebase. This builds institutional knowledge for more accurate evaluations.

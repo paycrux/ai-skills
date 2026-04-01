@@ -352,7 +352,6 @@ merge_agents_md() {
 | task-plan | @.cursor/skills/task-plan/SKILL.md | 작업 계획 수립 + 문서 생성 |
 | implement | @.cursor/skills/implement/SKILL.md | 문서 기반 단계별 구현 |
 | evaluate | @.cursor/skills/evaluate/SKILL.md | 코드 품질 종합 평가 (5개 에이전트 병렬) |
-| investigate | @.cursor/skills/investigate/SKILL.md | 체계적 디버깅 + 근본원인 분석 |
 | qa-guide | @.cursor/skills/qa-guide/SKILL.md | QA 테스트 가이드 생성 |
 | test-case | @.cursor/skills/test-case/SKILL.md | 테스트 케이스 생성 |
 | study | @.cursor/skills/study/SKILL.md | 학습 보고서 작성 |

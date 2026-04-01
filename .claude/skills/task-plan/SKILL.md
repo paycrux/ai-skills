@@ -24,19 +24,62 @@ Create `docs/plans/{task-name}/` (kebab-case, no issue number in folder name).
 ### Step 2: Determine Task Type
 
 ```
-Does the task involve UI/frontend work?
-├── YES → "frontend" (include ui-spec.md, state location in spec.md)
-│   ├── UI only
-│   ├── UI + business logic
-│   └── Full-stack
-└── NO → "backend-only" (skip UI sections)
+Is this a bug fix / debugging task?
+├── YES → "bug" (include investigate workflow in Step 3)
+└── NO → feature / refactor
+     └── Does the task involve UI/frontend work?
+         ├── YES → "frontend" (include ui-spec.md, state location in spec.md)
+         │   ├── UI only
+         │   ├── UI + business logic
+         │   └── Full-stack
+         └── NO → "backend-only" (skip UI sections)
 ```
 
-### Step 3: Explore Codebase
+**Bug 판별 기준:** 사용자 설명에 에러 메시지, 비정상 동작, "안 됨", "깨짐", "crash", 버그 번호 등이 포함된 경우.
+
+### Step 3: Explore Codebase (& Investigate if Bug)
 
 Use the Explore sub-agent following `${CLAUDE_SKILL_DIR}/references/exploration-strategy.md`.
 
-Record results in `findings.md`.
+**Bug 타입인 경우 — investigate 워크플로우 추가:**
+
+탐색과 함께 근본 원인 분석을 수행한다.
+
+1. **증상 수집**: 에러 메시지, 재현 조건, 기대 vs 실제 동작, `git log --oneline -10`으로 최근 변경 확인
+2. **가설 생성**: 확률순으로 2-4개 가설 작성 (원인 한줄 / 근거 / 검증 방법 / 확률)
+3. **사용자 확인**: "다음 가설 중 어떤 것부터 검증할까요?" — 사용자 선택 대기
+4. **검증 루프**: 선택된 가설에 대해 코드 추적 → 확인/기각 (최대 3회)
+5. **근본 원인 기록**: 확인된 원인을 findings.md의 별도 섹션에 기록
+
+```markdown
+<!-- findings.md에 추가되는 섹션 (bug 타입만) -->
+
+## 근본 원인 분석
+
+### 증상
+| 항목 | 내용 |
+|------|------|
+| 증상 | {에러 메시지 또는 비정상 동작} |
+| 재현 조건 | {재현 단계} |
+| 기대 동작 | {정상 동작} |
+| 실제 동작 | {현재 동작} |
+
+### 검증된 가설
+| # | 가설 | 결과 | 비고 |
+|---|------|------|------|
+| 1 | {가설} | 확인/기각 | {이유} |
+
+### 근본 원인
+**원인**: {한 줄 요약}
+**발생 경로**: {코드 실행 흐름}
+**관련 코드**: {file:line}
+
+### 수정 방안
+**권장 수정**: {최소한의 수정 방법}
+**영향 범위**: {수정 시 영향받는 파일/기능}
+```
+
+Record all results in `findings.md`.
 
 ### Step 4: Analyze Reference Documents
 

@@ -75,6 +75,17 @@ Use the prompt template at `${CLAUDE_SKILL_DIR}/templates/review-prompt.md`.
 - Fix scope is **limited to violation items** — no surrounding code refactoring
 - Re-evaluation after fixes is **max 2 times** — if violations remain, defer to user judgment
 
+## Task-plan 연동
+
+평가 완료 후, 관련 task-plan 폴더(`docs/plans/*/`)가 존재하면 `progress.md`에 결과 요약을 append한다:
+
+```markdown
+### /evaluate 결과 — {YYYY-MM-DD}
+- 종합 등급: {A/B/C/D/F}
+- CRITICAL: {N}건, MAJOR: {N}건, MINOR: {N}건
+- 리포트: `{evaluate report 저장 경로}`
+```
+
 ## Rules
 
 - All 5 agents must run **in parallel** — sequential execution prohibited

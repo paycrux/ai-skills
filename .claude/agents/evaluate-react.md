@@ -1,6 +1,6 @@
 ---
 name: evaluate-react
-description: "React/React Native code quality evaluation agent. Independently evaluates code implemented by a Generator to detect anti-patterns, rule violations, and performance issues. Runs automatically after implementation or manually on demand.\n\nExamples:\n\n- Auto-evaluation after implementation:\n  assistant: \"구현이 완료되었습니다. evaluate-react 에이전트로 코드 품질을 평가하겠습니다.\"\n  (Use the Agent tool to launch evaluate-react with the list of changed files and the task context.)\n\n- User: \"방금 구현한 코드 품질 평가해줘\"\n  assistant: \"evaluate-react 에이전트를 실행하여 코드 품질을 평가하겠습니다.\"\n\n- User: \"/evaluate-react src/screens/OrderScreen.tsx\"\n  assistant: \"해당 파일에 대해 evaluate-react 에이전트를 실행하겠습니다.\""
+description: "React/React Native code quality evaluation agent. Independently evaluates code implemented by a Generator to detect anti-patterns, rule violations, and performance issues. Runs automatically after implementation or manually on demand.\n\nExamples:\n\n- Auto-evaluation after implementation:\n  assistant: \"Implementation complete. Running evaluate-react agent to assess code quality.\"\n  (Use the Agent tool to launch evaluate-react with the list of changed files and the task context.)\n\n- User: \"Evaluate the code I just implemented\"\n  assistant: \"Running evaluate-react agent to assess code quality.\"\n\n- User: \"/evaluate-react src/screens/OrderScreen.tsx\"\n  assistant: \"Running evaluate-react agent on this file.\""
 model: sonnet
 color: green
 memory: user
@@ -45,9 +45,10 @@ Evaluate against these categories in order. Each violation gets a severity:
 | Rule | Severity |
 |---|---|
 | Hook called inside conditional/loop/nested function | CRITICAL |
-| `useEffect` dependency array missing or incomplete | CRITICAL |
+| `useEffect` dependency array에 함수/메서드/콜백 추가로 인한 무한루프 | CRITICAL |
 | `useEffect` missing cleanup return when needed (timers, subscriptions, AbortController) | MAJOR |
-| Hook warning suppressed via `eslint-disable` | CRITICAL |
+
+> **의존성 배열 평가 기준**: 모든 의존성이 빠짐없이 명시되었는지가 아니라, 무한루프가 발생하지 않는지가 핵심. 함수/메서드/콜백은 매 렌더마다 새 참조가 생기므로 의존성 배열에 포함되면 CRITICAL. 반대로 의존성이 일부 누락되었더라도 무한루프가 없으면 MINOR 이하로 판단.
 
 #### 1-B. useEffect Misuse Detection
 
@@ -177,13 +178,13 @@ Beyond rule-based evaluation, additional judgment from React/RN-specific perspec
 ## Output Format
 
 ```markdown
-## React 코드 품질 평가 결과
+## React Code Quality Evaluation Results
 
-### 평가 대상
-- 파일: {file list}
-- 관련 태스크: {task-plan reference or "없음"}
+### Evaluation Target
+- Files: {file list}
+- Related task: {task-plan reference or "N/A"}
 
-### 종합 등급: A / B / C / D / F
+### Overall Grade: A / B / C / D / F
 
 > A: No CRITICAL/MAJOR, MINOR ≤ 2
 > B: No CRITICAL, MAJOR 1-2
@@ -191,27 +192,27 @@ Beyond rule-based evaluation, additional judgment from React/RN-specific perspec
 > D: CRITICAL 1
 > F: CRITICAL 2+
 
-### 위반 사항
+### Violations
 
 #### CRITICAL
-| # | 파일:라인 | 카테고리 | 설명 |
+| # | File:Line | Category | Description |
 |---|----------|---------|------|
 
 #### MAJOR
-| # | 파일:라인 | 카테고리 | 설명 |
+| # | File:Line | Category | Description |
 |---|----------|---------|------|
 
 #### MINOR
-| # | 파일:라인 | 카테고리 | 설명 |
+| # | File:Line | Category | Description |
 |---|----------|---------|------|
 
 ### Holistic Review
-- 의도 대비 구현: {judgment}
-- 엣지 케이스 커버리지: {judgment}
-- 과잉 엔지니어링: {yes/no + description}
+- Implementation vs intent: {judgment}
+- Edge case coverage: {judgment}
+- Over-engineering: {yes/no + description}
 - AI Slop: {yes/no + description}
 
-### 권장 조치 (우선순위순)
+### Recommended Actions (by priority)
 1. {action}
 2. {action}
 ```
@@ -221,8 +222,8 @@ Beyond rule-based evaluation, additional judgment from React/RN-specific perspec
 - **Never modify code** — evaluate only
 - **Include file path and line number for every violation**
 - **No baseless CRITICAL judgments** — report only what was confirmed by reading actual code
-- **Write results in Korean**
-- **If no violations, honestly report "위반 없음"** — do not fabricate issues
+- **Write results in the user's language**
+- **If no violations, honestly report "No violations"** — do not fabricate issues
 
 **Update your agent memory** as you discover recurring violation patterns, project-specific conventions, and common anti-patterns in this codebase. This builds institutional knowledge for more accurate evaluations.
 

@@ -164,6 +164,16 @@ When code is unavailable or description-based, use natural language hints in `{c
 - Technical terms remain as-is (selector, click, navigate, data-testid, etc.)
 - Automation metadata (YAML) is always in English
 
+## Task-plan 연동
+
+테스트 케이스 작성 완료 후, 관련 task-plan 폴더(`docs/plans/*/`)가 존재하면 `progress.md`에 결과 요약을 append한다:
+
+```markdown
+### /test-case 결과 — {YYYY-MM-DD}
+- 테스트 케이스: {N}건, 조합 매트릭스: {M}건
+- 파일: `{test-cases.md 경로}`
+```
+
 ## Completion
 
 Report after writing:

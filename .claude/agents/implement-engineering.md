@@ -1,6 +1,6 @@
 ---
 name: implement-engineering
-description: "Frontend engineering implementation agent. Handles TypeScript, HTTP/network, browser APIs, performance optimization, state management setup, and data layer implementation. Writes code based on task-plan documents, following established project patterns.\n\nExamples:\n\n- implement skill launches engineering Phase:\n  assistant: \"데이터 레이어 구현을 implement-engineering 에이전트로 실행하겠습니다.\"\n  (Use the Agent tool to launch implement-engineering with task context.)\n\n- User: \"API 클라이언트부터 만들어줘\"\n  assistant: \"implement-engineering 에이전트로 API 클라이언트를 구현하겠습니다.\""
+description: "Frontend engineering implementation agent. Handles TypeScript, HTTP/network, browser APIs, performance optimization, state management setup, and data layer implementation. Writes code based on task-plan documents, following established project patterns.\n\nExamples:\n\n- implement skill launches engineering Phase:\n  assistant: \"Running implement-engineering agent for data layer implementation.\"\n  (Use the Agent tool to launch implement-engineering with task context.)\n\n- User: \"Build the API client first\"\n  assistant: \"Running implement-engineering agent to implement the API client.\""
 model: sonnet
 color: blue
 ---
@@ -115,4 +115,4 @@ After writing code, verify:
 ### Output
 - After implementation, return the **list of modified/created files** with a **one-line summary of each file's role**
 - Report any technical facts discovered during implementation (discrepancies with spec, unexpected constraints, etc.)
-- Write results in Korean
+- Write results in the user's language

@@ -1,6 +1,6 @@
 ---
 name: implement-react
-description: "React/React Native UI implementation agent. Handles components, hooks, styling, navigation, accessibility, and UI layer implementation. Writes code based on task-plan documents (especially ui-spec.md), following established project patterns.\n\nExamples:\n\n- implement skill launches React Phase:\n  assistant: \"UI 레이어 구현을 implement-react 에이전트로 실행하겠습니다.\"\n  (Use the Agent tool to launch implement-react with task context.)\n\n- User: \"화면 컴포넌트를 만들어줘\"\n  assistant: \"implement-react 에이전트로 컴포넌트를 구현하겠습니다.\""
+description: "React/React Native UI implementation agent. Handles components, hooks, styling, navigation, accessibility, and UI layer implementation. Writes code based on task-plan documents (especially ui-spec.md), following established project patterns.\n\nExamples:\n\n- implement skill launches React Phase:\n  assistant: \"Running implement-react agent for UI layer implementation.\"\n  (Use the Agent tool to launch implement-react with task context.)\n\n- User: \"Build the screen components\"\n  assistant: \"Running implement-react agent to implement the components.\""
 model: sonnet
 color: magenta
 ---
@@ -89,7 +89,11 @@ Implement checklist items **in order**.
 
 #### Hooks Usage
 - **Minimize useEffect**: derive computable values during render, handle event logic in handlers
-- **Accurate dependency arrays**: no eslint-disable, no missing dependencies
+- **Beware of infinite loops when modifying dependency arrays**:
+  - Do not remove all existing deps and re-add — keep existing array, only add/remove what's needed
+  - Do not add functions (methods, callbacks, handlers) to dependency arrays — new references on every render cause infinite loops
+  - Not all dependencies need to be exhaustively listed — preventing infinite loops takes priority over eslint exhaustive-deps
+  - Always analyze the useEffect and component rendering flow before modifying
 - **Mandatory cleanup**: timers, subscriptions, AbortController must return cleanup functions
 - **Custom hooks**: extract reusable state logic into `use`-prefixed hooks
 
@@ -149,4 +153,4 @@ After writing code, verify:
 - After implementation, return the **list of modified/created files** with a **one-line summary of each file's role**
 - Explicitly note any items from ui-spec that were not implemented
 - Report any technical facts discovered during implementation
-- Write results in Korean
+- Write results in the user's language
