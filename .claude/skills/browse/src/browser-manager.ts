@@ -181,7 +181,7 @@ export class BrowserManager {
     // Chromium crash → exit with clear message
     this.browser.on('disconnected', () => {
       console.error('[browse] FATAL: Chromium process crashed or was killed. Server exiting.');
-      console.error('[browse] Console/network logs flushed to .gstack/browse-*.log');
+      console.error('[browse] Console/network logs flushed to .ai-skills/browse-*.log');
       process.exit(1);
     });
 
@@ -242,7 +242,7 @@ export class BrowserManager {
     // so we use Playwright's bundled Chromium which reliably loads extensions.
     const fs = require('fs');
     const path = require('path');
-    const userDataDir = path.join(process.env.HOME || '/tmp', '.gstack', 'chromium-profile');
+    const userDataDir = path.join(process.env.HOME || '/tmp', '.ai-skills', 'chromium-profile');
     fs.mkdirSync(userDataDir, { recursive: true });
 
     this.context = await chromium.launchPersistentContext(userDataDir, {
@@ -844,7 +844,7 @@ export class BrowserManager {
         console.log('[browse] Handoff: extension not found — headed mode without side panel');
       }
 
-      const userDataDir = path.join(process.env.HOME || '/tmp', '.gstack', 'chromium-profile');
+      const userDataDir = path.join(process.env.HOME || '/tmp', '.ai-skills', 'chromium-profile');
       fs.mkdirSync(userDataDir, { recursive: true });
 
       newContext = await chromium.launchPersistentContext(userDataDir, {

@@ -17,11 +17,13 @@ Playwright 기반 헤드리스 Chromium. 첫 호출 시 자동 시작(~3초), �
 # browse 바이너리 위치 탐색
 _SKILL_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || echo "${BASH_SOURCE[0]}")")" && pwd)"
 B=""
-# 1. 프로젝트 로컬 설치
 _ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
+# 1. 프로젝트 로컬 설치 (.claude → .cursor 순)
 [ -n "$_ROOT" ] && [ -x "$_ROOT/.claude/skills/browse/dist/browse" ] && B="$_ROOT/.claude/skills/browse/dist/browse"
-# 2. 글로벌 설치
+[ -z "$B" ] && [ -n "$_ROOT" ] && [ -x "$_ROOT/.cursor/skills/browse/dist/browse" ] && B="$_ROOT/.cursor/skills/browse/dist/browse"
+# 2. 글로벌 설치 (.claude → .cursor 순)
 [ -z "$B" ] && [ -x "$HOME/.claude/skills/browse/dist/browse" ] && B="$HOME/.claude/skills/browse/dist/browse"
+[ -z "$B" ] && [ -x "$HOME/.cursor/skills/browse/dist/browse" ] && B="$HOME/.cursor/skills/browse/dist/browse"
 if [ -x "$B" ]; then
   echo "READY: $B"
 else
@@ -31,13 +33,16 @@ fi
 
 **NEEDS_SETUP인 경우:**
 1. 사용자에게 알림: "browse 바이너리 빌드가 필요합니다 (~30초). 진행할까요?"
-2. 승인 후 실행:
+2. 승인 후, 존재하는 setup.sh 경로를 찾아 실행:
    ```bash
-   bash ~/.claude/skills/browse/setup.sh
-   ```
-   또는 프로젝트 로컬 설치:
-   ```bash
-   bash .claude/skills/browse/setup.sh
+   # 프로젝트 로컬 또는 글로벌, .claude 또는 .cursor 중 존재하는 경로
+   _SETUP=""
+   _ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
+   [ -n "$_ROOT" ] && [ -f "$_ROOT/.claude/skills/browse/setup.sh" ] && _SETUP="$_ROOT/.claude/skills/browse/setup.sh"
+   [ -z "$_SETUP" ] && [ -n "$_ROOT" ] && [ -f "$_ROOT/.cursor/skills/browse/setup.sh" ] && _SETUP="$_ROOT/.cursor/skills/browse/setup.sh"
+   [ -z "$_SETUP" ] && [ -f "$HOME/.claude/skills/browse/setup.sh" ] && _SETUP="$HOME/.claude/skills/browse/setup.sh"
+   [ -z "$_SETUP" ] && [ -f "$HOME/.cursor/skills/browse/setup.sh" ] && _SETUP="$HOME/.cursor/skills/browse/setup.sh"
+   bash "$_SETUP"
    ```
 
 ## 핵심 패턴

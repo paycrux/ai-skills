@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.2.1] - 2026-04-01
+
+### Added
+
+- browse 바이너리 탐색에 `.cursor/` 경로 지원 (프로젝트 로컬 + 글로벌)
+
+### Changed
+
+- browse 내부 상태 디렉토리를 `.gstack/`에서 `.ai-skills/`로 마이그레이션 (chromium-profile, sidebar 등)
+
 ## [0.2.0] - 2026-04-01
 
 ### Added
