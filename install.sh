@@ -11,6 +11,13 @@ MARKER_START="<!-- AI-SKILLS:START -->"
 MARKER_END="<!-- AI-SKILLS:END -->"
 VERSION="1.1.0"
 
+# Ensure interactive input works even when piped (curl | bash)
+if [[ ! -t 0 ]]; then
+  exec 3</dev/tty || error "Cannot open /dev/tty — run with explicit flags: bash install.sh --claude --global"
+else
+  exec 3<&0
+fi
+
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -96,7 +103,7 @@ if [[ -z "$MODE" ]]; then
   echo -e "${CYAN}Which editor?${NC}"
   echo "  1) Claude Code"
   echo "  2) Cursor"
-  read -rp "> " choice
+  read -rp "> " choice <&3
   case $choice in
     1) MODE="claude" ;;
     2) MODE="cursor" ;;
@@ -109,7 +116,7 @@ if [[ -z "$SCOPE" ]]; then
   echo -e "${CYAN}Install scope?${NC}"
   echo "  1) Global  (~/.${MODE}/) — all projects"
   echo "  2) Project (./.${MODE}/) — current project only"
-  read -rp "> " choice
+  read -rp "> " choice <&3
   case $choice in
     1) SCOPE="global" ;;
     2) SCOPE="project" ;;
