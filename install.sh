@@ -138,6 +138,22 @@ else
   TARGET_DIR="$(pwd)/.${MODE}"
 fi
 
+# Auto-detect existing installation for interactive mode
+if [[ -d "$TARGET_DIR/skills" || -d "$TARGET_DIR/agents" || -d "$TARGET_DIR/rules" ]]; then
+  if ! $UPDATE; then
+    echo ""
+    warn "Existing installation detected at ${TARGET_DIR}/"
+    echo -e "  ${CYAN}1)${NC} Update (overwrite changed files with confirmation)"
+    echo -e "  ${CYAN}2)${NC} Fresh install (skip existing files)"
+    read -rp "> " choice <&3
+    case $choice in
+      1) UPDATE=true ;;
+      2) ;;
+      *) error "Invalid choice" ;;
+    esac
+  fi
+fi
+
 # For Cursor project installs, AGENTS.md goes to project root
 PROJECT_ROOT="$(pwd)"
 
@@ -180,8 +196,30 @@ copy_dir() {
 
     if [[ -f "$dest_file" ]]; then
       if $UPDATE; then
-        cp "$file" "$dest_file"
-        ((count++))
+        if diff -q "$file" "$dest_file" > /dev/null 2>&1; then
+          ((skipped++))
+        else
+          warn "Changed: $label/$rel"
+          echo ""
+          diff --color=auto -u "$dest_file" "$file" | head -30 || true
+          echo ""
+          echo -e "  ${CYAN}o)${NC} Overwrite  ${CYAN}s)${NC} Skip  ${CYAN}d)${NC} Show full diff"
+          local answer=""
+          while [[ "$answer" != "o" && "$answer" != "s" ]]; do
+            read -rp "  > " answer <&3
+            if [[ "$answer" == "d" ]]; then
+              diff --color=auto -u "$dest_file" "$file" || true
+              echo ""
+              echo -e "  ${CYAN}o)${NC} Overwrite  ${CYAN}s)${NC} Skip"
+            fi
+          done
+          if [[ "$answer" == "o" ]]; then
+            cp "$file" "$dest_file"
+            ((count++))
+          else
+            ((skipped++))
+          fi
+        fi
       else
         warn "Skipped (already exists): $label/$rel"
         ((skipped++))
@@ -194,7 +232,11 @@ copy_dir() {
 
   ok "$label: ${count} files installed"
   if [[ $skipped -gt 0 ]]; then
-    warn "$label: ${skipped} files skipped (already exist, use --update to overwrite)"
+    if $UPDATE; then
+      info "$label: ${skipped} files unchanged or skipped"
+    else
+      warn "$label: ${skipped} files skipped (already exist, use --update to overwrite)"
+    fi
   fi
 }
 
