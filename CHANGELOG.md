@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.3.0] - 2026-04-01
+
+### Changed
+
+- 평가/구현 에이전트 출력 템플릿을 영어로 전환 — "Write results in Korean" → "Write results in the user's language"
+- investigate 스킬 삭제 → task-plan 스킬에 bug 타입 분기로 통합 (증상 수집 → 가설 생성 → 검증 루프)
+- useEffect 의존성 배열 규칙을 exhaustive-deps에서 무한루프 방지 중심으로 변경
+- evaluate-react의 Hook 규칙에서 eslint-disable 관련 항목 제거, 무한루프 판단 기준 추가
+
+### Added
+
+- evaluate, qa, test-case 스킬에 task-plan progress.md 연동 섹션 추가
+- qa 스킬 browse 바이너리 탐색에 `.cursor/` 경로 지원
+
+### Removed
+
+- `/investigate` 스킬 및 템플릿 파일 5개 (SKILL.md, findings.md, hypothesis.md, save-policy.md, symptom-block.md)
+- install.sh AGENTS.md에서 investigate 스킬 참조 제거
+
 ## [0.2.1] - 2026-04-01
 
 ### Added
