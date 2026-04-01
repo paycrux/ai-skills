@@ -87,7 +87,7 @@ curl -fsSL https://raw.githubusercontent.com/paycrux/ai-skills/main/install.sh |
 
 1. 레포를 클론합니다.
 2. `.claude/` 디렉토리를 `~/.claude/` (전역) 또는 프로젝트 루트의 `.claude/` (프로젝트)에 복사합니다.
-3. Cursor 사용 시: `CURSOR_SETUP_GUIDE.md`를 Cursor 에이전트에게 전달하여 셋업을 진행합니다.
+3. Cursor 사용 시: `.cursor/` 디렉토리로 복사하고, `install.sh --cursor`를 참고하여 AGENTS.md를 구성합니다.
 
 ---
 
@@ -132,9 +132,17 @@ task-plan에서 생성한 문서(spec, tasks, findings, ui-spec)를 읽고, 단�
 
 ### /evaluate
 
-**코드 품질 종합 평가**
+**코드 품질 종합 평가 (5개 에이전트 병렬)**
 
-`evaluate-react`와 `evaluate-engineering` 에이전트를 병렬로 실행하여 코드 품질을 평가합니다.
+5개 평가 에이전트를 병렬로 실행하여 코드 품질을 다각도로 평가합니다.
+
+| 에이전트 | 평가 영역 |
+| --- | --- |
+| evaluate-react | React/RN 프레임워크 품질 |
+| evaluate-engineering | TS/JS 엔지니어링 품질 |
+| evaluate-a11y | 접근성 (WCAG 2.1 AA) |
+| evaluate-security | 프론트엔드 보안 |
+| evaluate-performance | 프론트엔드 성능 |
 
 ```
 /evaluate                        # 최근 변경 파일 자동 감지
@@ -172,6 +180,38 @@ QA 팀에게 전달할 테스트 가이드를 문서로 작성합니다.
 /qa-guide <문서 혹은 요구사항>
 ```
 
+### /browse
+
+**헤드리스 브라우저 탐색/테스트**
+
+헤드리스 브라우저로 웹 앱을 탐색, 테스트, 스크린샷 촬영합니다. Playwright Chromium 기반.
+
+```
+/browse <URL>                    # URL 탐색
+/browse                          # 대화형 모드
+```
+
+### /qa
+
+**브라우저 기반 QA 검증**
+
+task-plan 문서를 기반으로 헤드리스 브라우저로 구현 결과를 검증하고, 버그 리포트를 작성합니다.
+
+```
+/qa <task-folder-name>           # task-plan 기반 QA
+/qa <URL>                        # URL 직접 검증
+```
+
+### /investigate
+
+**체계적 디버깅 + 근본원인 분석**
+
+증상 수집 → 가설 생성 → 검증 루프를 반복하여 근본 원인을 분석합니다. `/task-plan`보다 가벼운 디버깅 워크플로우.
+
+```
+/investigate <증상 또는 에러 메시지>
+```
+
 ### /skill-creator
 
 **스킬 생성/리팩토링**
@@ -206,6 +246,9 @@ QA 팀에게 전달할 테스트 가이드를 문서로 작성합니다.
 | evaluate-docs        | task-plan 문서 품질 평가                                                 |
 | evaluate-react       | React/React Native 코드 품질 평가 (안티패턴, 룰 위반, 성능 이슈)         |
 | evaluate-engineering | TypeScript/JavaScript 엔지니어링 품질 평가 (함수형, 순환참조, 코드 구조) |
+| evaluate-a11y        | 접근성 평가 (WCAG 2.1 AA, 시맨틱 HTML, ARIA, 키보드 네비게이션)          |
+| evaluate-security    | 프론트엔드 보안 평가 (XSS, CSRF, 인증 토큰, 민감 데이터)                |
+| evaluate-performance | 프론트엔드 성능 평가 (번들 크기, 렌더링 효율, 메모리 릭, 네트워크)       |
 
 ---
 
@@ -230,11 +273,17 @@ QA 팀에게 전달할 테스트 가이드를 문서로 작성합니다.
 │   ├── implement-react.md
 │   ├── evaluate-docs.md
 │   ├── evaluate-react.md
-│   └── evaluate-engineering.md
+│   ├── evaluate-engineering.md
+│   ├── evaluate-a11y.md
+│   ├── evaluate-security.md
+│   └── evaluate-performance.md
 ├── skills/
 │   ├── task-plan/SKILL.md
 │   ├── implement/SKILL.md
 │   ├── evaluate/SKILL.md
+│   ├── browse/SKILL.md
+│   ├── qa/SKILL.md
+│   ├── investigate/SKILL.md
 │   ├── study/SKILL.md
 │   ├── test-case/SKILL.md
 │   ├── qa-guide/SKILL.md

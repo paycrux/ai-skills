@@ -133,6 +133,17 @@ When all Phases are done:
 3. **Auto-run `/evaluate` skill** — pass the task folder path
 4. If fixes are needed based on evaluate results, run the appropriate agent
 5. Change `README.md` status to "완료"
+6. **QA 검증 안내** — 웹 앱 프로젝트인 경우 (ui-spec.md가 있거나, 프론트엔드 변경이 포함된 경우) 다음을 안내:
+
+```
+구현이 완료되었습니다.
+
+브라우저 기반 QA 검증을 권장합니다.
+컨텍스트가 무거워졌으므로, **새 대화에서 `/qa <task-folder-name>`을 실행**해주세요.
+
+/qa는 task-plan 문서를 기반으로 헤드리스 브라우저로 실제 앱을 탐색하고,
+버그를 발견하면 리포트를 작성한 뒤 바로 수정 여부를 확인합니다.
+```
 
 ## Step 4 (Optional): Partial Execution
 

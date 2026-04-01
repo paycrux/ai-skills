@@ -1,6 +1,6 @@
 ---
 name: evaluate
-description: "Run evaluate-react and evaluate-engineering agents in parallel for comprehensive code quality assessment. Use when code review is needed after implementation, or when the user requests /evaluate."
+description: "Run 5 evaluate agents (react, engineering, a11y, security, performance) in parallel for comprehensive code quality assessment. Use when code review is needed after implementation, or when the user requests /evaluate."
 argument-hint: "[file-or-directory or task-folder-name]"
 allowed-tools: ["Agent", "Read", "Glob", "Grep", "Bash", "Write", "Edit"]
 effort: "high"
@@ -8,7 +8,7 @@ effort: "high"
 
 # /evaluate — Comprehensive Code Quality Assessment
 
-Run `evaluate-react` and `evaluate-engineering` agents **in parallel** to assess React/RN framework-level and TypeScript/JS engineering-level quality simultaneously.
+Run **5 evaluate agents in parallel** to assess code quality across all dimensions: React/RN framework, engineering, accessibility, security, and performance.
 
 ## Argument Parsing
 
@@ -32,11 +32,14 @@ Organize collected info into the format defined in `${CLAUDE_SKILL_DIR}/template
 
 ### Step 3: Run Agents in Parallel
 
-**Must run both agents simultaneously (two Agent tool calls in a single message).**
+**Must run all 5 agents simultaneously (five Agent tool calls in a single message).**
 
 Refer to each agent's execution guide for prompt construction:
-- `${CLAUDE_SKILL_DIR}/agents/evaluate-react.md`
-- `${CLAUDE_SKILL_DIR}/agents/evaluate-engineering.md`
+- `${CLAUDE_PROJECT_DIR}/.claude/agents/evaluate-react.md`
+- `${CLAUDE_PROJECT_DIR}/.claude/agents/evaluate-engineering.md`
+- `${CLAUDE_PROJECT_DIR}/.claude/agents/evaluate-a11y.md`
+- `${CLAUDE_PROJECT_DIR}/.claude/agents/evaluate-security.md`
+- `${CLAUDE_PROJECT_DIR}/.claude/agents/evaluate-performance.md`
 
 Each agent prompt must include:
 1. **Project context block** (Step 1)
@@ -74,8 +77,8 @@ Use the prompt template at `${CLAUDE_SKILL_DIR}/templates/review-prompt.md`.
 
 ## Rules
 
-- Both agents must run **in parallel** — sequential execution prohibited
-- Overall grade follows the **lower grade** of the two domains
+- All 5 agents must run **in parallel** — sequential execution prohibited
+- Overall grade follows the **lowest grade** among all domains
 - Do not arbitrarily omit or summarize agent results — include in full
 - **Must confirm with user about fixes after evaluation** — no auto-fixing
 - Write output in Korean

@@ -72,7 +72,7 @@ Write **all documents at once** in this order using templates from `${CLAUDE_SKI
 ### Step 6: Validate & Evaluate
 
 1. Run compliance check per `${CLAUDE_SKILL_DIR}/references/compliance-checklist.md`. Fix failures before proceeding.
-2. Run `evaluate-docs` agent per `${CLAUDE_SKILL_DIR}/agents/evaluate-docs.md` (pass task folder path).
+2. Run `evaluate-docs` agent per `${CLAUDE_PROJECT_DIR}/.claude/agents/evaluate-docs.md` (pass task folder path).
    - Grade B+ → proceed to Step 7
    - Grade C or below → fix CRITICAL/MAJOR items, re-evaluate (max 2 times)
    - Still C after 2 retries → proceed as-is, share results

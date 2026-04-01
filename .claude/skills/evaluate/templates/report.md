@@ -10,9 +10,12 @@
 |------|------|----------|-------|-------|
 | React/RN | {grade} | {count} | {count} | {count} |
 | Engineering | {grade} | {count} | {count} | {count} |
+| Accessibility | {grade} | {count} | {count} | {count} |
+| Security | {grade} | {count} | {count} | {count} |
+| Performance | {grade} | {count} | {count} | {count} |
 | **종합** | **{grade}** | **{count}** | **{count}** | **{count}** |
 
-> 종합 등급은 두 영역 중 낮은 등급을 따른다.
+> 종합 등급은 모든 영역 중 가장 낮은 등급을 따른다.
 
 ---
 
@@ -25,6 +28,24 @@
 ## Engineering 평가 결과
 
 {full evaluate-engineering result}
+
+---
+
+## 접근성(A11y) 평가 결과
+
+{full evaluate-a11y result}
+
+---
+
+## 보안(Security) 평가 결과
+
+{full evaluate-security result}
+
+---
+
+## 성능(Performance) 평가 결과
+
+{full evaluate-performance result}
 
 ---
 

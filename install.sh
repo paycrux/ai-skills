@@ -351,7 +351,8 @@ merge_agents_md() {
 |-----------|------|------|
 | task-plan | @.cursor/skills/task-plan/SKILL.md | 작업 계획 수립 + 문서 생성 |
 | implement | @.cursor/skills/implement/SKILL.md | 문서 기반 단계별 구현 |
-| evaluate | @.cursor/skills/evaluate/SKILL.md | 코드 품질 종합 평가 |
+| evaluate | @.cursor/skills/evaluate/SKILL.md | 코드 품질 종합 평가 (5개 에이전트 병렬) |
+| investigate | @.cursor/skills/investigate/SKILL.md | 체계적 디버깅 + 근본원인 분석 |
 | qa-guide | @.cursor/skills/qa-guide/SKILL.md | QA 테스트 가이드 생성 |
 | test-case | @.cursor/skills/test-case/SKILL.md | 테스트 케이스 생성 |
 | study | @.cursor/skills/study/SKILL.md | 학습 보고서 작성 |
@@ -363,6 +364,9 @@ merge_agents_md() {
 | evaluate-docs | @.cursor/agents/evaluate-docs.md | task-plan 문서 품질 평가 |
 | evaluate-react | @.cursor/agents/evaluate-react.md | React/RN 코드 품질 평가 |
 | evaluate-engineering | @.cursor/agents/evaluate-engineering.md | TS/JS 엔지니어링 품질 평가 |
+| evaluate-a11y | @.cursor/agents/evaluate-a11y.md | 접근성 (WCAG 2.1 AA) 평가 |
+| evaluate-security | @.cursor/agents/evaluate-security.md | 프론트엔드 보안 평가 |
+| evaluate-performance | @.cursor/agents/evaluate-performance.md | 프론트엔드 성능 평가 |
 
 ## Plan 저장 경로
 
@@ -440,6 +444,11 @@ if [[ "$MODE" == "claude" ]]; then
     merge_claude_md
   else
     copy_dir "$SRC_DIR/$ONLY" "$TARGET_DIR/$ONLY" "$ONLY"
+    # skills depend on agents — install agents together
+    if [[ "$ONLY" == "skills" ]]; then
+      info "Skills reference agents — installing agents as dependency..."
+      copy_dir "$SRC_DIR/agents" "$TARGET_DIR/agents" "agents"
+    fi
     if [[ "$ONLY" == "skills" || "$ONLY" == "agents" ]]; then
       info "Tip: CLAUDE.md contains rules for ${ONLY}. Run without --only to include it."
     fi
@@ -451,7 +460,11 @@ elif [[ "$MODE" == "cursor" ]]; then
     copy_dir "$SRC_DIR/skills" "$TARGET_DIR/skills" "skills"
   fi
 
-  if [[ -z "$ONLY" || "$ONLY" == "agents" ]]; then
+  # skills depend on agents — install agents when skills are requested
+  if [[ -z "$ONLY" || "$ONLY" == "agents" || "$ONLY" == "skills" ]]; then
+    if [[ "$ONLY" == "skills" ]]; then
+      info "Skills reference agents — installing agents as dependency..."
+    fi
     copy_dir "$SRC_DIR/agents" "$TARGET_DIR/agents" "agents"
   fi
 
@@ -486,6 +499,28 @@ elif [[ "$MODE" == "cursor" ]]; then
       info "AGENTS.md is project-specific. To add it, run with --project in your project directory."
     fi
   fi
+fi
+
+# ─────────────────────────────────────────────
+# Browse setup (optional)
+# ─────────────────────────────────────────────
+BROWSE_SETUP="$TARGET_DIR/skills/browse/setup.sh"
+if [[ -f "$BROWSE_SETUP" ]]; then
+  echo ""
+  echo -e "${CYAN}Browse (headless browser for /qa) detected.${NC}"
+  echo -e "  Browse requires bun + Playwright Chromium (~200MB)."
+  echo -e "  ${CYAN}1)${NC} Build now"
+  echo -e "  ${CYAN}2)${NC} Skip (build later with: bash $BROWSE_SETUP)"
+  read -rp "> " browse_choice <&3
+  case $browse_choice in
+    1)
+      info "Building browse..."
+      bash "$BROWSE_SETUP" && ok "browse ready!" || warn "browse build failed. Run manually: bash $BROWSE_SETUP"
+      ;;
+    *)
+      info "Skipped. Build later: bash $BROWSE_SETUP"
+      ;;
+  esac
 fi
 
 echo ""
