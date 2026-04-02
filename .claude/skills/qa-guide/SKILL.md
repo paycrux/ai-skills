@@ -11,12 +11,12 @@ Reads the task-plan documents (`README.md`, `spec.md`, `tasks.md`, `progress.md`
 ## Argument Parsing
 
 - `/qa-guide` — auto-detect the most recent in-progress or completed plan folder
-- `/qa-guide <task-folder-name>` — use `docs/plans/<task-folder-name>/`
+- `/qa-guide <task-folder-name>` — use `docs/<task-folder-name>/`
 - `/qa-guide <jira-issue>` — find the folder whose `README.md` contains the issue number
 
 ## Source Discovery
 
-1. If no argument is given, scan `docs/plans/` for a folder whose `README.md` status is "진행중" or "완료".
+1. If no argument is given, scan `docs/` for a folder whose `README.md` status is "진행중" or "완료".
 2. Once the folder is identified, read all five files:
    - `README.md` — background, goals, scope, issue number
    - `spec.md` — behavior flows, edge cases
@@ -26,7 +26,7 @@ Reads the task-plan documents (`README.md`, `spec.md`, `tasks.md`, `progress.md`
 
 ## Output
 
-**Save path:** `docs/plans/<task-folder-name>/qa-guide.md`
+**Save path:** `docs/<task-folder-name>/qa-guide.md`
 
 Overwrite if the file already exists (always keep it up to date).
 
@@ -91,5 +91,5 @@ Use the template below as the default.
 
 Report the file path and a brief summary:
 
-> `qa-guide.md` saved → `docs/plans/{folder}/qa-guide.md`
+> `qa-guide.md` saved → `docs/{folder}/qa-guide.md`
 > {N} scenarios across {M} groups

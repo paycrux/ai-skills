@@ -1,7 +1,7 @@
 ---
 name: implement
 description: "Document-driven implementation workflow. Repeats the cycle: per-phase approach summary → user approval → specialized agent execution → progress update."
-argument-hint: "<task-folder-name or path to docs/plans/...>"
+argument-hint: "<task-folder-name or path to docs/...>"
 ---
 
 # /implement — Document-Driven Implementation Workflow
@@ -10,9 +10,9 @@ Reads documents produced by task-plan (spec, tasks, findings, ui-spec) and execu
 
 ## Argument Parsing
 
-- `/implement <task-folder-name>` — resolves to `docs/plans/<task-folder-name>/`
+- `/implement <task-folder-name>` — resolves to `docs/<task-folder-name>/`
 - `/implement <path>` — direct path
-- `/implement` (no args) — auto-detect task with status "진행중" under `docs/plans/`
+- `/implement` (no args) — auto-detect task with status "진행중" under `docs/`
 
 ## Step 1: Load Documents & Collect Context
 
@@ -158,7 +158,7 @@ When `evaluate.md` already exists in the task folder and the user requests fixes
 
 ### 5-1. Read evaluate.md
 
-Read `docs/plans/<task-name>/evaluate.md` to identify the violation list.
+Read `docs/<task-name>/evaluate.md` to identify the violation list.
 
 ### 5-2. Determine Fix Targets
 

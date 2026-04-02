@@ -19,7 +19,7 @@ Create a structured task folder with documentation, then implement phase by phas
 
 ### Step 1: Create Task Folder
 
-Create `docs/plans/{task-name}/` (kebab-case, no issue number in folder name).
+Create `docs/{task-name}/` (kebab-case, no issue number in folder name).
 
 ### Step 2: Determine Task Type
 

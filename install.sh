@@ -37,6 +37,7 @@ ONLY=""
 UPDATE=false
 MODE=""        # claude | cursor
 SCOPE=""       # global | project
+LOCAL=false
 
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -64,6 +65,10 @@ while [[ $# -gt 0 ]]; do
       UPDATE=true
       shift
       ;;
+    --local)
+      LOCAL=true
+      shift
+      ;;
     --help|-h)
       echo "Usage: install.sh [OPTIONS]"
       echo ""
@@ -78,6 +83,7 @@ while [[ $# -gt 0 ]]; do
       echo "Options:"
       echo "  --only <type>     Install specific type only: skills, agents, rules"
       echo "  --update          Update existing installation (safe merge)"
+      echo "  --local           Use local .claude/ as source (skip git clone)"
       echo "  -h, --help        Show this help"
       echo ""
       echo "Examples:"
@@ -87,6 +93,7 @@ while [[ $# -gt 0 ]]; do
       echo "  bash install.sh --cursor --project           # Cursor, this project"
       echo "  bash install.sh --claude --global --update   # Update existing"
       echo "  bash install.sh --claude --global --only skills"
+      echo "  bash install.sh --claude --global --local      # Use local source"
       exit 0
       ;;
     *)
@@ -158,17 +165,27 @@ fi
 PROJECT_ROOT="$(pwd)"
 
 # ─────────────────────────────────────────────
-# Clone repository
+# Resolve source directory
 # ─────────────────────────────────────────────
-TMP_DIR=$(mktemp -d)
-trap 'rm -rf "$TMP_DIR"' EXIT
+if $LOCAL; then
+  # Use the repo root where install.sh lives
+  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  SRC_DIR="$SCRIPT_DIR/.claude"
+  if [[ ! -d "$SRC_DIR" ]]; then
+    error ".claude directory not found next to install.sh"
+  fi
+  info "Using local source: $SRC_DIR"
+else
+  TMP_DIR=$(mktemp -d)
+  trap 'rm -rf "$TMP_DIR"' EXIT
 
-info "Cloning ai-skills repository..."
-git clone --depth 1 --quiet "$REPO_URL" "$TMP_DIR"
-SRC_DIR="$TMP_DIR/.claude"
+  info "Cloning ai-skills repository..."
+  git clone --depth 1 --quiet "$REPO_URL" "$TMP_DIR"
+  SRC_DIR="$TMP_DIR/.claude"
 
-if [[ ! -d "$SRC_DIR" ]]; then
-  error ".claude directory not found in repository"
+  if [[ ! -d "$SRC_DIR" ]]; then
+    error ".claude directory not found in repository"
+  fi
 fi
 
 # ─────────────────────────────────────────────
@@ -369,7 +386,7 @@ merge_agents_md() {
 
 ## Plan 저장 경로
 
-모든 plan 문서는 \`docs/plans/{task-name}/\` 에 저장한다.
+모든 plan 문서는 \`docs/{task-name}/\` 에 저장한다.
 
 ## Task-plan 문서 최신화
 
@@ -385,7 +402,7 @@ merge_agents_md() {
 ## 세션 이어받기
 
 진행 중인 작업이 있으면:
-1. \`docs/plans/\` 에서 상태가 \"진행중\"인 작업의 progress.md를 읽는다
+1. \`docs/\` 에서 상태가 \"진행중\"인 작업의 progress.md를 읽는다
 2. 현재 상태를 보고한 후 사용자 승인을 받고 이어서 진행한다
 
 ## PR 생성 규칙

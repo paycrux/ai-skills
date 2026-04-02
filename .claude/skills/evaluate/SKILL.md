@@ -14,7 +14,7 @@ Run **5 evaluate agents in parallel** to assess code quality across all dimensio
 
 - `/evaluate` — auto-detect recently changed files via `git diff --name-only HEAD~1`
 - `/evaluate <file-or-directory>` — evaluate a specific file or directory
-- `/evaluate <task-folder-name>` — evaluate based on task-plan in `docs/plans/<task-folder-name>/`
+- `/evaluate <task-folder-name>` — evaluate based on task-plan in `docs/<task-folder-name>/`
 
 ## Execution
 
@@ -28,7 +28,7 @@ Organize collected info into the format defined in `${CLAUDE_SKILL_DIR}/template
 
 1. If argument provided → set that path as the target
 2. If no argument → get changed file list via `git diff --name-only HEAD~1`
-3. If a task-plan folder name is given → check `docs/plans/<folder>/progress.md` for changed files
+3. If a task-plan folder name is given → check `docs/<folder>/progress.md` for changed files
 
 ### Step 3: Run Agents in Parallel
 
@@ -77,7 +77,7 @@ Use the prompt template at `${CLAUDE_SKILL_DIR}/templates/review-prompt.md`.
 
 ## Task-plan 연동
 
-평가 완료 후, 관련 task-plan 폴더(`docs/plans/*/`)가 존재하면 `progress.md`에 결과 요약을 append한다:
+평가 완료 후, 관련 task-plan 폴더(`docs/*/`)가 존재하면 `progress.md`에 결과 요약을 append한다:
 
 ```markdown
 ### /evaluate 결과 — {YYYY-MM-DD}

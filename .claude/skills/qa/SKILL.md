@@ -20,9 +20,9 @@ task-plan 문서를 기반으로 browse 헤드리스 브라우저를 사용해 �
 
 ## Argument Parsing
 
-- `/qa <task-folder-name>` — `docs/plans/<task-folder-name>/` 기준
+- `/qa <task-folder-name>` — `docs/<task-folder-name>/` 기준
 - `/qa <url>` — URL 직접 지정
-- `/qa` (인자 없음) — `docs/plans/`에서 상태가 "진행중"인 task 자동 탐지
+- `/qa` (인자 없음) — `docs/`에서 상태가 "진행중"인 task 자동 탐지
 
 ## Step 1: Browse 설정
 
@@ -125,7 +125,7 @@ spec.md (또는 변경 범위)에서 도출한 각 시나리오에 대해:
 
 ## Step 4: 리포트 작성
 
-`docs/plans/<task-name>/qa-report.md`에 결과 저장:
+`docs/<task-name>/qa-report.md`에 결과 저장:
 
 ```markdown
 # QA Report: {task-name}
@@ -205,7 +205,7 @@ QA 검증이 완료되었습니다.
 
 ## Task-plan 연동
 
-QA 리포트 작성 완료 후, 관련 task-plan 폴더(`docs/plans/*/`)가 존재하면 `progress.md`에 결과 요약을 append한다:
+QA 리포트 작성 완료 후, 관련 task-plan 폴더(`docs/*/`)가 존재하면 `progress.md`에 결과 요약을 append한다:
 
 ```markdown
 ### /qa 결과 — {YYYY-MM-DD}

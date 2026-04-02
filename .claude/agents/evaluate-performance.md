@@ -27,7 +27,7 @@ If no specific files are given, use `git diff --name-only HEAD~1` or check the t
 
 1. Read all target files fully
 2. Check `package.json` for dependency list and existing libraries
-3. If a task-plan exists in `docs/plans/`, read `spec.md` to understand data scale and usage patterns
+3. If a task-plan exists in `docs/`, read `spec.md` to understand data scale and usage patterns
 
 ### Phase 2: Category-Based Evaluation
 

@@ -4,8 +4,8 @@
 
 | Condition | Output path |
 |---|---|
-| A specific folder path was provided as argument (e.g. `/evaluate docs/plans/my-task/`) | `<given-path>/evaluate.md` |
-| A task-plan folder name was provided (e.g. `/evaluate my-task`) | `docs/plans/<my-task>/evaluate.md` |
+| A specific folder path was provided as argument (e.g. `/evaluate docs/my-task/`) | `<given-path>/evaluate.md` |
+| A task-plan folder name was provided (e.g. `/evaluate my-task`) | `docs/<my-task>/evaluate.md` |
 | No path given (e.g. bare `/evaluate`) | `docs/evaluate/evaluate.md` (create `docs/evaluate/` if it does not exist) |
 
 ## Write Strategy

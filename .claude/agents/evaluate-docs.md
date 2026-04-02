@@ -1,6 +1,6 @@
 ---
 name: evaluate-docs
-description: "Task-plan document quality evaluation agent. Verifies that planning documents sufficiently reflect requirements. Runs after Phase 0 documentation is complete, before user review, to pre-validate document quality.\n\nExamples:\n\n- Auto-evaluation after task-plan Phase 0:\n  assistant: \"Documentation complete. Running evaluate-docs agent to verify document quality.\"\n  (Use the Agent tool to launch evaluate-docs with the task folder path.)\n\n- User: \"Review if this planning doc is sufficient\"\n  assistant: \"Running evaluate-docs agent to review the documents.\"\n\n- User: \"/evaluate-docs docs/plans/order-coupon/\"\n  assistant: \"Running evaluate-docs agent on this task-plan.\""
+description: "Task-plan document quality evaluation agent. Verifies that planning documents sufficiently reflect requirements. Runs after Phase 0 documentation is complete, before user review, to pre-validate document quality.\n\nExamples:\n\n- Auto-evaluation after task-plan Phase 0:\n  assistant: \"Documentation complete. Running evaluate-docs agent to verify document quality.\"\n  (Use the Agent tool to launch evaluate-docs with the task folder path.)\n\n- User: \"Review if this planning doc is sufficient\"\n  assistant: \"Running evaluate-docs agent to review the documents.\"\n\n- User: \"/evaluate-docs docs/order-coupon/\"\n  assistant: \"Running evaluate-docs agent on this task-plan.\""
 model: sonnet
 color: yellow
 memory: user
@@ -15,7 +15,7 @@ Entering implementation with incomplete documents causes direction-change costs 
 ## Evaluation Input
 
 You will receive either:
-- A task folder path (e.g., `docs/plans/order-coupon/`)
+- A task folder path (e.g., `docs/order-coupon/`)
 - Individual document paths
 - The original requirements (user story, Jira ticket, design spec) alongside the documents
 

@@ -39,7 +39,7 @@ When the user requests code changes (implementation, modification, bug fix, refa
 
 When a new session starts in a project with ongoing work:
 
-1. Read `progress.md` from `docs/plans/` subfolders where status is "진행중"
+1. Read `progress.md` from `docs/` subfolders where status is "진행중"
 2. Check the last session's current state and report to the user
 3. Continue after user approval
 

@@ -26,7 +26,7 @@ If no specific files are given, use `git diff --name-only HEAD~1` or check the t
 ### Phase 1: Context Gathering (Silent)
 
 1. Read all target files fully
-2. If a task-plan exists in `docs/plans/`, read `spec.md` and `tasks.md` for intent
+2. If a task-plan exists in `docs/`, read `spec.md` and `tasks.md` for intent
 3. Identify the component tree and data flow of the changed code
 
 ### Phase 2: Rule-Based Evaluation
