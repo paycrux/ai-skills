@@ -83,11 +83,20 @@ agents만 업데이트하고 싶을 때:
 curl -fsSL https://raw.githubusercontent.com/paycrux/ai-skills/main/install.sh | bash -s -- --cursor --project --only agents --update
 ```
 
-### 수동 설치
+### 수동 설치 (개발 시 테스트)
 
-1. 레포를 클론합니다.
-2. `.claude/` 디렉토리를 `~/.claude/` (전역) 또는 프로젝트 루트의 `.claude/` (프로젝트)에 복사합니다.
-3. Cursor 사용 시: `.cursor/` 디렉토리로 복사하고, `install.sh --cursor`를 참고하여 AGENTS.md를 구성합니다.
+스킬을 수정하고 바로 테스트하고 싶을 때는 `--local` 플래그를 사용합니다. git clone 없이 현재 로컬 `.claude/`를 소스로 사용합니다.
+
+```bash
+# 전역 설치 (모든 프로젝트에 적용)
+bash install.sh --claude --global --local
+
+# 현재 프로젝트에만 설치
+bash install.sh --claude --project --local
+
+# 이미 설치된 상태에서 변경사항 반영
+bash install.sh --claude --global --local --update
+```
 
 ---
 

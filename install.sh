@@ -9,7 +9,7 @@ set -euo pipefail
 REPO_URL="https://github.com/paycrux/ai-skills.git"
 MARKER_START="<!-- AI-SKILLS:START -->"
 MARKER_END="<!-- AI-SKILLS:END -->"
-VERSION="1.1.0"
+VERSION="0.3.0"
 
 # Ensure interactive input works even when piped (curl | bash)
 if [[ ! -t 0 ]]; then
@@ -287,12 +287,30 @@ ${MARKER_END}"
     mv "$tmp" "$dest_file"
     ok "CLAUDE.md updated (ai-skills section replaced)"
   else
-    local existing
-    existing=$(cat "$dest_file")
+    # Remove any existing (unmarked) copy of src_content before prepending
+    local tmp_py tmp_stripped stripped
+    tmp_py=$(mktemp)
+    tmp_stripped=$(mktemp)
+    cat > "$tmp_py" <<'PYEOF'
+import sys
+dest_path, src_path, out_path = sys.argv[1], sys.argv[2], sys.argv[3]
+with open(dest_path) as f:
+    existing = f.read()
+with open(src_path) as f:
+    src = f.read().rstrip()
+stripped = existing.replace(src, '').strip()
+with open(out_path, 'w') as f:
+    f.write(stripped)
+PYEOF
+    python3 "$tmp_py" "$dest_file" "$SRC_DIR/CLAUDE.md" "$tmp_stripped"
+    stripped=$(cat "$tmp_stripped")
+    rm -f "$tmp_py" "$tmp_stripped"
     {
       echo "$marked_content"
-      echo ""
-      echo "$existing"
+      if [[ -n "$stripped" ]]; then
+        echo ""
+        echo "$stripped"
+      fi
     } > "$dest_file"
     ok "CLAUDE.md merged (ai-skills section prepended)"
   fi
