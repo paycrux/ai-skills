@@ -19,7 +19,7 @@ Create a structured task folder with documentation, then implement phase by phas
 
 ### Step 1: Create Task Folder
 
-Create `docs/{task-name}/` (kebab-case, no issue number in folder name).
+Create `docs/{task-name}/plans/` (kebab-case, no issue number in folder name).
 
 ### Step 2: Determine Task Type
 
@@ -161,6 +161,19 @@ Start after user approval. Follow `tasks.md` checklist in order.
 - Reference all plan files (5~6 files)
 - Issue number in PR title
 - PR body: overview (README) / changes (tasks + changed files) / review focus (findings decisions)
+
+## PRD Change → Task-plan Update
+
+When the user says the PRD has changed and asks to update the task-plan:
+
+1. **Never modify already-completed items** — tasks marked done (`- [x]`) in `tasks.md` or logged as done in `progress.md` must not be altered
+2. Add new requirements as a **new phase** appended to the bottom of `tasks.md` (e.g., Phase N+1)
+3. Update supporting documents by **appending only** — never rewrite or restructure existing sections:
+   - **README.md** — append updated scope/requirements (overview only, no implementation detail)
+   - **tasks.md** — add the new phase with concrete implementation steps
+   - **progress.md** — record that the PRD changed, what was added, and when
+   - **spec.md / ui-spec.md** — add new sections for the added scope
+   - **findings.md** — note architectural or technical implications of the new requirements
 
 ## Rules
 

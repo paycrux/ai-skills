@@ -274,16 +274,17 @@ ${MARKER_END}"
     return
   fi
 
-  if grep -q "$MARKER_START" "$dest_file"; then
-    local before after
-    before=$(sed -n "1,/${MARKER_START}/{ /${MARKER_START}/!p; }" "$dest_file")
-    after=$(sed -n "/${MARKER_END}/,\${ /${MARKER_END}/!p; }" "$dest_file")
-
+  if grep -qF "$MARKER_START" "$dest_file"; then
+    local tmp first_start last_end
+    tmp=$(mktemp)
+    first_start=$(grep -nF "$MARKER_START" "$dest_file" | head -1 | cut -d: -f1)
+    last_end=$(grep -nF "$MARKER_END" "$dest_file" | tail -1 | cut -d: -f1)
     {
-      [[ -n "$before" ]] && echo "$before"
+      [[ "$first_start" -gt 1 ]] && head -n "$((first_start - 1))" "$dest_file"
       echo "$marked_content"
-      [[ -n "$after" ]] && echo "$after"
-    } > "$dest_file"
+      tail -n +"$((last_end + 1))" "$dest_file" 2>/dev/null || true
+    } > "$tmp"
+    mv "$tmp" "$dest_file"
     ok "CLAUDE.md updated (ai-skills section replaced)"
   else
     local existing
@@ -418,16 +419,17 @@ ${MARKER_END}"
     return
   fi
 
-  if grep -q "$MARKER_START" "$dest_file"; then
-    local before after
-    before=$(sed -n "1,/${MARKER_START}/{ /${MARKER_START}/!p; }" "$dest_file")
-    after=$(sed -n "/${MARKER_END}/,\${ /${MARKER_END}/!p; }" "$dest_file")
-
+  if grep -qF "$MARKER_START" "$dest_file"; then
+    local tmp first_start last_end
+    tmp=$(mktemp)
+    first_start=$(grep -nF "$MARKER_START" "$dest_file" | head -1 | cut -d: -f1)
+    last_end=$(grep -nF "$MARKER_END" "$dest_file" | tail -1 | cut -d: -f1)
     {
-      [[ -n "$before" ]] && echo "$before"
+      [[ "$first_start" -gt 1 ]] && head -n "$((first_start - 1))" "$dest_file"
       echo "$marked_content"
-      [[ -n "$after" ]] && echo "$after"
-    } > "$dest_file"
+      tail -n +"$((last_end + 1))" "$dest_file" 2>/dev/null || true
+    } > "$tmp"
+    mv "$tmp" "$dest_file"
     ok "AGENTS.md updated (ai-skills section replaced)"
   else
     local existing
