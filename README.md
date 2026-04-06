@@ -225,6 +225,26 @@ task-plan 문서를 기반으로 헤드리스 브라우저로 구현 결과를 �
 /investigate <증상 또는 에러 메시지>
 ```
 
+### /finalize
+
+**작업 문서 최종 정리**
+
+구현, 평가, QA가 모두 끝난 후 호출합니다. 임시 문서(findings, tasks, progress, evaluate, qa-report, qa-guide)를 삭제하고, 구현 파일 매핑을 spec.md의 Implementation Map 섹션에 병합합니다.
+
+```
+/finalize <task-folder-name>    # 특정 작업 정리
+/finalize                       # 완료된 작업 자동 감지
+```
+
+정리 후 남는 문서:
+
+| 문서 | 역할 |
+| --- | --- |
+| README.md | 작업 개요/배경/목표 |
+| spec.md | 행동 명세 + Implementation Map (파일 매핑, 기술 결정) |
+| ui-spec.md | 컴포넌트 구조/상태 설계 (프론트엔드만) |
+| test-cases.md | 반복 검증용 테스트 케이스 |
+
 ### /skill-creator
 
 **스킬 생성/리팩토링**
@@ -272,6 +292,7 @@ task-plan 문서를 기반으로 헤드리스 브라우저로 구현 결과를 �
 │   ├── evaluate/SKILL.md
 │   ├── browse/SKILL.md
 │   ├── qa/SKILL.md
+│   ├── finalize/SKILL.md
 │   ├── investigate/SKILL.md
 │   ├── study/SKILL.md
 │   ├── test-case/SKILL.md
