@@ -6,9 +6,35 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [0.4.0] - 2026-04-06
 
+### Changed
+
+- **Architecture: remove all sub-agents** — skills now execute directly in the main conversation instead of spawning sub-agents. This significantly reduces token consumption by eliminating redundant file reads across independent agent contexts.
+- `/implement` — no longer delegates to `implement-engineering` / `implement-react` agents; implements code directly
+- `/evaluate` — replaced 5 parallel agents with a single checklist-based evaluation in the main conversation
+- `/task-plan` — replaced `evaluate-docs` agent with inline document quality check; codebase exploration runs directly instead of via Explore sub-agent
+- `/qa` — bug fixes execute directly instead of delegating to implement agents
+- CLAUDE.md — "Use Specialized Agents" rule replaced with "Direct Implementation (No Sub-agents)"
+- AGENTS.md (Cursor) — rewritten to reflect direct implementation workflow
+- evaluate report template simplified (removed per-agent sections)
+- install.sh bumped to v0.4.0
+
+### Removed
+
+- 8 agent files: `implement-engineering.md`, `implement-react.md`, `evaluate-react.md`, `evaluate-engineering.md`, `evaluate-a11y.md`, `evaluate-security.md`, `evaluate-performance.md`, `evaluate-docs.md`
+- Agent memory directories for deleted agents
+- `--only agents` option from install.sh
+- "skills depend on agents" dependency logic from install.sh
+
 ### Added
 
-- `.claude/docs/` 폴더 추가 — 프로젝트별 UI 패턴 레퍼런스 문서 저장 위치
+- install.sh: `cleanup_legacy_agents()` — automatically removes legacy agent files and empty `agents/` directory when running `--update`
+- README.md: v0.3.1 → v0.4.0 migration guide
+
+## [0.3.1] - 2026-04-06
+
+### Added
+
+- `.claude/docs/` 폴더 ���가 — 프로젝트별 UI 패턴 레퍼런스 문서 저장 위치
 - `docs/partner-jirisan.md` — white_label admin/partner 앱용 Jirisan DataTable 패턴 레퍼런스
 - `docs/partner-option-group-factory.md` — white_label admin/partner 앱용 OptionGroupFactory (Advanced Search) 패턴 레퍼런스
 - install.sh: `docs/` 폴더 설치 지원 및 `--only docs` 옵션 추가

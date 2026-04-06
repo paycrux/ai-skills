@@ -2,7 +2,7 @@
 name: task-plan
 description: "Create task folder with documentation (README, spec, findings, tasks, progress, ui-spec) for new features or bug fixes. Use when user requests /task-plan or needs structured planning before implementation."
 argument-hint: <task description or Jira issue number>
-allowed-tools: Read, Grep, Glob, Agent, Write, Edit
+allowed-tools: Read, Grep, Glob, Write, Edit
 ---
 
 # /task-plan — Task Planning & Documentation Workflow
@@ -39,7 +39,7 @@ Is this a bug fix / debugging task?
 
 ### Step 3: Explore Codebase (& Investigate if Bug)
 
-Use the Explore sub-agent following `${CLAUDE_SKILL_DIR}/references/exploration-strategy.md`.
+Follow the exploration strategy in `${CLAUDE_SKILL_DIR}/references/exploration-strategy.md`.
 
 **Bug 타입인 경우 — investigate 워크플로우 추가:**
 
@@ -126,10 +126,12 @@ Write **all documents at once** in this order using templates from `${CLAUDE_SKI
 ### Step 6: Validate & Evaluate
 
 1. Run compliance check per `${CLAUDE_SKILL_DIR}/references/compliance-checklist.md`. Fix failures before proceeding.
-2. Run `evaluate-docs` agent per `${CLAUDE_PROJECT_DIR}/.claude/agents/evaluate-docs.md` (pass task folder path).
-   - Grade B+ → proceed to Step 7
-   - Grade C or below → fix CRITICAL/MAJOR items, re-evaluate (max 2 times)
-   - Still C after 2 retries → proceed as-is, share results
+2. Self-evaluate document quality against the compliance checklist:
+   - All required files exist (README, spec, tasks, findings, progress; ui-spec if frontend)
+   - spec.md flows are concrete (no vague "appropriately", "if needed")
+   - tasks.md covers all spec.md flows
+   - Cross-document consistency (README scope ↔ spec flows ↔ tasks items)
+   - Fix any gaps found before proceeding
 
 ### Step 7: User Review
 

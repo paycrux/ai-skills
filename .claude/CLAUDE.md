@@ -20,14 +20,10 @@ When the user requests new feature development, bug fixes, or similar tasks, alw
 
 ## Implementation Rules
 
-### Use Specialized Agents for Code Changes
+### Direct Implementation (No Sub-agents)
 
-When the user requests code changes (implementation, modification, bug fix, refactoring — any action that creates/updates/deletes code), **always use specialized agents.**
+All code changes are executed directly in the main conversation. Do not spawn sub-agents for implementation.
 
-| Work Type | Agent |
-|---|---|
-| Type/interface definitions, API clients, utilities, services, state management setup, data transforms | `implement-engineering` |
-| Components, hooks, styling, screens, navigation, UI state handling | `implement-react` |
-| Mixed (data layer + UI) | `implement-engineering` first → then `implement-react` sequentially |
-
-> Scope and exceptions → see `/implement` skill
+- Follow `.claude/rules/react-typescript.md` for frontend code
+- Follow existing patterns discovered in codebase exploration
+- When using `/implement`, the skill orchestrates phases — but code is written directly, not delegated

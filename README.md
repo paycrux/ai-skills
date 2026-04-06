@@ -1,6 +1,6 @@
 # AI Skills
 
-AI 엔지니어링을 더 효과적으로 하기 위한 skills, agents, rules 모음입니다.
+AI 엔지니어링을 더 효과적으로 하기 위한 skills와 rules 모음입니다.
 
 ## 설치
 
@@ -63,7 +63,7 @@ curl -fsSL https://raw.githubusercontent.com/paycrux/ai-skills/main/install.sh |
 | 옵션            | 설명                                       | 언제 사용하나요?              |
 | --------------- | ------------------------------------------ | ----------------------------- |
 | `--update`      | 이미 설치된 파일을 최신 버전으로 덮어쓰기  | ai-skills가 업데이트되었을 때 |
-| `--only <type>` | `skills`, `agents`, `rules`, `docs` 중 하나만 설치 | 특정 항목만 필요할 때         |
+| `--only <type>` | `skills`, `rules`, `docs` 중 하나만 설치   | 특정 항목만 필요할 때         |
 
 이미 설치했는데 새 버전이 나왔을 때:
 
@@ -75,12 +75,6 @@ skills만 따로 설치하고 싶을 때:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/paycrux/ai-skills/main/install.sh | bash -s -- --claude --global --only skills
-```
-
-agents만 업데이트하고 싶을 때:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/paycrux/ai-skills/main/install.sh | bash -s -- --cursor --project --only agents --update
 ```
 
 ### 수동 설치 (개발 시 테스트)
@@ -97,6 +91,18 @@ bash install.sh --claude --project --local
 # 이미 설치된 상태에서 변경사항 반영
 bash install.sh --claude --global --local --update
 ```
+
+### v0.3.x → v0.4.0 업데이트
+
+v0.4.0에서 서브에이전트 아키텍처가 제거되었습니다. `--update` 플래그로 설치하면 레거시 에이전트 파일이 자동으로 정리됩니다.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/paycrux/ai-skills/main/install.sh | bash -s -- --claude --global --update
+```
+
+제거되는 파일:
+- `agents/implement-engineering.md`, `agents/implement-react.md`
+- `agents/evaluate-*.md` (6개)
 
 ---
 
@@ -130,28 +136,26 @@ bash install.sh --claude --global --local --update
 
 **문서 기반 단계별 구현**
 
-task-plan에서 생성한 문서(spec, tasks, findings, ui-spec)를 읽고, 단계별로 구현을 진행합니다.
+task-plan에서 생성한 문서(spec, tasks, findings, ui-spec)를 읽고, 단계별로 직접 구현합니다. 서브에이전트 없이 메인 대화에서 코드를 작성합니다.
 
 ```
-/implement <task-folder-name>    # docs/plans/<task-folder-name>/ 참조
+/implement <task-folder-name>    # docs/<task-folder-name>/ 참조
 /implement                       # 상태가 "진행중"인 작업 자동 감지
 ```
 
-구현 사이클: 단계별 접근 요약 → 사용자 승인 → 전문 에이전트 실행 → 진행 상황 업데이트
+구현 사이클: 단계별 접근 요약 → 사용자 승인 → 직접 구현 → 진행 상황 업데이트
 
 ### /evaluate
 
-**코드 품질 종합 평가 (5개 에이전트 병렬)**
+**체크리스트 기반 코드 품질 평가**
 
-5개 평가 에이전트를 병렬로 실행하여 코드 품질을 다각도로 평가합니다.
+5개 도메인에 대해 코드를 직접 평가합니다:
 
-| 에이전트 | 평가 영역 |
+| 도메인 | 평가 항목 |
 | --- | --- |
-| evaluate-react | React/RN 프레임워크 품질 |
-| evaluate-engineering | TS/JS 엔지니어링 품질 |
-| evaluate-a11y | 접근성 (WCAG 2.1 AA) |
-| evaluate-security | 프론트엔드 보안 |
-| evaluate-performance | 프론트엔드 성능 |
+| React / Accessibility | Hooks 규칙, 불변성, 키보드/ARIA, 색상 대비 |
+| Engineering / Performance | 순환 참조, 코드 구조, DRY, 번들 크기, 렌더링 효율 |
+| Security | XSS, injection, 인증/인가, 민감 데이터 |
 
 ```
 /evaluate                        # 최근 변경 파일 자동 감지
@@ -235,32 +239,6 @@ task-plan 문서를 기반으로 헤드리스 브라우저로 구현 결과를 �
 
 ---
 
-## Agents
-
-코드 변경 시 자동으로 사용되는 전문 에이전트입니다. 직접 호출하지 않고, skills이나 CLAUDE.md 규칙에 의해 자동으로 선택됩니다.
-
-### 구현 에이전트
-
-| 에이전트              | 담당 영역                                                                     |
-| --------------------- | ----------------------------------------------------------------------------- |
-| implement-engineering | 타입/인터페이스, API 클라이언트, 유틸리티, 서비스, 상태관리 셋업, 데이터 변환 |
-| implement-react       | 컴포넌트, 훅, 스타일링, 화면, 네비게이션, UI 상태 처리                        |
-
-혼합 작업(데이터 레이어 + UI)인 경우 `implement-engineering` → `implement-react` 순서로 실행됩니다.
-
-### 평가 에이전트
-
-| 에이전트             | 담당 영역                                                                |
-| -------------------- | ------------------------------------------------------------------------ |
-| evaluate-docs        | task-plan 문서 품질 평가                                                 |
-| evaluate-react       | React/React Native 코드 품질 평가 (안티패턴, 룰 위반, 성능 이슈)         |
-| evaluate-engineering | TypeScript/JavaScript 엔지니어링 품질 평가 (함수형, 순환참조, 코드 구조) |
-| evaluate-a11y        | 접근성 평가 (WCAG 2.1 AA, 시맨틱 HTML, ARIA, 키보드 네비게이션)          |
-| evaluate-security    | 프론트엔드 보안 평가 (XSS, CSRF, 인증 토큰, 민감 데이터)                |
-| evaluate-performance | 프론트엔드 성능 평가 (번들 크기, 렌더링 효율, 메모리 릭, 네트워크)       |
-
----
-
 ## Docs
 
 프로젝트별 UI 패턴 레퍼런스 문서입니다. `/task-plan` 실행 시 Figma/디자인을 분석해 해당 패턴을 자동으로 감지하고 `ui-spec.md`에 embed합니다.
@@ -288,15 +266,6 @@ task-plan 문서를 기반으로 헤드리스 브라우저로 구현 결과를 �
 ```
 .claude/
 ├── CLAUDE.md              # 프로젝트 규칙 (task planning, 구현, 세션 이어받기, PR)
-├── agents/
-│   ├── implement-engineering.md
-│   ├── implement-react.md
-│   ├── evaluate-docs.md
-│   ├── evaluate-react.md
-│   ├── evaluate-engineering.md
-│   ├── evaluate-a11y.md
-│   ├── evaluate-security.md
-│   └── evaluate-performance.md
 ├── skills/
 │   ├── task-plan/SKILL.md
 │   ├── implement/SKILL.md

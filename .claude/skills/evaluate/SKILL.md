@@ -1,14 +1,12 @@
 ---
 name: evaluate
-description: "Run 5 evaluate agents (react, engineering, a11y, security, performance) in parallel for comprehensive code quality assessment. Use when code review is needed after implementation, or when the user requests /evaluate."
+description: "Checklist-based code quality evaluation. Assess code across React, engineering, accessibility, security, and performance domains directly in the main conversation. No sub-agents."
 argument-hint: "[file-or-directory or task-folder-name]"
-allowed-tools: ["Agent", "Read", "Glob", "Grep", "Bash", "Write", "Edit"]
-effort: "high"
 ---
 
-# /evaluate — Comprehensive Code Quality Assessment
+# /evaluate — Code Quality Evaluation
 
-Run **5 evaluate agents in parallel** to assess code quality across all dimensions: React/RN framework, engineering, accessibility, security, and performance.
+Evaluate code quality across 5 domains using a checklist. Runs directly in the main conversation — no sub-agents.
 
 ## Argument Parsing
 
@@ -16,80 +14,112 @@ Run **5 evaluate agents in parallel** to assess code quality across all dimensio
 - `/evaluate <file-or-directory>` — evaluate a specific file or directory
 - `/evaluate <task-folder-name>` — evaluate based on task-plan in `docs/<task-folder-name>/`
 
-## Execution
-
-### Step 1: Collect Project Context
-
-Refer to `${CLAUDE_SKILL_DIR}/references/project-context-guide.md` for the full collection procedure.
-
-Organize collected info into the format defined in `${CLAUDE_SKILL_DIR}/templates/project-context-block.md`.
-
-### Step 2: Determine Evaluation Targets
+## Step 1: Determine Targets
 
 1. If argument provided → set that path as the target
 2. If no argument → get changed file list via `git diff --name-only HEAD~1`
 3. If a task-plan folder name is given → check `docs/<folder>/progress.md` for changed files
 
-### Step 3: Run Agents in Parallel
+Read all target files.
 
-**Must run all 5 agents simultaneously (five Agent tool calls in a single message).**
+## Step 2: Evaluate by Checklist
 
-Refer to each agent's execution guide for prompt construction:
-- `${CLAUDE_PROJECT_DIR}/.claude/agents/evaluate-react.md`
-- `${CLAUDE_PROJECT_DIR}/.claude/agents/evaluate-engineering.md`
-- `${CLAUDE_PROJECT_DIR}/.claude/agents/evaluate-a11y.md`
-- `${CLAUDE_PROJECT_DIR}/.claude/agents/evaluate-security.md`
-- `${CLAUDE_PROJECT_DIR}/.claude/agents/evaluate-performance.md`
+Evaluate each target file against the checklist below. Each violation gets a severity:
+- **CRITICAL**: causes runtime errors, infinite loops, memory leaks, or security vulnerabilities
+- **MAJOR**: severely hinders maintainability, high bug probability
+- **MINOR**: a better pattern exists but current code has no functional issues
 
-Each agent prompt must include:
-1. **Project context block** (Step 1)
-2. **Target file list** (Step 2)
-3. **Task-plan path** (if available)
+### React / Accessibility
 
-### Step 4: Consolidate Results
+- Hooks called at top level only (no conditional/loop hooks)
+- State immutability (no direct mutation, spread at all levels)
+- Stable list keys (no array index for reorderable lists)
+- No useEffect for derivable values or event-driven logic
+- Prop drilling ≤ 2 levels (else context/composition)
+- useMemo/useCallback only when measured or passing to memoized children
+- ARIA attributes present on interactive elements
+- Keyboard navigability (focus visible, tab order)
+- Color contrast ≥ 4.5:1
+- Form labels and error announcements
 
-Receive results from both agents and compose a consolidated report.
+### Engineering / Performance
+
+- No circular dependencies (direct or via barrel files)
+- No side effects in pure functions
+- No nested conditionals 3+ levels (use early return/guard)
+- No nested ternary 2+ levels
+- Single function ≤ 50 lines, single file ≤ 300 lines
+- DRY: no 10+ similar lines repeated in 2+ places
+- if-else chain 3+ on same variable → use mapper object
+- No hardcoded magic numbers/strings
+- Export signature changes verified against all call sites
+- Unnecessary re-renders (new object/array/function created in render passed to children)
+- Bundle size impact of new dependencies
+- Large data loaded entirely into memory when streaming/pagination possible
+
+### Security
+
+- No XSS (dangerouslySetInnerHTML, unescaped user input)
+- No SQL/NoSQL injection
+- No hardcoded secrets/credentials
+- Authentication/authorization checks on protected routes
+- Input validation at system boundaries
+
+## Step 3: Compose Report
+
 Use the template at `${CLAUDE_SKILL_DIR}/templates/report.md`.
 
-### Step 5: Save Evaluation Report
+### Grade Criteria
+
+| Grade | Criteria |
+|---|---|
+| A | No CRITICAL/MAJOR, MINOR ≤ 2 |
+| B | No CRITICAL, MAJOR 1-2 |
+| C | No CRITICAL, MAJOR 3+ |
+| D | CRITICAL 1 |
+| F | CRITICAL 2+ |
+
+Overall grade follows the **lowest grade** among all domains.
+
+## Step 4: Save Report
 
 Follow the save policy at `${CLAUDE_SKILL_DIR}/templates/save-policy.md`.
 
-### Step 6: User Review & Fix Suggestions
+## Step 5: User Review & Fix Suggestions
 
-Present the report to the user, then **wait for user judgment — do not auto-fix.**
+Present the report, then **wait for user judgment — do not auto-fix.**
 
 Use the prompt template at `${CLAUDE_SKILL_DIR}/templates/review-prompt.md`.
 
-#### Handling Based on User Response
+### Handling Based on User Response
 
 | User Choice | Action |
 |---|---|
-| Fix all | Fix in CRITICAL → MAJOR → MINOR order, then re-run `/evaluate` |
-| Selective fix | Fix only specified items, then re-run `/evaluate` |
+| Fix all | Fix in CRITICAL → MAJOR → MINOR order directly, then re-run `/evaluate` |
+| Selective fix | Fix only specified items directly, then re-run `/evaluate` |
 | Keep as-is | End without fixes. If linked to task-plan, proceed to completion |
 
-#### Fix Principles
+### Fix Principles
 
 - Fix CRITICAL first — MINOR only when explicitly requested
 - Fix scope is **limited to violation items** — no surrounding code refactoring
 - Re-evaluation after fixes is **max 2 times** — if violations remain, defer to user judgment
 
-## Task-plan 연동
+## Task-plan Integration
 
-평가 완료 후, 관련 task-plan 폴더(`docs/*/`)가 존재하면 `progress.md`에 결과 요약을 append한다:
+After evaluation, if a related task-plan folder (`docs/*/`) exists, append a summary to `progress.md`:
 
 ```markdown
-### /evaluate 결과 — {YYYY-MM-DD}
-- 종합 등급: {A/B/C/D/F}
-- CRITICAL: {N}건, MAJOR: {N}건, MINOR: {N}건
-- 리포트: `{evaluate report 저장 경로}`
+### /evaluate result — {YYYY-MM-DD}
+- Overall grade: {A/B/C/D/F}
+- CRITICAL: {N}, MAJOR: {N}, MINOR: {N}
+- Report: `{evaluate report path}`
 ```
 
 ## Rules
 
-- All 5 agents must run **in parallel** — sequential execution prohibited
+- **Include file path and line number for every violation**
 - Overall grade follows the **lowest grade** among all domains
-- Do not arbitrarily omit or summarize agent results — include in full
 - **Must confirm with user about fixes after evaluation** — no auto-fixing
+- If no violations found, honestly report "No violations"
 - Write output in Korean

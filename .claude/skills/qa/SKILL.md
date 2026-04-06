@@ -9,7 +9,6 @@ allowed-tools:
   - Edit
   - Glob
   - Grep
-  - Agent
   - Skill
 ---
 
@@ -192,7 +191,7 @@ QA 검증이 완료되었습니다.
 1. qa-report.md의 이슈 목록을 기반으로 **수정 작업용 tasks 구성**
 2. `/implement` 스킬을 호출하여 수정 실행:
    - task-plan이 있는 경우: qa-report.md의 이슈를 tasks.md에 "QA Fix Phase"로 추가 후 `/implement` 실행
-   - task-plan이 없는 경우: 직접 적절한 에이전트(implement-engineering / implement-react)를 실행
+   - task-plan이 없는 경우: 직접 수정 실행
 
 3. 수정 완료 후 해당 이슈에 대해 재검증:
    ```bash
