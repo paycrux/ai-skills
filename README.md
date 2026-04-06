@@ -63,7 +63,7 @@ curl -fsSL https://raw.githubusercontent.com/paycrux/ai-skills/main/install.sh |
 | 옵션            | 설명                                       | 언제 사용하나요?              |
 | --------------- | ------------------------------------------ | ----------------------------- |
 | `--update`      | 이미 설치된 파일을 최신 버전으로 덮어쓰기  | ai-skills가 업데이트되었을 때 |
-| `--only <type>` | `skills`, `agents`, `rules` 중 하나만 설치 | 특정 항목만 필요할 때         |
+| `--only <type>` | `skills`, `agents`, `rules`, `docs` 중 하나만 설치 | 특정 항목만 필요할 때         |
 
 이미 설치했는데 새 버전이 나왔을 때:
 
@@ -261,6 +261,17 @@ task-plan 문서를 기반으로 헤드리스 브라우저로 구현 결과를 �
 
 ---
 
+## Docs
+
+프로젝트별 UI 패턴 레퍼런스 문서입니다. `/task-plan` 실행 시 Figma/디자인을 분석해 해당 패턴을 자동으로 감지하고 `ui-spec.md`에 embed합니다.
+
+| 문서 | 적용 대상 |
+| --- | --- |
+| `partner-jirisan.md` | white_label admin/partner 앱의 DataTable 구현 |
+| `partner-option-group-factory.md` | white_label admin/partner 앱의 검색 필터(Advanced Search) 구현 |
+
+---
+
 ## Rules
 
 프로젝트에 자동 적용되는 코딩 규칙입니다.
@@ -297,6 +308,9 @@ task-plan 문서를 기반으로 헤드리스 브라우저로 구현 결과를 �
 │   ├── test-case/SKILL.md
 │   ├── qa-guide/SKILL.md
 │   └── skill-creator/SKILL.md
+├── docs/
+│   ├── partner-jirisan.md
+│   └── partner-option-group-factory.md
 └── rules/
     ├── react-typescript.md
     └── frontend-design.md

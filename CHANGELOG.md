@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.4.0] - 2026-04-06
+
+### Added
+
+- `.claude/docs/` 폴더 추가 — 프로젝트별 UI 패턴 레퍼런스 문서 저장 위치
+- `docs/partner-jirisan.md` — white_label admin/partner 앱용 Jirisan DataTable 패턴 레퍼런스
+- `docs/partner-option-group-factory.md` — white_label admin/partner 앱용 OptionGroupFactory (Advanced Search) 패턴 레퍼런스
+- install.sh: `docs/` 폴더 설치 지원 및 `--only docs` 옵션 추가
+
+### Changed
+
+- task-plan: white_label + admin/partner 작업 시 Figma에서 table/search-filter UI 감지 → 해당 패턴 문서 참조 후 ui-spec.md에 `## Pattern Reference` 섹션으로 embed
+- CLAUDE.md: 레포 내 모든 기록은 영어로 작성하는 언어 규칙 추가
+
 ## [0.3.0] - 2026-04-01
 
 ### Changed
