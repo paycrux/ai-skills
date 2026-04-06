@@ -99,6 +99,17 @@ If the user attaches design docs, API specs, or implementation guides:
 
 For Figma/design handling, refer to `${CLAUDE_SKILL_DIR}/references/design-handling.md`.
 
+#### White Label Pattern Reference (applied when writing `ui-spec.md`)
+
+If the project is `white_label` and the task involves `apps/partner/` or `apps/admin/`, inspect the Figma link or design requirements before writing `ui-spec.md`:
+
+| Detected UI pattern | Action |
+|---|---|
+| Table / data grid | Read `.claude/docs/partner-jirisan.md` → confirm with user → embed pattern constraints in `ui-spec.md` component breakdown |
+| Search bar / filter panel | Read `.claude/docs/partner-option-group-factory.md` → confirm with user → embed pattern constraints in `ui-spec.md` component breakdown |
+
+Embed the relevant pattern as a `## Pattern Reference` section inside `ui-spec.md` so implement and evaluate can use it without re-reading the source doc.
+
 ### Step 5: Write Documents
 
 Write **all documents at once** in this order using templates from `${CLAUDE_SKILL_DIR}/templates/`:

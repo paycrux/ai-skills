@@ -1,3 +1,9 @@
+## Language Rules
+
+All content written to this repository must be in English — this includes skill documents, agent documents, rules, comments in code examples, string literals, placeholders, and any other text recorded in files under `.claude/`.
+
+---
+
 ## Task Planning Rules
 
 ### /task-plan Skill Usage

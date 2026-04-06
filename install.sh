@@ -132,8 +132,8 @@ if [[ -z "$SCOPE" ]]; then
 fi
 
 # Validate --only value
-if [[ -n "$ONLY" ]] && [[ "$ONLY" != "skills" && "$ONLY" != "agents" && "$ONLY" != "rules" ]]; then
-  error "--only must be one of: skills, agents, rules"
+if [[ -n "$ONLY" ]] && [[ "$ONLY" != "skills" && "$ONLY" != "agents" && "$ONLY" != "rules" && "$ONLY" != "docs" ]]; then
+  error "--only must be one of: skills, agents, rules, docs"
 fi
 
 # ─────────────────────────────────────────────
@@ -477,6 +477,7 @@ if [[ "$MODE" == "claude" ]]; then
     copy_dir "$SRC_DIR/skills" "$TARGET_DIR/skills" "skills"
     copy_dir "$SRC_DIR/agents" "$TARGET_DIR/agents" "agents"
     copy_dir "$SRC_DIR/rules"  "$TARGET_DIR/rules"  "rules"
+    copy_dir "$SRC_DIR/docs"   "$TARGET_DIR/docs"   "docs"
     merge_claude_md
   else
     copy_dir "$SRC_DIR/$ONLY" "$TARGET_DIR/$ONLY" "$ONLY"
