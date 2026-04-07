@@ -11,14 +11,14 @@ Output is formatted for three audiences: humans doing manual testing, agent-brow
 
 ## Argument Parsing
 
-- `/test-case` — auto-detect the most recent in-progress or completed plan folder in `docs/plans/`
-- `/test-case <task-folder-name>` — use `docs/plans/<task-folder-name>/`
+- `/test-case` — auto-detect the most recent in-progress or completed plan folder in `docs/`
+- `/test-case <task-folder-name>` — use `docs/<task-folder-name>/`
 - `/test-case <file-path>` — analyze the specified file (component, page, etc.) directly
 - `/test-case <feature description>` — generate based on the user's feature description
 
 Parse `$ARGUMENTS`:
 
-- If a matching folder exists in `docs/plans/` → task-plan based
+- If a matching folder exists in `docs/` → task-plan based
 - If it looks like a file path (`/`, `./`, `../`, `~`, or contains file extensions) → direct file analysis
 - Otherwise → treat as feature description
 
@@ -96,7 +96,7 @@ To achieve this, include a **selector hint** in each step.
 
 **Save path:** depends on source
 
-- Task-plan based: `docs/plans/<task-folder-name>/test-cases.md`
+- Task-plan based: `docs/<task-folder-name>/test-cases.md`
 - File/description based: `test-cases-{feature-slug}.md` in the current directory
 
 ## Template
@@ -166,7 +166,7 @@ When code is unavailable or description-based, use natural language hints in `{c
 
 ## Task-plan 연동
 
-테스트 케이스 작성 완료 후, 관련 task-plan 폴더(`docs/plans/*/`)가 존재하면 `progress.md`에 결과 요약을 append한다:
+테스트 케이스 작성 완료 후, 관련 task-plan 폴더(`docs/*/`)가 존재하면 `progress.md`에 결과 요약을 append한다:
 
 ```markdown
 ### /test-case 결과 — {YYYY-MM-DD}

@@ -2,7 +2,7 @@
 name: task-plan
 description: "Create task folder with documentation (README, spec, findings, tasks, progress, ui-spec) for new features or bug fixes. Use when user requests /task-plan or needs structured planning before implementation."
 argument-hint: <task description or Jira issue number>
-allowed-tools: Read, Grep, Glob, Agent, Write, Edit
+allowed-tools: Read, Grep, Glob, Write, Edit
 ---
 
 # /task-plan — Task Planning & Documentation Workflow
@@ -19,7 +19,7 @@ Create a structured task folder with documentation, then implement phase by phas
 
 ### Step 1: Create Task Folder
 
-Create `docs/plans/{task-name}/` (kebab-case, no issue number in folder name).
+Create `docs/{task-name}/plans/` (kebab-case, no issue number in folder name).
 
 ### Step 2: Determine Task Type
 
@@ -39,7 +39,7 @@ Is this a bug fix / debugging task?
 
 ### Step 3: Explore Codebase (& Investigate if Bug)
 
-Use the Explore sub-agent following `${CLAUDE_SKILL_DIR}/references/exploration-strategy.md`.
+Follow the exploration strategy in `${CLAUDE_SKILL_DIR}/references/exploration-strategy.md`.
 
 **Bug 타입인 경우 — investigate 워크플로우 추가:**
 
@@ -99,6 +99,17 @@ If the user attaches design docs, API specs, or implementation guides:
 
 For Figma/design handling, refer to `${CLAUDE_SKILL_DIR}/references/design-handling.md`.
 
+#### White Label Pattern Reference (applied when writing `ui-spec.md`)
+
+If the project is `white_label` and the task involves `apps/partner/` or `apps/admin/`, inspect the Figma link or design requirements before writing `ui-spec.md`:
+
+| Detected UI pattern | Action |
+|---|---|
+| Table / data grid | Read `.claude/docs/partner-jirisan.md` → confirm with user → embed pattern constraints in `ui-spec.md` component breakdown |
+| Search bar / filter panel | Read `.claude/docs/partner-option-group-factory.md` → confirm with user → embed pattern constraints in `ui-spec.md` component breakdown |
+
+Embed the relevant pattern as a `## Pattern Reference` section inside `ui-spec.md` so implement and evaluate can use it without re-reading the source doc.
+
 ### Step 5: Write Documents
 
 Write **all documents at once** in this order using templates from `${CLAUDE_SKILL_DIR}/templates/`:
@@ -115,10 +126,12 @@ Write **all documents at once** in this order using templates from `${CLAUDE_SKI
 ### Step 6: Validate & Evaluate
 
 1. Run compliance check per `${CLAUDE_SKILL_DIR}/references/compliance-checklist.md`. Fix failures before proceeding.
-2. Run `evaluate-docs` agent per `${CLAUDE_PROJECT_DIR}/.claude/agents/evaluate-docs.md` (pass task folder path).
-   - Grade B+ → proceed to Step 7
-   - Grade C or below → fix CRITICAL/MAJOR items, re-evaluate (max 2 times)
-   - Still C after 2 retries → proceed as-is, share results
+2. Self-evaluate document quality against the compliance checklist:
+   - All required files exist (README, spec, tasks, findings, progress; ui-spec if frontend)
+   - spec.md flows are concrete (no vague "appropriately", "if needed")
+   - tasks.md covers all spec.md flows
+   - Cross-document consistency (README scope ↔ spec flows ↔ tasks items)
+   - Fix any gaps found before proceeding
 
 ### Step 7: User Review
 
@@ -161,6 +174,19 @@ Start after user approval. Follow `tasks.md` checklist in order.
 - Reference all plan files (5~6 files)
 - Issue number in PR title
 - PR body: overview (README) / changes (tasks + changed files) / review focus (findings decisions)
+
+## PRD Change → Task-plan Update
+
+When the user says the PRD has changed and asks to update the task-plan:
+
+1. **Never modify already-completed items** — tasks marked done (`- [x]`) in `tasks.md` or logged as done in `progress.md` must not be altered
+2. Add new requirements as a **new phase** appended to the bottom of `tasks.md` (e.g., Phase N+1)
+3. Update supporting documents by **appending only** — never rewrite or restructure existing sections:
+   - **README.md** — append updated scope/requirements (overview only, no implementation detail)
+   - **tasks.md** — add the new phase with concrete implementation steps
+   - **progress.md** — record that the PRD changed, what was added, and when
+   - **spec.md / ui-spec.md** — add new sections for the added scope
+   - **findings.md** — note architectural or technical implications of the new requirements
 
 ## Rules
 

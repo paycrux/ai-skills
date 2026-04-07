@@ -1,7 +1,7 @@
 ---
 name: implement
-description: "Document-driven implementation workflow. Repeats the cycle: per-phase approach summary → user approval → specialized agent execution → progress update."
-argument-hint: "<task-folder-name or path to docs/plans/...>"
+description: "Document-driven implementation workflow. Repeats the cycle: per-phase approach summary → user approval → direct implementation → progress update."
+argument-hint: "<task-folder-name or path to docs/...>"
 ---
 
 # /implement — Document-Driven Implementation Workflow
@@ -10,9 +10,9 @@ Reads documents produced by task-plan (spec, tasks, findings, ui-spec) and execu
 
 ## Argument Parsing
 
-- `/implement <task-folder-name>` — resolves to `docs/plans/<task-folder-name>/`
+- `/implement <task-folder-name>` — resolves to `docs/<task-folder-name>/`
 - `/implement <path>` — direct path
-- `/implement` (no args) — auto-detect task with status "진행중" under `docs/plans/`
+- `/implement` (no args) — auto-detect task with status "진행중" under `docs/`
 
 ## Step 1: Load Documents & Collect Context
 
@@ -31,16 +31,7 @@ Read **all** of the following (parallel Read):
 
 If any required file is missing, notify the user and suggest running `/task-plan`.
 
-### 1-2. Collect Project Context
-
-Collect in the same way as the evaluate skill:
-
-- `CLAUDE.md`, `.claude/rules/*.md` — project rules
-- `package.json` — framework, state management, styling, test stack
-- `tsconfig.json` — TypeScript config
-- Top-level structure of `src/` or `app/` — architecture pattern
-
-### 1-3. Check Progress State
+### 1-2. Check Progress State
 
 Compare `progress.md` with `tasks.md`:
 
@@ -55,36 +46,21 @@ If there is interrupted work from a previous session, report to the user and con
 
 Repeat the following cycle for each Phase in `tasks.md`.
 
-### 2-1. Classify Phase
-
-Analyze the Phase's checklist items to determine the agent:
-
-```
-What are the Phase items primarily about?
-├── Type definitions, API clients, utils, services, state management setup
-│   → implement-engineering agent
-├── Components, hooks, styling, screens, navigation
-│   → implement-react agent
-└── Mixed (data layer + UI)
-    → implement-engineering first, then implement-react
-```
-
-### 2-2. Output Approach Summary
+### 2-1. Output Approach Summary
 
 Before writing code, **briefly** summarize the implementation approach for the Phase and present it to the user.
 
 ```markdown
 ## Phase N: {Phase title}
 
-### 구현 접근법
-- **에이전트**: {implement-engineering / implement-react / 순차 실행}
-- **대상 파일**: {files to create/modify}
-- **핵심 전략**:
+### Implementation Approach
+- **Target files**: {files to create/modify}
+- **Key strategy**:
   - {follow existing pattern X from findings.md}
   - {reuse existing component Y for Z}
   - {apply pattern B from library A}
 
-진행할까요?
+Proceed?
 ```
 
 **Approach summary principles:**
@@ -93,34 +69,24 @@ Before writing code, **briefly** summarize the implementation approach for the P
 - Explicitly mention if a new pattern or library is needed
 - Keep it concise: 3-5 lines
 
-### 2-3. Execute Agent
+### 2-2. Implement Directly
 
-Once the user approves, launch the appropriate agent.
+Once the user approves, implement the Phase directly. Follow:
+- `.claude/rules/react-typescript.md` for frontend code
+- Existing patterns identified in `findings.md`
+- Component reuse map from `ui-spec.md` (if available)
 
-**Agent prompt must include:**
+### 2-3. Phase Completion
 
-1. **Project context** (collected in Step 1-2)
-2. **Task-plan document paths** (so the agent can read them directly)
-3. **Current Phase's checklist items** (extracted from tasks.md)
-4. **Related findings** (relevant portions from findings.md)
-5. **Approach summary** (user-approved content from Step 2-2)
-6. **ui-spec info** (if available, component/screen info for the Phase)
-
-**For mixed Phases:**
-1. Run implement-engineering first (data/logic layer)
-2. After completion, run implement-react (UI layer, building on engineering output)
-
-### 2-4. Phase Completion
-
-After agent execution completes:
+After implementation completes:
 
 1. Check off completed items in `tasks.md` (`- [ ]` → `- [x]`)
 2. Add Phase record to `progress.md`:
    ```markdown
    ### Phase N: {title} — {date}
-   - 작업 내용: {summary}
-   - 수정 파일: {list}
-   - 현재 상태: Phase N 완료, 다음 Phase N+1
+   - Work done: {summary}
+   - Modified files: {list}
+   - Current status: Phase N complete, next Phase N+1
    ```
 3. If technical facts were discovered during implementation, add to `findings.md`
 
@@ -130,19 +96,18 @@ When all Phases are done:
 
 1. Verify all items in `tasks.md` are checked
 2. Write final record in `progress.md`
-3. **Auto-run `/evaluate` skill** — pass the task folder path
-4. If fixes are needed based on evaluate results, run the appropriate agent
-5. Change `README.md` status to "완료"
-6. **QA 검증 안내** — 웹 앱 프로젝트인 경우 (ui-spec.md가 있거나, 프론트엔드 변경이 포함된 경우) 다음을 안내:
+3. Change `README.md` status to "완료"
+4. Suggest running `/evaluate` if the user wants a code quality review
+5. **QA guidance** — for web app projects (ui-spec.md exists or frontend changes included):
 
 ```
-구현이 완료되었습니다.
+Implementation complete.
 
-브라우저 기반 QA 검증을 권장합니다.
-컨텍스트가 무거워졌으므로, **새 대화에서 `/qa <task-folder-name>`을 실행**해주세요.
+Browser-based QA verification is recommended.
+Since context is heavy, **run `/qa <task-folder-name>` in a new conversation**.
 
-/qa는 task-plan 문서를 기반으로 헤드리스 브라우저로 실제 앱을 탐색하고,
-버그를 발견하면 리포트를 작성한 뒤 바로 수정 여부를 확인합니다.
+/qa navigates the actual app with a headless browser based on task-plan documents,
+and reports any bugs found with screenshots.
 ```
 
 ## Step 4 (Optional): Partial Execution
@@ -152,13 +117,13 @@ When the user wants to run specific Phases only:
 - `/implement <task-name> phase 2` — run Phase 2 only
 - `/implement <task-name> phase 2-4` — run Phases 2 through 4
 
-## Step 5: Evaluation-Based Fixes (evaluate.md Integration)
+## Step 5: Evaluation-Based Fixes
 
-When `evaluate.md` already exists in the task folder and the user requests fixes based on evaluation items:
+When `evaluate.md` already exists in the task folder and the user requests fixes:
 
 ### 5-1. Read evaluate.md
 
-Read `docs/plans/<task-name>/evaluate.md` to identify the violation list.
+Read `docs/<task-name>/evaluate.md` to identify the violation list.
 
 ### 5-2. Determine Fix Targets
 
@@ -167,21 +132,9 @@ Confirm which items the user specified:
 - Number specification (e.g., "1, 3, 5번 수정해줘") → fix only those items
 - Category specification (e.g., "CRITICAL만 수정해줘") → fix only that severity
 
-### 5-3. Classify & Execute Agents
+### 5-3. Fix Directly
 
-Assign each violation to the appropriate agent based on its category:
-
-| Evaluate Category | Agent |
-|---|---|
-| React Hooks, immutability, component patterns, render performance, accessibility | `implement-react` |
-| Circular dependencies, functional programming, code structure, compatibility, Iterator/Generator | `implement-engineering` |
-| TypeScript, security | Decide based on file context of the violation |
-
-**Agent prompt must include:**
-1. List of violations to fix (file:line, category, description)
-2. Recommended actions from evaluate.md
-3. Current code of the affected files
-4. Project context
+Fix violations directly in the main conversation. Fix scope is **limited to violation items** — no surrounding code refactoring.
 
 ### 5-4. Post-Fix Handling
 
@@ -195,7 +148,6 @@ Assign each violation to the appropriate agent based on its category:
 - **Approach summary requires user approval before proceeding** — do not start writing code automatically
 - **Prioritize existing patterns from findings.md** — new pattern introduction requires user approval
 - **Update progress.md per Phase** — enables handoff even if interrupted
-- **Agents write the code** — this skill only orchestrates
-- **Follow `.claude/rules/react-typescript.md` rules** — include in agent prompts
+- **Follow `.claude/rules/react-typescript.md` rules** for frontend code
 - **Evaluation-based fixes are limited to violation items** — no surrounding code refactoring or extra improvements
 - Communicate with the user in Korean

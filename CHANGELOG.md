@@ -4,6 +4,53 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.4.1] - 2026-04-06
+
+### Added
+
+- `/finalize` 스킬 추가 — 구현, 평가, QA 완료 후 작업 문서를 최종 정리. spec.md에 Implementation Map을 병합하고 임시 문서(findings, tasks, progress, evaluate, qa-report, qa-guide)를 삭제. `/finalize <task-folder-name>`으로 호출.
+- spec.md `Implementation Map` 섹션 도입 — spec 항목별로 구현 파일과 기술 결정을 매핑하여, 다른 AI 에이전트(Codex, Gemini, Cursor 등)가 파일 탐색 없이 바로 코드로 진입 가능
+
+## [0.4.0] - 2026-04-06
+
+### Changed
+
+- **아키텍처: 서브에이전트 전면 제거** — 모든 스킬이 서브에이전트 대신 메인 대화에서 직접 실행. 독립 에이전트 컨텍스트 간 중복 파일 읽기가 사라져 토큰 소모 대폭 감소.
+- `/implement` — `implement-engineering` / `implement-react` 에이전트 위임 제거, 코드 직접 구현
+- `/evaluate` — 5개 병렬 에이전트를 메인 대화의 단일 체크리스트 평가로 대체
+- `/task-plan` — `evaluate-docs` 에이전트를 인라인 문서 품질 검사로 대체, 코드베이스 탐색도 Explore 서브에이전트 대신 직접 수행
+- `/qa` — 버그 수정을 implement 에이전트 위임 대신 직접 실행
+- CLAUDE.md — "전문 에이전트 사용" 규칙을 "직접 구현 (서브에이전트 없음)"으로 교체
+- AGENTS.md (Cursor) — 직접 구현 워크플로우에 맞게 전면 재작성
+- evaluate 리포트 템플릿 간소화 (에이전트별 섹션 제거)
+- install.sh 버전을 v0.4.0으로 업데이트
+
+### Removed
+
+- 에이전트 파일 8개 삭제: `implement-engineering.md`, `implement-react.md`, `evaluate-react.md`, `evaluate-engineering.md`, `evaluate-a11y.md`, `evaluate-security.md`, `evaluate-performance.md`, `evaluate-docs.md`
+- 삭제된 에이전트의 메모리 디렉토리 제거
+- install.sh에서 `--only agents` 옵션 제거
+- install.sh에서 "skills가 agents에 의존" 로직 제거
+
+### Added
+
+- install.sh: `cleanup_legacy_agents()` 추가 — `--update` 실행 시 레거시 에이전트 파일과 빈 `agents/` 디렉토리 자동 정리
+- README.md: v0.3.1 → v0.4.0 마이그레이션 가이드 추가
+
+## [0.3.1] - 2026-04-06
+
+### Added
+
+- `.claude/docs/` 폴더 추가 — 프로젝트별 UI 패턴 레퍼런스 문서 저장 위치
+- `docs/partner-jirisan.md` — white_label admin/partner 앱용 Jirisan DataTable 패턴 레퍼런스
+- `docs/partner-option-group-factory.md` — white_label admin/partner 앱용 OptionGroupFactory (Advanced Search) 패턴 레퍼런스
+- install.sh: `docs/` 폴더 설치 지원 및 `--only docs` 옵션 추가
+
+### Changed
+
+- task-plan: white_label + admin/partner 작업 시 Figma에서 table/search-filter UI 감지 → 해당 패턴 문서 참조 후 ui-spec.md에 `## Pattern Reference` 섹션으로 embed
+- CLAUDE.md: 레포 내 모든 기록은 영어로 작성하는 언어 규칙 추가
+
 ## [0.3.0] - 2026-04-01
 
 ### Changed

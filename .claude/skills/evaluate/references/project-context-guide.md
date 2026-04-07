@@ -1,36 +1,29 @@
-# 프로젝트 컨텍스트 수집 가이드
+# Project Context Collection Guide
 
-에이전트에 전달할 프로젝트 컨텍스트를 수집하는 절차.
-아래 소스를 **순서대로** 탐색하며, 존재하는 항목만 수집한다.
+Collect project context before evaluation to ensure rules and conventions are respected.
+Check the following sources **in order**, collecting only items that exist.
 
-## 1. 프로젝트 규칙
+## 1. Project Rules
 
-| 소스 | 수집 내용 |
+| Source | Collect |
 |---|---|
-| `CLAUDE.md` (프로젝트 루트) | 프로젝트 전반 규칙, 컨벤션 |
-| `.claude/rules/*.md` | 상세 룰 파일 |
-| `.cursorrules`, `.cursor/rules/*.md` | Cursor 규칙 (있을 때만) |
-| `eslint.config.*`, `.eslintrc.*` | 린트 규칙 |
-| `tsconfig.json` | TypeScript 설정 (strict, paths 등) |
-| `.prettierrc*` | 포매팅 규칙 |
+| `CLAUDE.md` (project root) | Project-wide rules, conventions |
+| `.claude/rules/*.md` | Detailed rule files |
+| `eslint.config.*`, `.eslintrc.*` | Lint rules |
+| `tsconfig.json` | TypeScript config (strict, paths, etc.) |
 
-## 2. 프로젝트 구조 & 의존성
+## 2. Project Structure & Dependencies
 
-`package.json`에서 식별할 핵심 의존성:
+From `package.json`, identify key dependencies:
 
-| 항목 | 예시 |
+| Item | Examples |
 |---|---|
-| 프레임워크 | React / React Native / Next.js |
-| 상태관리 | Redux Toolkit, Zustand, Recoil, Jotai |
-| 스타일링 | styled-components, Tailwind, CSS Modules |
-| 테스트 | Jest, Vitest, Testing Library |
+| Framework | React / React Native / Next.js |
+| State management | Redux Toolkit, Zustand, Recoil, Jotai |
+| Styling | styled-components, Tailwind, CSS Modules |
+| Testing | Jest, Vitest, Testing Library |
 
-## 3. 디렉토리 구조
+## 3. Directory Structure
 
-`ls src/` 또는 `ls app/`으로 아키텍처 패턴 식별:
+`ls src/` or `ls app/` to identify architecture pattern:
 - feature-based / layer-based / hybrid
-
-## 수집 결과 조합
-
-수집한 정보를 `templates/project-context-block.md` 포맷에 맞춰 조합한 뒤,
-**두 에이전트 프롬프트에 동일하게 포함**한다.
