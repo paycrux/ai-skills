@@ -193,4 +193,4 @@ When the user says the PRD has changed and asks to update the task-plan:
 - Write all documents at once, not one at a time
 - Never skip the compliance check before evaluation
 - Always use `${CLAUDE_SKILL_DIR}` for file references, not relative paths
-- Output in the same language the user is using
+- 산출물은 한국어로 작성

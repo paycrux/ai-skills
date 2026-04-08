@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.4.2] - 2026-04-08
+
+### Changed
+
+- 모든 스킬 산출물(템플릿 + 인라인 출력 예시)을 한국어로 통일
+  - `task-plan`, `study`, `evaluate`, `implement`, `finalize`, `test-case`, `skill-creator` — 언어 규칙을 "산출물은 한국어로 작성"으로 변경
+  - `evaluate/templates/report.md`, `project-context-block.md` — 헤더/라벨 한글화
+  - `test-case/templates/test-cases.template.md` — 헤더/라벨/주석 한글화
+  - `study/SKILL.md` — 케이스 스터디 구조 템플릿 한글화
+  - `implement/SKILL.md` — 접근법 요약, progress 기록, QA 안내 메시지 한글화
+  - `finalize/SKILL.md` — 구현 맵 테이블, 완료 리포트, 에지 케이스 메시지 한글화
+- CLAUDE.md Language Rules 예외에 skill output templates 추가
+
 ## [0.4.1] - 2026-04-06
 
 ### Added

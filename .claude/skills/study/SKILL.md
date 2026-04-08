@@ -46,57 +46,57 @@ Before writing, **read the target file first** (if appending). Analyze what's al
 
 Write two parts:
 
-**Part 1: Technical Foundation**
+**파트 1: 기술 기반 지식**
 
-- What is this technology/concept?
-- Core APIs/methods with usage examples and visual diagrams (use ASCII art for stack/state diagrams)
-- Common patterns and when to use each
-- Summary table for quick reference
+- 이 기술/개념이 무엇인지
+- 핵심 API/메서드와 사용 예시, 시각적 다이어그램 (ASCII art로 스택/상태 다이어그램 작성)
+- 일반적인 패턴과 각각의 사용 시점
+- 빠른 참조를 위한 요약 테이블
 
-**Part 2: Case Study** (same structure as below)
+**파트 2: 사례 분석** (아래 구조와 동일)
 
 ## Case Study Structure
 
 ```markdown
-## {Section Number}. {Topic} - {Date}
+## {섹션 번호}. {주제} - {날짜}
 
-> Background: {What problem was being solved, 1-2 lines}
+> 배경: {어떤 문제를 해결하려 했는지, 1-2줄}
 
-### Problem
+### 문제
 
-{Specific symptoms with concrete flow diagrams}
+{구체적인 증상과 플로우 다이어그램}
 
-### Approaches Tried
+### 시도한 접근법
 
-For each approach:
+각 접근법에 대해:
 
-#### Approach N: {Method Name}
+#### 접근법 N: {방법명}
 
-- **Code**: Key code snippet (concise)
-- **Result**: What happened
-- **Why it failed**: Root cause analysis (this is the key!)
+- **코드**: 핵심 코드 스니펫 (간결하게)
+- **결과**: 어떤 일이 일어났는지
+- **실패 원인**: 근본 원인 분석 (가장 중요!)
 
-### Final Solution
+### 최종 해결책
 
-- **Method**: {The final chosen approach}
-- **Code**: Key code
-- **Why this works**: Explanation of the underlying mechanism
+- **방법**: {최종 선택한 접근법}
+- **코드**: 핵심 코드
+- **이것이 동작하는 이유**: 내부 메커니즘 설명
 
-### Key Takeaways
+### 핵심 교훈
 
-- Principles learned from this experience (3-5)
-- How to approach similar situations next time
+- 이 경험에서 배운 원칙 (3-5개)
+- 다음에 유사한 상황을 만나면 어떻게 접근할 것인지
 ```
 
 ## Writing Principles
 
-1. **"Why it failed" is the most important part** — Not just listing, but root cause analysis of the underlying mechanism
-2. **Minimal code** — Only the essential parts, not the full code
-3. **Logical order, not chronological** — Group similar approaches together
-4. **Reusable takeaways** — Universal principles, not project-specific ones
-5. **Respect the user's actual results** — If the user said "performance was bad", record it as-is without speculation
-6. **Use visual diagrams** — ASCII stack/state diagrams make navigation flows much clearer than text alone
-7. **Connect to fundamentals** — Explain WHY something works at the framework level, not just that it works
+1. **"실패 원인"이 가장 중요** — 단순 나열이 아니라 내부 메커니즘의 근본 원인 분석
+2. **최소한의 코드** — 핵심 부분만, 전체 코드가 아님
+3. **논리적 순서, 시간순이 아님** — 유사한 접근법은 함께 묶기
+4. **재사용 가능한 교훈** — 프로젝트 한정이 아닌 범용적 원칙
+5. **사용자의 실제 결과를 존중** — "성능이 안 좋았다"고 하면 추측 없이 그대로 기록
+6. **시각적 다이어그램 활용** — ASCII 스택/상태 다이어그램이 텍스트만으로는 불분명한 흐름을 명확하게 함
+7. **기본 원리와 연결** — 단순히 "동작한다"가 아니라 프레임워크 레벨에서 왜 동작하는지 설명
 
 ## When Appending to a File
 

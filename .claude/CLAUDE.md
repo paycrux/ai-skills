@@ -2,7 +2,7 @@
 
 All content written to this repository must be in English — this includes skill documents, agent documents, rules, comments in code examples, string literals, placeholders, and any other text recorded in files under `.claude/`.
 
-Exceptions (Korean allowed): `README.md`, `CHANGELOG.md` at the project root.
+Exceptions (Korean allowed): `README.md`, `CHANGELOG.md` at the project root, and all skill output templates (`templates/*.md`) and inline output examples in `SKILL.md`.
 
 ---
 

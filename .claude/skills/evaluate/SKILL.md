@@ -122,4 +122,4 @@ After evaluation, if a related task-plan folder (`docs/*/`) exists, append a sum
 - Overall grade follows the **lowest grade** among all domains
 - **Must confirm with user about fixes after evaluation** — no auto-fixing
 - If no violations found, honestly report "No violations"
-- Write output in Korean
+- 산출물은 한국어로 작성

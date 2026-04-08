@@ -71,14 +71,14 @@ When there are multiple states or options, write a **combination matrix** instea
 **Combination matrix format:**
 
 ```markdown
-#### Combination Matrix: {Feature Name}
+#### 조합 매트릭스: {기능명}
 
-| Condition A | Condition B | Expected Result |
-| ----------- | ----------- | --------------- |
-| State 1     | State 1     | Result          |
-| State 1     | State 2     | Result          |
-| State 2     | State 1     | Result          |
-| State 2     | State 2     | Result          |
+| 조건 A | 조건 B | 기대 결과 |
+| ------ | ------ | --------- |
+| 상태 1 | 상태 1 | 결과      |
+| 상태 1 | 상태 2 | 결과      |
+| 상태 2 | 상태 1 | 결과      |
+| 상태 2 | 상태 2 | 결과      |
 ```
 
 When there are 3+ conditions, use pairwise combinations instead of exhaustive (2-way covering).
@@ -160,9 +160,9 @@ When code is unavailable or description-based, use natural language hints in `{c
 
 ## Language
 
-- Write test case documents in **the user's working language** (match the language used in the source documents or conversation)
-- Technical terms remain as-is (selector, click, navigate, data-testid, etc.)
-- Automation metadata (YAML) is always in English
+- 테스트 케이스 문서는 **한국어**로 작성
+- 기술 용어는 그대로 유지 (selector, click, navigate, data-testid 등)
+- 자동화 메타데이터 (YAML)는 항상 영어
 
 ## Task-plan 연동
 

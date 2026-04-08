@@ -124,4 +124,4 @@ Ask the user where to place the skill, then write all files.
 - Always use `${CLAUDE_SKILL_DIR}` for referencing bundled files
 - Description must include both **what it does** AND **when to trigger**
 - Side-effectful skills must set `disable-model-invocation: true`
-- Write output in the same language the user is using
+- 산출물은 한국어로 작성

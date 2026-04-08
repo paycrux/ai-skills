@@ -51,23 +51,23 @@ Repeat the following cycle for each Phase in `tasks.md`.
 Before writing code, **briefly** summarize the implementation approach for the Phase and present it to the user.
 
 ```markdown
-## Phase N: {Phase title}
+## Phase N: {Phase 제목}
 
-### Implementation Approach
-- **Target files**: {files to create/modify}
-- **Key strategy**:
-  - {follow existing pattern X from findings.md}
-  - {reuse existing component Y for Z}
-  - {apply pattern B from library A}
+### 구현 접근법
+- **대상 파일**: {생성/수정할 파일}
+- **핵심 전략**:
+  - {findings.md의 기존 패턴 X를 따름}
+  - {기존 컴포넌트 Y를 Z에 재사용}
+  - {라이브러리 A의 패턴 B를 적용}
 
-Proceed?
+진행할까요?
 ```
 
-**Approach summary principles:**
-- Describe only the "How" for each "What" in tasks.md
-- Must reflect existing patterns/library info from findings.md
-- Explicitly mention if a new pattern or library is needed
-- Keep it concise: 3-5 lines
+**접근법 요약 원칙:**
+- tasks.md의 각 "무엇"에 대한 "어떻게"만 기술
+- findings.md의 기존 패턴/라이브러리 정보를 반드시 반영
+- 새로운 패턴이나 라이브러리 도입 시 명시
+- 간결하게: 3-5줄
 
 ### 2-2. Implement Directly
 
@@ -83,10 +83,10 @@ After implementation completes:
 1. Check off completed items in `tasks.md` (`- [ ]` → `- [x]`)
 2. Add Phase record to `progress.md`:
    ```markdown
-   ### Phase N: {title} — {date}
-   - Work done: {summary}
-   - Modified files: {list}
-   - Current status: Phase N complete, next Phase N+1
+   ### Phase N: {제목} — {날짜}
+   - 작업 내용: {요약}
+   - 수정 파일: {목록}
+   - 현재 상태: Phase N 완료, 다음 Phase N+1
    ```
 3. If technical facts were discovered during implementation, add to `findings.md`
 
@@ -101,13 +101,13 @@ When all Phases are done:
 5. **QA guidance** — for web app projects (ui-spec.md exists or frontend changes included):
 
 ```
-Implementation complete.
+구현이 완료되었습니다.
 
-Browser-based QA verification is recommended.
-Since context is heavy, **run `/qa <task-folder-name>` in a new conversation**.
+브라우저 기반 QA 검증을 권장합니다.
+컨텍스트가 무거우므로, **새 대화에서 `/qa <task-folder-name>`을 실행해주세요**.
 
-/qa navigates the actual app with a headless browser based on task-plan documents,
-and reports any bugs found with screenshots.
+/qa는 task-plan 문서를 기반으로 헤드리스 브라우저로 실제 앱을 탐색하고,
+발견된 버그를 스크린샷과 함께 리포트합니다.
 ```
 
 ## Step 4 (Optional): Partial Execution
@@ -150,4 +150,4 @@ Fix violations directly in the main conversation. Fix scope is **limited to viol
 - **Update progress.md per Phase** — enables handoff even if interrupted
 - **Follow `.claude/rules/react-typescript.md` rules** for frontend code
 - **Evaluation-based fixes are limited to violation items** — no surrounding code refactoring or extra improvements
-- Communicate with the user in Korean
+- 산출물과 사용자 소통은 한국어로

@@ -1,28 +1,28 @@
-# Code Quality Evaluation
+# 코드 품질 평가
 
-## Target
-- Files: {file list}
-- Related task: {task-plan reference or "N/A"}
+## 대상
+- 파일: {파일 목록}
+- 관련 작업: {task-plan 참조 또는 "N/A"}
 
-## Overall Grade: {A/B/C/D/F}
+## 종합 등급: {A/B/C/D/F}
 
-## Violations
+## 위반 사항
 
 ### CRITICAL
-| # | File:Line | Domain | Description |
-|---|----------|--------|-------------|
+| # | 파일:라인 | 도메인 | 설명 |
+|---|----------|--------|------|
 
 ### MAJOR
-| # | File:Line | Domain | Description |
-|---|----------|--------|-------------|
+| # | 파일:라인 | 도메인 | 설명 |
+|---|----------|--------|------|
 
 ### MINOR
-| # | File:Line | Domain | Description |
-|---|----------|--------|-------------|
+| # | 파일:라인 | 도메인 | 설명 |
+|---|----------|--------|------|
 
-## Summary
-- CRITICAL: {N}, MAJOR: {N}, MINOR: {N}
+## 요약
+- CRITICAL: {N}건, MAJOR: {N}건, MINOR: {N}건
 
-## Recommended Actions (by priority)
-1. {action}
-2. {action}
+## 권장 조치 (우선순위순)
+1. {조치}
+2. {조치}

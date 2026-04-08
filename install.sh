@@ -9,7 +9,7 @@ set -euo pipefail
 REPO_URL="https://github.com/paycrux/ai-skills.git"
 MARKER_START="<!-- AI-SKILLS:START -->"
 MARKER_END="<!-- AI-SKILLS:END -->"
-VERSION="0.4.1"
+VERSION="0.4.2"
 
 # Ensure interactive input works even when piped (curl | bash)
 if [[ ! -t 0 ]]; then

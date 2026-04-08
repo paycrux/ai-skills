@@ -1,77 +1,77 @@
-# Test Cases — {Feature Name}
+# 테스트 케이스 — {기능명}
 
-> Source: {task-plan folder | file path | "user description"}
-> Created: {today}
-> Target URL: {base-url}{path} (if known)
-
----
-
-## Test Environment
-
-### Prerequisites
-
-## <!-- List login requirements, necessary permissions, device/browser requirements -->
-
-### Test Data
-
-## <!-- Specific data needed: accounts, products, settings, etc. -->
+> 출처: {task-plan 폴더 | 파일 경로 | "사용자 설명"}
+> 작성일: {오늘 날짜}
+> 대상 URL: {base-url}{path} (알 수 있는 경우)
 
 ---
 
-## TC-{N}: {Test Case Title}
+## 테스트 환경
 
-> Purpose: {what this test verifies — 1 line}
+### 사전 조건
 
-### Initial State
+## <!-- 로그인 요구사항, 필요한 권한, 기기/브라우저 요구사항 나열 -->
 
-## <!-- Required app/page state before starting this test -->
+### 테스트 데이터
 
-### Steps
+## <!-- 필요한 구체적 데이터: 계정, 상품, 설정 등 -->
 
-| #   | Done | Action | Target                          | Expected Result   |
+---
+
+## TC-{N}: {테스트 케이스 제목}
+
+> 목적: {이 테스트가 검증하는 내용 — 1줄}
+
+### 초기 상태
+
+## <!-- 이 테스트 시작 전 필요한 앱/페이지 상태 -->
+
+### 단계
+
+| #   | 완료 | 액션   | 대상                            | 기대 결과         |
 | --- | ---- | ------ | ------------------------------- | ----------------- |
-| 1   | [ ]  | {verb} | `{selector-hint}` {description} | {specific result} |
+| 1   | [ ]  | {동사} | `{selector-hint}` {설명}        | {구체적인 결과}   |
 
 <!--
-Action verbs (use only these):
+액션 동사 (이것만 사용):
   navigate, click, type, select, toggle, scroll,
   wait, verify, hover, drag, upload
 
-Selector hint priority:
+셀렉터 힌트 우선순위:
   1. data-testid="xxx"
   2. role="button" name="Save"
   3. text="Save Changes"
-  4. .class-name or #id
-  5. {natural language in curly braces}
+  4. .class-name 또는 #id
+  5. {중괄호 안에 자연어 설명}
 -->
 
-### Verification Points
+### 검증 포인트
 
-<!-- Checkable assertions after completing all steps -->
+<!-- 모든 단계 완료 후 확인할 검증 항목 -->
 
-- [ ] {checkpoint}
+- [ ] {체크포인트}
 
 ---
 
-## Combination Matrices
+## 조합 매트릭스
 
-### CM-{N}: {Feature Name} — {Condition Group}
+### CM-{N}: {기능명} — {조건 그룹}
 
 <!--
-Rules:
-  - 2 conditions → exhaustive (2×2, 2×3, etc.)
-  - 3+ conditions → pairwise combinations
-  - Every row must link to a TC that covers it
-  - If no TC covers a row, create one
+규칙:
+  - 조건 2개 → 전수 조합 (2×2, 2×3 등)
+  - 조건 3개 이상 → 페어와이즈 조합
+  - 모든 행은 해당 조합을 커버하는 TC와 연결
+  - 커버하는 TC가 없으면 새로 생성
 -->
 
-| Condition A | Condition B | Expected Result | Related TC |
-| ----------- | ----------- | --------------- | ---------- |
-|             |             |                 | TC-{N}     |
+| 조건 A | 조건 B | 기대 결과 | 관련 TC |
+| ------ | ------ | --------- | ------- |
+|        |        |           | TC-{N}  |
 
 ---
 
-## Automation Metadata
+## 자동화 메타데이터
 
 ```yaml
 feature: { feature-name }

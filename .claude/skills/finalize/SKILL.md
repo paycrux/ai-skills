@@ -53,11 +53,11 @@ evaluate.md fix decisions → approach changes worth recording
 Compose the map:
 
 ```markdown
-## Implementation Map
+## 구현 맵
 
-| Spec Item | Files | Key Decisions |
+| 명세 항목 | 파일 | 주요 결정 |
 |---|---|---|
-| {spec.md flow/section name} | {comma-separated file paths, relative to project root} | {why this approach — from findings.md or evaluate.md} |
+| {spec.md 흐름/섹션명} | {쉼표 구분 파일 경로, 프로젝트 루트 기준} | {왜 이 방식을 선택했는지 — findings.md 또는 evaluate.md 기반} |
 ```
 
 Rules:
@@ -68,7 +68,7 @@ Rules:
 
 ## Step 3: Merge into spec.md
 
-1. Append `## Implementation Map` section at the end of spec.md
+1. Append `## 구현 맵` section at the end of spec.md
 2. If evaluate.md contains decisions that affect behavioral spec (not just code quality), merge them into the relevant spec.md sections
 3. Do not duplicate — if a decision already exists in spec.md, skip it
 
@@ -101,29 +101,29 @@ Preserve:
 ## Step 6: Report
 
 ```
-Finalization complete: <task-folder-name>
+정리 완료: <task-folder-name>
 
-Preserved:
+보존됨:
   - README.md
-  - spec.md (Implementation Map added)
-  - ui-spec.md (if existed)
-  - test-cases.md (if existed)
+  - spec.md (구현 맵 추가됨)
+  - ui-spec.md (존재한 경우)
+  - test-cases.md (존재한 경우)
 
-Deleted: <list of actually deleted files>
+삭제됨: <실제 삭제된 파일 목록>
 ```
 
 ## Edge Cases
 
 | Condition | Action |
 |---|---|
-| Already finalized (no temporary docs) | Report "Already finalized, no changes needed" |
+| Already finalized (no temporary docs) | Report "이미 정리 완료됨, 변경 필요 없음" |
 | No evaluate.md | Skip evaluate merge, build map from other sources |
 | No tasks.md but other temp docs exist | Build map from findings.md + progress.md |
-| No temporary docs at all, but spec.md has no Implementation Map | Ask user: "No source documents found. Provide file paths manually or skip?" |
+| No temporary docs at all, but spec.md has no Implementation Map | Ask user: "소스 문서를 찾을 수 없습니다. 파일 경로를 직접 제공하시겠습니까, 아니면 건너뛸까요?" |
 
 ## Rules
 
 - **spec.md must exist** — error if missing
 - **Never modify ui-spec.md or test-cases.md** — only check existence
 - **Delete only the documented temporary files** — never delete unknown files
-- Communicate with the user in Korean
+- 산출물과 사용자 소통은 한국어로
