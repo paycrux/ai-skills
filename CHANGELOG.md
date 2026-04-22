@@ -4,6 +4,27 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.4.3] - 2026-04-22
+
+### Added
+
+- `git-pr` 스킬 추가 — 브랜치 작업 + PR 생성 통합 인터랙티브 워크플로우
+  - 새 브랜치 생성 / 현재 브랜치 사용 두 가지 모드 지원 (`--mode git|pr|both`)
+  - 서브 브랜치(-dev/-stg) 생성 및 리베이스 플로우
+  - 리베이스 충돌 발생 시 파일별 분석 → 사용자 승인 → 해결 루프 자동 처리
+  - PR 초안 자동 생성 — 커밋 로그와 diff stat 분석으로 제목·본문 초안 작성 후 사용자 확인. 구현사항·특이사항·핵심 리뷰 포인트·테스트 케이스 자동 채움, 구현 화면은 사용자가 직접 추가
+  - 모든 사용자 안내 메시지 한국어 처리
+
+### Changed
+
+- `git-branch`, `pr` 스킬을 `git-pr`로 통합 및 삭제
+- `task-plan` 스킬: opusplan 모델 감지 및 서브에이전트 위임 로직 제거 — Claude Code가 세션 중 모델 전환을 지원하지 않아 실효성이 없고, v0.4.0의 "서브에이전트 없이 직접 실행" 원칙과도 충돌하여 삭제
+- `investigate` 스킬 삭제
+
+### Fixed
+
+- install.sh: `cleanup_legacy_skills()` 추가 — `--update` 실행 시 레거시 스킬 디렉토리(`git-branch/`) 자동 정리
+
 ## [0.4.2] - 2026-04-08
 
 ### Changed
