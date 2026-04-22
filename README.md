@@ -215,6 +215,31 @@ task-plan 문서를 기반으로 헤드리스 브라우저로 구현 결과를 �
 /qa <URL>                        # URL 직접 검증
 ```
 
+### /git-pr
+
+**Git 브랜치 작업 + PR 생성 통합 워크플로우**
+
+브랜치 생성/푸시부터 PR 생성까지 하나의 스킬에서 처리합니다. 커밋 로그와 diff를 분석해 PR 제목과 본문 초안을 자동으로 작성하고 사용자가 확인 후 생성합니다.
+
+```
+/git-pr                          # 대화형 모드 (브랜치 방식 + PR 여부 선택)
+/git-pr --mode git               # 브랜치 작업만
+/git-pr --mode pr                # PR 생성만 (현재 브랜치 기준)
+/git-pr --mode both              # 브랜치 작업 + PR 생성
+/git-pr --new <branch-name>      # 새 브랜치 생성 모드
+/git-pr --suffix dev             # 현재 브랜치에 -dev 서브 브랜치 생성
+```
+
+PR 본문 구성:
+
+| 섹션 | 작성 주체 |
+| --- | --- |
+| 구현사항 | Claude 자동 생성 |
+| 특이사항 | Claude 자동 생성 |
+| 핵심 리뷰 포인트 | Claude 자동 생성 |
+| 구현 화면 | 사용자 직접 추가 |
+| 테스트 케이스 | Claude 자동 생성 |
+
 ### /investigate
 
 **체계적 디버깅 + 근본원인 분석**
@@ -293,7 +318,7 @@ task-plan 문서를 기반으로 헤드리스 브라우저로 구현 결과를 �
 │   ├── browse/SKILL.md
 │   ├── qa/SKILL.md
 │   ├── finalize/SKILL.md
-│   ├── investigate/SKILL.md
+│   ├── git-pr/SKILL.md
 │   ├── study/SKILL.md
 │   ├── test-case/SKILL.md
 │   ├── qa-guide/SKILL.md

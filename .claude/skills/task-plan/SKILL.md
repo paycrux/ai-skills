@@ -2,7 +2,7 @@
 name: task-plan
 description: "Create task folder with documentation (README, spec, findings, tasks, progress, ui-spec) for new features or bug fixes. Use when user requests /task-plan or needs structured planning before implementation."
 argument-hint: <task description or Jira issue number>
-allowed-tools: Read, Grep, Glob, Write, Edit
+allowed-tools: Read, Grep, Glob, Write, Edit, Agent
 ---
 
 # /task-plan — Task Planning & Documentation Workflow
@@ -57,24 +57,28 @@ Follow the exploration strategy in `${CLAUDE_SKILL_DIR}/references/exploration-s
 ## 근본 원인 분석
 
 ### 증상
-| 항목 | 내용 |
-|------|------|
-| 증상 | {에러 메시지 또는 비정상 동작} |
-| 재현 조건 | {재현 단계} |
-| 기대 동작 | {정상 동작} |
-| 실제 동작 | {현재 동작} |
+
+| 항목      | 내용                           |
+| --------- | ------------------------------ |
+| 증상      | {에러 메시지 또는 비정상 동작} |
+| 재현 조건 | {재현 단계}                    |
+| 기대 동작 | {정상 동작}                    |
+| 실제 동작 | {현재 동작}                    |
 
 ### 검증된 가설
-| # | 가설 | 결과 | 비고 |
-|---|------|------|------|
-| 1 | {가설} | 확인/기각 | {이유} |
+
+| #   | 가설   | 결과      | 비고   |
+| --- | ------ | --------- | ------ |
+| 1   | {가설} | 확인/기각 | {이유} |
 
 ### 근본 원인
+
 **원인**: {한 줄 요약}
 **발생 경로**: {코드 실행 흐름}
 **관련 코드**: {file:line}
 
 ### 수정 방안
+
 **권장 수정**: {최소한의 수정 방법}
 **영향 범위**: {수정 시 영향받는 파일/기능}
 ```
@@ -85,15 +89,15 @@ Record all results in `findings.md`.
 
 If the user attaches design docs, API specs, or implementation guides:
 
-| Source content | Distribute to |
-|---|---|
-| Background/purpose | README.md → 배경, 목표 |
-| Feature flows | spec.md → 화면/기능 흐름 |
-| API endpoints | spec.md → API 연동 |
-| State/edge cases | spec.md → 상태 정의, 엣지 케이스 |
-| Implementation methods | tasks.md → Phase checklists |
-| Existing code/deps | findings.md → 직접 관련 |
-| Technical decisions | findings.md → 기술 결정 |
+| Source content         | Distribute to                    |
+| ---------------------- | -------------------------------- |
+| Background/purpose     | README.md → 배경, 목표           |
+| Feature flows          | spec.md → 화면/기능 흐름         |
+| API endpoints          | spec.md → API 연동               |
+| State/edge cases       | spec.md → 상태 정의, 엣지 케이스 |
+| Implementation methods | tasks.md → Phase checklists      |
+| Existing code/deps     | findings.md → 직접 관련          |
+| Technical decisions    | findings.md → 기술 결정          |
 
 **Principle:** distribute reference content across plan files so originals are not needed later.
 
@@ -103,9 +107,9 @@ For Figma/design handling, refer to `${CLAUDE_SKILL_DIR}/references/design-handl
 
 If the project is `white_label` and the task involves `apps/partner/` or `apps/admin/`, inspect the Figma link or design requirements before writing `ui-spec.md`:
 
-| Detected UI pattern | Action |
-|---|---|
-| Table / data grid | Read `.claude/docs/partner-jirisan.md` → confirm with user → embed pattern constraints in `ui-spec.md` component breakdown |
+| Detected UI pattern       | Action                                                                                                                                  |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Table / data grid         | Read `.claude/docs/partner-jirisan.md` → confirm with user → embed pattern constraints in `ui-spec.md` component breakdown              |
 | Search bar / filter panel | Read `.claude/docs/partner-option-group-factory.md` → confirm with user → embed pattern constraints in `ui-spec.md` component breakdown |
 
 Embed the relevant pattern as a `## Pattern Reference` section inside `ui-spec.md` so implement and evaluate can use it without re-reading the source doc.
@@ -143,6 +147,7 @@ Write **all documents at once** in this order using templates from `${CLAUDE_SKI
 Start after user approval. Follow `tasks.md` checklist in order.
 
 **After each phase:**
+
 - Record in `progress.md`: work done, modified files, current status
 - Update `tasks.md` checklist (`- [ ]` → `- [x]`)
 - Add technical discoveries to `findings.md`

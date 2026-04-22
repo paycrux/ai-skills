@@ -9,7 +9,7 @@ set -euo pipefail
 REPO_URL="https://github.com/paycrux/ai-skills.git"
 MARKER_START="<!-- AI-SKILLS:START -->"
 MARKER_END="<!-- AI-SKILLS:END -->"
-VERSION="0.4.2"
+VERSION="0.4.3"
 
 # Ensure interactive input works even when piped (curl | bash)
 if [[ ! -t 0 ]]; then
@@ -258,6 +258,33 @@ copy_dir() {
 }
 
 # ─────────────────────────────────────────────
+# Helper: clean up removed skills from previous versions
+# ─────────────────────────────────────────────
+cleanup_legacy_skills() {
+  local skills_dir="$1/skills"
+  if [[ ! -d "$skills_dir" ]]; then
+    return
+  fi
+
+  local removed_skills=(
+    "git-branch"
+    "pr"
+  )
+
+  local cleaned=0
+  for skill in "${removed_skills[@]}"; do
+    if [[ -d "$skills_dir/$skill" ]]; then
+      rm -rf "$skills_dir/$skill"
+      ((cleaned++))
+    fi
+  done
+
+  if [[ $cleaned -gt 0 ]]; then
+    ok "Cleaned up ${cleaned} legacy skill directories (consolidated into git-pr in v0.4.3)"
+  fi
+}
+
+# ─────────────────────────────────────────────
 # Helper: clean up removed agents from previous versions
 # ─────────────────────────────────────────────
 cleanup_legacy_agents() {
@@ -489,7 +516,8 @@ echo ""
 
 mkdir -p "$TARGET_DIR"
 
-# Clean up legacy agents from previous versions
+# Clean up legacy agents and skills from previous versions
+cleanup_legacy_skills "$TARGET_DIR"
 cleanup_legacy_agents "$TARGET_DIR"
 
 if [[ "$MODE" == "claude" ]]; then
