@@ -324,6 +324,41 @@ cleanup_legacy_agents() {
 }
 
 # ─────────────────────────────────────────────
+# Helper: clean up obsolete files inside the task-plan skill
+# (task-plan was lightened — references/ and several templates removed)
+# ─────────────────────────────────────────────
+cleanup_task_plan_legacy() {
+  local task_plan_dir="$1/skills/task-plan"
+  if [[ ! -d "$task_plan_dir" ]]; then
+    return
+  fi
+
+  local removed_paths=(
+    "references"
+    "agents"
+    "templates/README.template.md"
+    "templates/findings.template.md"
+    "templates/ui-spec.template.md"
+    "templates/bug.template.md"
+    "templates/update.template.md"
+    "templates/progress.template.md"
+  )
+
+  local cleaned=0
+  for path in "${removed_paths[@]}"; do
+    local full="$task_plan_dir/$path"
+    if [[ -e "$full" ]]; then
+      rm -rf "$full"
+      ((cleaned++))
+    fi
+  done
+
+  if [[ $cleaned -gt 0 ]]; then
+    ok "Cleaned up ${cleaned} obsolete task-plan files (skill lightened)"
+  fi
+}
+
+# ─────────────────────────────────────────────
 # Helper: merge CLAUDE.md with markers
 # ─────────────────────────────────────────────
 merge_claude_md() {
@@ -519,6 +554,7 @@ mkdir -p "$TARGET_DIR"
 # Clean up legacy agents and skills from previous versions
 cleanup_legacy_skills "$TARGET_DIR"
 cleanup_legacy_agents "$TARGET_DIR"
+cleanup_task_plan_legacy "$TARGET_DIR"
 
 if [[ "$MODE" == "claude" ]]; then
   # ── Claude Code install ──
