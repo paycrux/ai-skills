@@ -4,6 +4,33 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.4.5] - 2026-05-20
+
+### Changed
+
+- `implement` 스킬을 슬림화된 task-plan 산출물에 맞춰 정렬
+  - 참조 문서를 `tasks.md` + `spec.md` 두 개로 축소 — `README.md` / `findings.md` / `ui-spec.md` / `progress.md` 참조 전부 제거
+  - 경로를 `docs/<name>/plans/`로 통일 (자동 감지는 `docs/*/plans/tasks.md` 헤더의 `상태: 진행중` grep)
+  - Phase 진행 기록을 별도 `progress.md`가 아닌 `tasks.md`의 `## 진행 기록` 섹션에 누적
+  - 전체 완료 처리는 `tasks.md` 헤더 `상태:` 필드를 `완료`로 변경 (별도 `README.md` 상태 갱신 제거)
+  - Approach summary 입력 출처를 `findings.md` 대신 `tasks.md` Phase task의 sub-bullet(재사용/패턴) + `spec.md`로 변경
+- `rules/react-typescript.md`: 단일 "성능" 섹션을 **렌더링**과 **메모이제이션** 두 섹션으로 분리
+  - **렌더링** (React 기본기): 안정적 key, 렌더링 주체 격리, 상태 위치, 파생 값 — 리렌더 이슈는 이 구조적 해결을 먼저 시도
+  - **메모이제이션**: `useMemo` / `useCallback` / `React.memo`는 **사용자가 명시적으로 요청할 때만** 도입 — 측정 없이 선제적으로 추가 금지
+  - 기존 `컴포넌트 패턴`의 key 규칙과 파생 값 규칙은 `렌더링` 섹션으로 이동
+  - `implement` Rules 및 Step 2-2에도 "렌더링 구조 우선, 메모이제이션은 사용자 요청 시에만" 명시
+- `install.sh`: 버전 `0.4.5`로 갱신
+
+### Migration
+
+- `--update`로 재설치하면 `implement/SKILL.md`와 `rules/react-typescript.md`가 diff 확인 후 덮어쓰기 됩니다. 이번 변경으로 ai-skills 자체에서 새로 삭제되는 파일은 없습니다 (기존 `cleanup_legacy_skills` / `cleanup_legacy_agents` / `cleanup_task_plan_legacy`로 충분).
+- 사용자가 이전 `implement` 버전으로 만든 `docs/<name>/` 하위의 `README.md` / `findings.md` / `ui-spec.md` / `progress.md`는 **사용자 산출물**이므로 설치 스크립트가 자동 삭제하지 않습니다. 필요 시 수동 정리하세요. 새로 시작하는 작업은 `docs/<name>/plans/tasks.md`의 `## 진행 기록`만 사용합니다.
+- `react-typescript.md`를 커스터마이즈했다면 `--update` 시 diff가 표시되니 확인 후 덮어쓰기/스킵을 선택하세요.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/paycrux/ai-skills/main/install.sh | bash -s -- --claude --global --update
+```
+
 ## [0.4.4] - 2026-05-20
 
 ### Changed

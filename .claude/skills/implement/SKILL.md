@@ -6,49 +6,52 @@ argument-hint: "<task-folder-name or path to docs/...>"
 
 # /implement — Document-Driven Implementation Workflow
 
-Reads documents produced by task-plan (spec, tasks, findings, ui-spec) and executes implementation phase by phase.
+Reads documents produced by `/task-plan` (`tasks.md`, `spec.md`) and executes implementation phase by phase.
 
 ## Argument Parsing
 
-- `/implement <task-folder-name>` — resolves to `docs/<task-folder-name>/`
-- `/implement <path>` — direct path
-- `/implement` (no args) — auto-detect task with status "진행중" under `docs/`
+- `/implement <task-folder-name>` — resolves to `docs/<task-folder-name>/plans/`
+- `/implement <path>` — direct path to a `plans/` directory
+- `/implement` (no args) — auto-detect by grepping `docs/*/plans/tasks.md` for `상태: 진행중`
 
-## Step 1: Load Documents & Collect Context
+If multiple "진행중" tasks are found, list them and ask the user to pick.
+
+## Step 1: Load Documents & Check Progress
 
 ### 1-1. Read Task-Plan Documents
 
-Read **all** of the following (parallel Read):
+Read both files in parallel:
 
 | File | Purpose |
 |---|---|
-| `README.md` | Goals, scope, issue number |
+| `tasks.md` | Header (issue, type, status, date), per-phase checklist with reuse/pattern sub-bullets, `## 진행 기록` |
 | `spec.md` | Feature flows, state definitions, edge cases |
-| `tasks.md` | Per-phase implementation checklist |
-| `findings.md` | Related files, existing patterns, libraries, technical decisions |
-| `ui-spec.md` | (if exists) Screen structure, component breakdown, reuse map |
-| `progress.md` | Previous progress state |
 
-If any required file is missing, notify the user and suggest running `/task-plan`.
+If either file is missing, stop and suggest running `/task-plan`.
 
 ### 1-2. Check Progress State
 
-Compare `progress.md` with `tasks.md`:
+From `tasks.md`:
 
 ```
-Checked items in tasks.md / total items → progress rate
-Last completed Phase → determine next Phase to start
+Checked items / total items → progress rate
+Last entry in `## 진행 기록` → determine next Phase to start
 ```
 
-If there is interrupted work from a previous session, report to the user and confirm whether to resume.
+If there is interrupted work, report to the user and confirm whether to resume.
 
 ## Step 2: Per-Phase Implementation Cycle
 
-Repeat the following cycle for each Phase in `tasks.md`.
+Repeat for each Phase in `tasks.md`.
 
 ### 2-1. Output Approach Summary
 
-Before writing code, **briefly** summarize the implementation approach for the Phase and present it to the user.
+Before writing code, briefly summarize the approach and present it to the user. Pull inputs from:
+
+- The Phase task line in `tasks.md` — file path, optional figma node link
+- Sub-bullets under the task line — `재사용:` (existing component to reuse), `패턴:` (existing library/pattern)
+- `spec.md` — relevant flows / states / edge cases
+- Direct codebase exploration only when sub-bullets are missing or insufficient
 
 ```markdown
 ## Phase N: {Phase 제목}
@@ -56,49 +59,48 @@ Before writing code, **briefly** summarize the implementation approach for the P
 ### 구현 접근법
 - **대상 파일**: {생성/수정할 파일}
 - **핵심 전략**:
-  - {findings.md의 기존 패턴 X를 따름}
-  - {기존 컴포넌트 Y를 Z에 재사용}
-  - {라이브러리 A의 패턴 B를 적용}
+  - {tasks.md sub-bullet의 재사용 컴포넌트 또는 패턴}
+  - {spec.md의 엣지 케이스 반영 포인트}
 
 진행할까요?
 ```
 
 **접근법 요약 원칙:**
 - tasks.md의 각 "무엇"에 대한 "어떻게"만 기술
-- findings.md의 기존 패턴/라이브러리 정보를 반드시 반영
+- tasks.md sub-bullet의 재사용/패턴 정보를 반드시 반영
 - 새로운 패턴이나 라이브러리 도입 시 명시
 - 간결하게: 3-5줄
 
 ### 2-2. Implement Directly
 
 Once the user approves, implement the Phase directly. Follow:
+
 - `.claude/rules/react-typescript.md` for frontend code
-- Existing patterns identified in `findings.md`
-- Component reuse map from `ui-spec.md` (if available)
+- **렌더링 이슈는 구조로 먼저 해결** (key 안정성, 렌더링 주체 격리, 상태 위치, 파생 값). `useMemo`/`useCallback`/`React.memo` 같은 메모이제이션 훅은 **사용자가 명시적으로 요청할 때만** 도입 — 측정 없이 선제적으로 추가 금지
+- Existing patterns identified in `tasks.md` sub-bullets
 
 ### 2-3. Phase Completion
 
 After implementation completes:
 
 1. Check off completed items in `tasks.md` (`- [ ]` → `- [x]`)
-2. Add Phase record to `progress.md`:
+2. Append an entry under `## 진행 기록` in `tasks.md`:
    ```markdown
-   ### Phase N: {제목} — {날짜}
-   - 작업 내용: {요약}
-   - 수정 파일: {목록}
-   - 현재 상태: Phase N 완료, 다음 Phase N+1
+   ### {YYYY-MM-DD}
+
+   - Phase N: {제목} 완료 — {수정 파일 요약}
+   - 블로커: {있으면}
    ```
-3. If technical facts were discovered during implementation, add to `findings.md`
 
 ## Step 3: Full Completion
 
 When all Phases are done:
 
 1. Verify all items in `tasks.md` are checked
-2. Write final record in `progress.md`
-3. Change `README.md` status to "완료"
+2. Append a final entry under `## 진행 기록` summarizing completion
+3. Change `tasks.md` header `상태:` field to `완료`
 4. Suggest running `/evaluate` if the user wants a code quality review
-5. **QA guidance** — for web app projects (ui-spec.md exists or frontend changes included):
+5. **QA guidance** — when the change includes frontend work:
 
 ```
 구현이 완료되었습니다.
@@ -140,14 +142,15 @@ Fix violations directly in the main conversation. Fix scope is **limited to viol
 
 1. Report changes to the user after fixes are complete
 2. If the user requests re-evaluation, run `/evaluate`
-3. Add evaluation-based fix record to progress.md
+3. Append an evaluation-based fix entry under `tasks.md` `## 진행 기록`
 
 ## Rules
 
-- **Do not implement without documents** — task-plan documents are required
+- **Do not implement without documents** — `tasks.md` and `spec.md` are required
 - **Approach summary requires user approval before proceeding** — do not start writing code automatically
-- **Prioritize existing patterns from findings.md** — new pattern introduction requires user approval
-- **Update progress.md per Phase** — enables handoff even if interrupted
-- **Follow `.claude/rules/react-typescript.md` rules** for frontend code
+- **Prioritize existing patterns from tasks.md sub-bullets** — new pattern introduction requires user approval
+- **Update `tasks.md` per Phase** — toggle checkboxes and append to `## 진행 기록` so handoff works even if interrupted
+- **Follow `.claude/rules/react-typescript.md`** for frontend code
+- **렌더링 이슈는 구조 우선 — 메모이제이션 훅(`useMemo`/`useCallback`/`React.memo`)은 사용자 명시 요청 시에만 도입**
 - **Evaluation-based fixes are limited to violation items** — no surrounding code refactoring or extra improvements
 - 산출물과 사용자 소통은 한국어로
