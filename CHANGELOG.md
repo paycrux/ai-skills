@@ -4,6 +4,27 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.4.4] - 2026-05-20
+
+### Changed
+
+- `task-plan` 스킬 전면 슬림화 — SKILL.md 570→69줄, 산출물을 `tasks.md` + `spec.md` 2개로 축소
+  - 작업 종류(버그 수정 / 기능 개발 / 기능 수정)는 `tasks.md` 헤더 메타데이터로만 표시 — 별도 템플릿 분기 제거
+  - 코드베이스 탐색 결과(재사용 컴포넌트, 라이브러리 패턴, 관련 파일)는 Phase 항목의 sub-bullet로 인라인
+  - Figma 노드는 task 라인에 인라인 링크로 표기, 한 노드가 여러 sub-area에 매핑되면 task 라인을 분리
+  - "기능 수정" 작업은 원본 plans에 `참조:` 헤더 링크만 추가, 원본 파일은 수정하지 않음
+  - PR 생성은 `/git-pr`에 위임 (Creating-PR / PRD-change 섹션 제거)
+
+### Removed
+
+- `task-plan/templates/`: `README.template.md`, `findings.template.md`, `progress.template.md`, `ui-spec.template.md` 제거
+- `task-plan/references/`: `compliance-checklist.md`, `design-handling.md`, `exploration-strategy.md` 폴더 통째로 제거
+- SKILL.md에서 grill-me 인터뷰 / 타입 분기 / compliance check / context monitor / inline fallback / task completion / session handoff 섹션 제거
+
+### Fixed
+
+- `install.sh`: `cleanup_task_plan_legacy()` 추가 — `--update` 실행 시 폐기된 `task-plan/references/`, `task-plan/agents/`, 레거시 템플릿 파일(`README`, `findings`, `progress`, `ui-spec`) 자동 정리
+
 ## [0.4.3] - 2026-04-22
 
 ### Added
