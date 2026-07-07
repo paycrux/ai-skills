@@ -41,6 +41,23 @@
 - [x] `CHANGELOG.md`에 버전 항목 추가 (`CHANGELOG.md`)
 - [x] `install.sh`의 `VERSION` 값 bump (`install.sh`)
 
+## Phase 4: Codex 지원 (`--codex`)
+
+> 계획 최초 범위 밖 추가 작업. Codex는 네이티브 skills 개념이 없어 `AGENTS.md`(계층적)만 자동으로 읽으므로 Cursor 방식을 미러링.
+
+- [x] `install.sh`에 `--codex` MODE 추가 (`install.sh`)
+  - 재사용: Cursor 분기 구조 — 단, rules는 `.mdc`가 아닌 일반 `.md`로 복사(Codex는 `.mdc` 미지원)
+  - 인자 파싱(`--codex`)·대화형 메뉴(`3) Codex`)·`--help`·예시에 Codex 추가
+  - `~/.codex`(전역)/`./.codex`(프로젝트)에 skills·rules 복사
+- [x] Codex `AGENTS.md` 병합 (`install.sh`)
+  - 마커 upsert 로직을 `upsert_marked_file()`로 추출, `merge_agents_md_codex()` 추가
+  - 전역: `~/.codex/AGENTS.md`(참조 `~/.codex/...` 절대) / 프로젝트: 루트 `AGENTS.md`(참조 `.codex/...` 상대)
+  - Cursor(프로젝트 전용)와 달리 Codex는 전역도 `~/.codex/AGENTS.md`로 지원
+- [x] 문서 반영 (`README.md`, `CHANGELOG.md`)
+  - README 설치 섹션에 `--codex` 표·예시·설명 추가, CHANGELOG `[0.5.0]`에 Codex 항목 추가
+- [x] 로컬 검증 (`--local`)
+  - claude/cursor/codex 3개 모드 설치, 레거시 스킬/에이전트 삭제 감지(codex), 전역/프로젝트 AGENTS.md 참조 경로(절대/상대) 확인
+
 ## 진행 기록
 
 ### 2026-07-07
@@ -50,3 +67,4 @@
 - Phase 2: `ai-skills` 전역 CLI 완료 — `bin/ai-skills` 신규 작성(`update`/`version`/`help`). `update`는 clone pull 후 `installs.json` 순회, project scope는 `target_dir` 상위로 `cd` 후 `install.sh --update` 재실행. `version`은 로컬 clone vs `origin/HEAD` VERSION 비교. `install.sh`에 `install_cli()`(clone 루트 `bin/ai-skills` → `~/.ai-skills/bin`, chmod +x) + `register_path()`(전용 마커 `# AI-SKILLS-PATH:START/END`, `$SHELL` 감지, idempotent) 추가. 완료 메시지에 reload/`which ai-skills` 안내 추가. 검증: JSON dedupe·TSV·version 파싱, install_cli 복사·chmod, register_path 멱등성(마커 1개) 하네스 테스트 통과. (전체 대화형 e2e는 샌드박스에 tty 없어 미실행 — 사용자 로컬 검증 권장)
 - Phase 3: 문서화 완료 — `README.md`에 "업데이트 (`ai-skills` CLI)" 섹션 추가(`ai-skills update`/`version` 주 경로, 기존 `curl | bash --update`는 미등록 환경용으로 재배치, reload/PATH 안내 포함). `CHANGELOG.md` `[0.5.0]` 항목 추가. `install.sh` `VERSION` 0.4.9 → 0.5.0 bump. `bash -n` 통과.
 - 전체 완료 — 3개 Phase 모두 구현·검증. 변경 파일: `install.sh`, `bin/ai-skills`(신규), `README.md`, `CHANGELOG.md`.
+- Phase 4: Codex 지원 완료 — 사용자 요청으로 계획 범위 밖 추가. `install.sh`에 `--codex` MODE(Cursor 미러링, rules는 일반 `.md`), `upsert_marked_file()`/`merge_agents_md_codex()` 추가. 전역 `~/.codex/AGENTS.md`(절대 참조)·프로젝트 루트 `AGENTS.md`(상대 참조) 모두 지원. 레거시 cleanup은 모드 무관 `TARGET_DIR` 적용이라 codex도 삭제 감지. 검증(`--local`, pty 하네스): claude/cursor/codex 3모드 설치 정상, codex 레거시 삭제(evaluate·test-case·legacy agent) 확인, 전역/프로젝트 AGENTS.md 참조 경로 확인. README/CHANGELOG 반영. `bash -n` 통과. 세 모드 모두 동일 소스(`$SRC_DIR`)에서 복사 → 상호 독립(다른 에디터 설치 여부와 무관).
