@@ -43,6 +43,20 @@ cmd_update() {
     error "설치 기록이 없습니다. 먼저 install.sh로 설치하세요."
   fi
 
+  # Parse filter flags: --claude / --cursor / --codex select specific modes;
+  # --all skips the interactive picker and updates every recorded target.
+  local -a mode_filter=()
+  local all_flag=false
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --claude) mode_filter+=("claude"); shift ;;
+      --cursor) mode_filter+=("cursor"); shift ;;
+      --codex)  mode_filter+=("codex"); shift ;;
+      --all)    all_flag=true; shift ;;
+      *) error "알 수 없는 옵션: $1 (ai-skills help 참고)" ;;
+    esac
+  done
+
   info "Pulling latest ai-skills ($AI_SKILLS_REPO)..."
   if ! git -C "$AI_SKILLS_REPO" pull --ff-only; then
     error "git pull 실패 — 오프라인이거나 원격에 접근할 수 없습니다.
@@ -79,9 +93,70 @@ PYEOF
     error "기록된 설치 대상이 없습니다. 먼저 install.sh로 설치하세요."
   fi
 
-  local total=0 failed=0
+  # Load into parallel arrays so the user (or --flags) can pick a subset by index.
+  local -a all_modes=() all_scopes=() all_dirs=()
   while IFS=$'\t' read -r mode scope target; do
     [[ -z "$mode" ]] && continue
+    all_modes+=("$mode")
+    all_scopes+=("$scope")
+    all_dirs+=("$target")
+  done <<< "$targets"
+
+  local -a sel_idx=()
+
+  if [[ ${#mode_filter[@]} -gt 0 ]]; then
+    # Non-interactive: --claude/--cursor/--codex filter the recorded targets
+    local i f match
+    for i in "${!all_modes[@]}"; do
+      match=false
+      for f in "${mode_filter[@]}"; do
+        [[ "${all_modes[$i]}" == "$f" ]] && match=true && break
+      done
+      $match && sel_idx+=("$i")
+    done
+    if [[ ${#sel_idx[@]} -eq 0 ]]; then
+      error "지정한 대상(${mode_filter[*]})에 해당하는 설치 기록이 없습니다."
+    fi
+  elif $all_flag || [[ ! -t 0 ]]; then
+    # --all, or no tty to prompt on (e.g. piped/CI): update everything recorded
+    sel_idx=($(seq 0 $((${#all_modes[@]} - 1))))
+  elif [[ ${#all_modes[@]} -eq 1 ]]; then
+    # Only one recorded target — nothing to choose between
+    sel_idx=(0)
+  else
+    echo ""
+    echo -e "${CYAN}업데이트할 대상을 선택하세요:${NC}"
+    local i
+    for i in "${!all_modes[@]}"; do
+      echo "  $((i + 1))) ${all_modes[$i]} (${all_scopes[$i]}) → ${all_dirs[$i]}"
+    done
+    echo "  a) 전체"
+    read -rp "> (예: 1 3, 또는 a) " choice
+
+    if [[ "$choice" == "a" || "$choice" == "A" ]]; then
+      sel_idx=($(seq 0 $((${#all_modes[@]} - 1))))
+    else
+      local token
+      for token in $choice; do
+        token="${token//,/}"
+        [[ -z "$token" ]] && continue
+        if ! [[ "$token" =~ ^[0-9]+$ ]] || (( token < 1 || token > ${#all_modes[@]} )); then
+          error "잘못된 선택: $token"
+        fi
+        sel_idx+=($((token - 1)))
+      done
+      if [[ ${#sel_idx[@]} -eq 0 ]]; then
+        error "선택된 대상이 없습니다."
+      fi
+    fi
+  fi
+
+  local total=0 failed=0
+  local idx mode scope target
+  for idx in "${sel_idx[@]}"; do
+    mode="${all_modes[$idx]}"
+    scope="${all_scopes[$idx]}"
+    target="${all_dirs[$idx]}"
     ((total++))
     echo ""
     echo -e "${CYAN}━━━ Updating: ${mode}/${scope} → ${target} ━━━${NC}"
@@ -102,7 +177,7 @@ PYEOF
       warn "Update 실패: $target"
       ((failed++))
     fi
-  done <<< "$targets"
+  done
 
   echo ""
   if [[ $failed -gt 0 ]]; then
@@ -154,20 +229,30 @@ cmd_version() {
 # ai-skills help
 # ─────────────────────────────────────────────
 cmd_help() {
-  echo "Usage: ai-skills <command>"
+  echo "Usage: ai-skills <command> [options]"
   echo ""
   echo "Commands:"
-  echo "  update     영구 clone을 pull하고 기록된 모든 설치 대상을 재설치(--update)"
-  echo "  version    로컬 설치 버전과 원격 최신 버전을 비교"
-  echo "  help       이 도움말 출력"
+  echo "  update [options]   영구 clone을 pull하고 기록된 설치 대상을 재설치(--update)"
+  echo "  version            로컬 설치 버전과 원격 최신 버전을 비교"
+  echo "  help               이 도움말 출력"
+  echo ""
+  echo "update options:"
+  echo "  --claude   claude 대상만 업데이트"
+  echo "  --cursor   cursor 대상만 업데이트"
+  echo "  --codex    codex 대상만 업데이트"
+  echo "  --all      확인 없이 기록된 모든 대상 업데이트"
+  echo ""
+  echo "옵션 없이 'ai-skills update'를 실행하면, 기록된 대상이 둘 이상일 때"
+  echo "어떤 것을 업데이트할지 대화형으로 선택할 수 있습니다."
 }
 
 # ─────────────────────────────────────────────
 # Dispatch
 # ─────────────────────────────────────────────
 cmd="${1:-help}"
+[[ $# -gt 0 ]] && shift
 case "$cmd" in
-  update)  cmd_update ;;
+  update)  cmd_update "$@" ;;
   version) cmd_version ;;
   help|-h|--help) cmd_help ;;
   *) error "알 수 없는 명령: $cmd (ai-skills help 참고)" ;;
