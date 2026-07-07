@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.6.1] - 2026-07-07
+
+### Changed
+
+- `install.sh --update`: 변경된 파일마다 diff를 보여주고 overwrite/skip/show-diff를 묻던 프롬프트를 제거 — `--update` 실행 시 변경된 파일은 항상 최신 버전으로 자동 반영
+- `install.sh`: 설치 완료 시 물어보던 "Browse 지금 빌드할까요?" 프롬프트 제거 — browse 바이너리는 `/qa`, `/browse` 스킬이 실제로 처음 사용될 때 없으면 그때 빌드 여부를 확인 (`.claude/skills/qa/SKILL.md`, `.claude/skills/browse/SKILL.md`의 기존 Setup 단계)
+
 ## [0.6.0] - 2026-07-07
 
 ### Added

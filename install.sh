@@ -9,7 +9,7 @@ set -euo pipefail
 REPO_URL="https://github.com/paycrux/ai-skills.git"
 MARKER_START="<!-- AI-SKILLS:START -->"
 MARKER_END="<!-- AI-SKILLS:END -->"
-VERSION="0.6.0"
+VERSION="0.6.1"
 
 # Permanent state directory (persists across installs so `ai-skills update` works)
 AI_SKILLS_HOME="$HOME/.ai-skills"
@@ -264,31 +264,9 @@ copy_dir() {
         if diff -q "$file" "$dest_file" > /dev/null 2>&1; then
           ((skipped++))
         else
-          warn "Changed: $label/$rel"
-          if ! ensure_tty; then
-            warn "No interactive terminal available — defaulting to skip. Re-run in a terminal to overwrite selectively."
-            ((skipped++))
-            continue
-          fi
-          echo ""
-          diff --color=auto -u "$dest_file" "$file" | head -30 || true
-          echo ""
-          echo -e "  ${CYAN}o)${NC} Overwrite  ${CYAN}s)${NC} Skip  ${CYAN}d)${NC} Show full diff"
-          local answer=""
-          while [[ "$answer" != "o" && "$answer" != "s" ]]; do
-            read -rp "  > " answer <&3
-            if [[ "$answer" == "d" ]]; then
-              diff --color=auto -u "$dest_file" "$file" || true
-              echo ""
-              echo -e "  ${CYAN}o)${NC} Overwrite  ${CYAN}s)${NC} Skip"
-            fi
-          done
-          if [[ "$answer" == "o" ]]; then
-            cp "$file" "$dest_file"
-            ((count++))
-          else
-            ((skipped++))
-          fi
+          info "Updated: $label/$rel"
+          cp "$file" "$dest_file"
+          ((count++))
         fi
       else
         warn "Skipped (already exists): $label/$rel"
@@ -871,31 +849,9 @@ record_install
 install_cli
 register_path
 
-# ─────────────────────────────────────────────
-# Browse setup (optional)
-# ─────────────────────────────────────────────
-BROWSE_SETUP="$TARGET_DIR/skills/browse/setup.sh"
-if [[ -f "$BROWSE_SETUP" ]]; then
-  if ! ensure_tty; then
-    info "Browse (headless browser for /qa) detected. No interactive terminal available — skipping build. Build later with: bash $BROWSE_SETUP"
-  else
-    echo ""
-    echo -e "${CYAN}Browse (headless browser for /qa) detected.${NC}"
-    echo -e "  Browse requires bun + Playwright Chromium (~200MB)."
-    echo -e "  ${CYAN}1)${NC} Build now"
-    echo -e "  ${CYAN}2)${NC} Skip (build later with: bash $BROWSE_SETUP)"
-    read -rp "> " browse_choice <&3
-    case $browse_choice in
-      1)
-        info "Building browse..."
-        bash "$BROWSE_SETUP" && ok "browse ready!" || warn "browse build failed. Run manually: bash $BROWSE_SETUP"
-        ;;
-      *)
-        info "Skipped. Build later: bash $BROWSE_SETUP"
-        ;;
-    esac
-  fi
-fi
+# Note: browse (headless browser for /qa) is intentionally NOT built here.
+# /qa and /browse detect a missing binary on first use and build it then —
+# see the "Setup" step in their SKILL.md files.
 
 echo ""
 ok "Done! ai-skills installed to ${TARGET_DIR}/"
