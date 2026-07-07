@@ -9,7 +9,20 @@ set -euo pipefail
 REPO_URL="https://github.com/paycrux/ai-skills.git"
 MARKER_START="<!-- AI-SKILLS:START -->"
 MARKER_END="<!-- AI-SKILLS:END -->"
-VERSION="0.4.5"
+VERSION="0.5.0"
+
+# Permanent state directory (persists across installs so `ai-skills update` works)
+AI_SKILLS_HOME="$HOME/.ai-skills"
+AI_SKILLS_REPO="$AI_SKILLS_HOME/repo"
+AI_SKILLS_BIN="$AI_SKILLS_HOME/bin"
+INSTALLS_JSON="$AI_SKILLS_HOME/installs.json"
+
+# Dedicated PATH markers for shell rc files (separate from the CLAUDE.md markers)
+PATH_MARKER_START="# AI-SKILLS-PATH:START"
+PATH_MARKER_END="# AI-SKILLS-PATH:END"
+
+# Set by register_path when a shell rc is modified — drives the final reload notice
+NEED_SHELL_RELOAD=""
 
 # Ensure interactive input works even when piped (curl | bash)
 if [[ ! -t 0 ]]; then
@@ -176,12 +189,21 @@ if $LOCAL; then
   fi
   info "Using local source: $SRC_DIR"
 else
-  TMP_DIR=$(mktemp -d)
-  trap 'rm -rf "$TMP_DIR"' EXIT
-
-  info "Cloning ai-skills repository..."
-  git clone --depth 1 --quiet "$REPO_URL" "$TMP_DIR"
-  SRC_DIR="$TMP_DIR/.claude"
+  # Permanent clone at ~/.ai-skills/repo — kept across installs so `ai-skills update` can pull.
+  mkdir -p "$AI_SKILLS_HOME"
+  if [[ -d "$AI_SKILLS_REPO/.git" ]]; then
+    info "Updating ai-skills repository ($AI_SKILLS_REPO)..."
+    if ! git -C "$AI_SKILLS_REPO" pull --ff-only --quiet; then
+      error "Failed to update $AI_SKILLS_REPO (git pull --ff-only failed).
+  The permanent clone may be dirty, mid-rebase, or diverged from the remote.
+  Fix: rm -rf $AI_SKILLS_REPO   then re-run this installer."
+    fi
+  else
+    info "Cloning ai-skills repository to $AI_SKILLS_REPO..."
+    git clone --quiet "$REPO_URL" "$AI_SKILLS_REPO" \
+      || error "git clone failed — check your network or the repository URL ($REPO_URL)."
+  fi
+  SRC_DIR="$AI_SKILLS_REPO/.claude"
 
   if [[ ! -d "$SRC_DIR" ]]; then
     error ".claude directory not found in repository"
@@ -269,6 +291,9 @@ cleanup_legacy_skills() {
   local removed_skills=(
     "git-branch"
     "pr"
+    "test-case"
+    "evaluate"
+    "finalize"
   )
 
   local cleaned=0
@@ -280,7 +305,7 @@ cleanup_legacy_skills() {
   done
 
   if [[ $cleaned -gt 0 ]]; then
-    ok "Cleaned up ${cleaned} legacy skill directories (consolidated into git-pr in v0.4.3)"
+    ok "Cleaned up ${cleaned} legacy skill directories (git-branch/pr consolidated into git-pr in v0.4.3; test-case merged into qa-guide in v0.4.6; evaluate/finalize removed in v0.4.7)"
   fi
 }
 
@@ -484,9 +509,7 @@ All code changes are executed directly — no sub-agents.
 |----------|------|---------|
 | task-plan | @.cursor/skills/task-plan/SKILL.md | Task planning + document generation |
 | implement | @.cursor/skills/implement/SKILL.md | Document-driven phased implementation |
-| evaluate | @.cursor/skills/evaluate/SKILL.md | Checklist-based code quality evaluation |
 | qa-guide | @.cursor/skills/qa-guide/SKILL.md | QA test guide generation |
-| test-case | @.cursor/skills/test-case/SKILL.md | Test case generation |
 | study | @.cursor/skills/study/SKILL.md | Study report writing |
 
 ## Plan Storage Path
@@ -539,6 +562,95 @@ ${MARKER_END}"
     } > "$dest_file"
     ok "AGENTS.md merged (ai-skills section prepended)"
   fi
+}
+
+# ─────────────────────────────────────────────
+# Helper: record this install so `ai-skills update` can replay it
+# ─────────────────────────────────────────────
+record_install() {
+  # --local installs are dev/test only — never tracked as update targets
+  $LOCAL && return
+
+  mkdir -p "$AI_SKILLS_HOME"
+  python3 - "$INSTALLS_JSON" "$MODE" "$SCOPE" "$TARGET_DIR" <<'PYEOF'
+import json, sys, os
+
+path, mode, scope, target = sys.argv[1:5]
+
+data = []
+if os.path.exists(path):
+    try:
+        with open(path) as f:
+            data = json.load(f)
+        if not isinstance(data, list):
+            data = []
+    except (ValueError, OSError):
+        data = []
+
+# dedupe by target_dir — a re-install of the same target updates the record in place
+data = [e for e in data if isinstance(e, dict) and e.get("target_dir") != target]
+data.append({"mode": mode, "scope": scope, "target_dir": target})
+
+with open(path, "w") as f:
+    json.dump(data, f, indent=2)
+    f.write("\n")
+PYEOF
+  ok "Install recorded (${MODE}/${SCOPE} → ${TARGET_DIR})"
+}
+
+# ─────────────────────────────────────────────
+# Helper: install the `ai-skills` CLI into ~/.ai-skills/bin
+# ─────────────────────────────────────────────
+install_cli() {
+  # --local installs never register the global CLI (dev/test path)
+  $LOCAL && return
+
+  # SRC_DIR is "<repo>/.claude"; bin/ai-skills lives at the repo root
+  local bin_src
+  bin_src="$(dirname "$SRC_DIR")/bin/ai-skills"
+  if [[ ! -f "$bin_src" ]]; then
+    warn "bin/ai-skills not found in repository — skipping CLI install"
+    return
+  fi
+
+  mkdir -p "$AI_SKILLS_BIN"
+  cp "$bin_src" "$AI_SKILLS_BIN/ai-skills"
+  chmod +x "$AI_SKILLS_BIN/ai-skills"
+  ok "CLI installed → $AI_SKILLS_BIN/ai-skills"
+}
+
+# ─────────────────────────────────────────────
+# Helper: register ~/.ai-skills/bin on PATH via the shell rc file
+# ─────────────────────────────────────────────
+register_path() {
+  $LOCAL && return
+
+  local shell_name rc
+  shell_name="$(basename "${SHELL:-}")"
+  case "$shell_name" in
+    zsh)  rc="$HOME/.zshrc" ;;
+    bash) rc="$HOME/.bashrc" ;;
+    *)
+      warn "Unsupported shell (${shell_name:-unknown}) — add this to your shell rc manually:"
+      echo '  export PATH="$HOME/.ai-skills/bin:$PATH"'
+      return
+      ;;
+  esac
+
+  # Idempotent — skip if our marker block is already present
+  if [[ -f "$rc" ]] && grep -qF "$PATH_MARKER_START" "$rc"; then
+    info "PATH already registered in $rc"
+    return
+  fi
+
+  {
+    echo ""
+    echo "$PATH_MARKER_START"
+    echo 'export PATH="$HOME/.ai-skills/bin:$PATH"'
+    echo "$PATH_MARKER_END"
+  } >> "$rc"
+  ok "PATH registered in $rc"
+  NEED_SHELL_RELOAD="$rc"
 }
 
 # ─────────────────────────────────────────────
@@ -607,6 +719,13 @@ elif [[ "$MODE" == "cursor" ]]; then
 fi
 
 # ─────────────────────────────────────────────
+# Record install + set up the `ai-skills` CLI
+# ─────────────────────────────────────────────
+record_install
+install_cli
+register_path
+
+# ─────────────────────────────────────────────
 # Browse setup (optional)
 # ─────────────────────────────────────────────
 BROWSE_SETUP="$TARGET_DIR/skills/browse/setup.sh"
@@ -631,5 +750,19 @@ fi
 echo ""
 ok "Done! ai-skills installed to ${TARGET_DIR}/"
 echo ""
-echo -e "  ${CYAN}Update:${NC}  curl -fsSL https://raw.githubusercontent.com/paycrux/ai-skills/main/install.sh | bash -s -- --${MODE} --${SCOPE} --update"
-echo ""
+
+if ! $LOCAL; then
+  echo -e "  ${CYAN}Update:${NC}  ai-skills update"
+  echo -e "          (또는 CLI 미등록 환경: curl -fsSL https://raw.githubusercontent.com/paycrux/ai-skills/main/install.sh | bash -s -- --${MODE} --${SCOPE} --update)"
+  echo ""
+  if [[ -n "$NEED_SHELL_RELOAD" ]]; then
+    warn "'ai-skills' 커맨드를 쓰려면 새 터미널을 열거나 다음을 실행하세요:"
+    echo -e "    source $NEED_SHELL_RELOAD"
+    echo ""
+  fi
+  info "PATH 우선순위 확인: which ai-skills  (다른 동명 실행 파일이 앞설 수 있음)"
+  echo ""
+else
+  echo -e "  ${CYAN}Update:${NC}  curl -fsSL https://raw.githubusercontent.com/paycrux/ai-skills/main/install.sh | bash -s -- --${MODE} --${SCOPE} --update"
+  echo ""
+fi

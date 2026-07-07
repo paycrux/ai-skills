@@ -6,23 +6,20 @@ argument-hint: [task-folder-name or jira-issue]
 
 # /qa-guide — QA Test Guide Generator
 
-Reads the task-plan documents (`README.md`, `spec.md`, `tasks.md`, `progress.md`, `findings.md`) and produces a structured QA test guide in markdown that the QA team can use immediately.
+Reads the task-plan documents (`tasks.md`, `spec.md`) and produces a structured QA test guide in markdown that the QA team can use for manual testing.
 
 ## Argument Parsing
 
 - `/qa-guide` — auto-detect the most recent in-progress or completed plan folder
-- `/qa-guide <task-folder-name>` — use `docs/<task-folder-name>/`
-- `/qa-guide <jira-issue>` — find the folder whose `README.md` contains the issue number
+- `/qa-guide <task-folder-name>` — use `docs/<task-folder-name>/plans/`
+- `/qa-guide <jira-issue>` — find the folder whose `tasks.md` header `이슈:` field contains the issue number
 
 ## Source Discovery
 
-1. If no argument is given, scan `docs/` for a folder whose `README.md` status is "진행중" or "완료".
-2. Once the folder is identified, read all five files:
-   - `README.md` — background, goals, scope, issue number
-   - `spec.md` — behavior flows, edge cases
-   - `tasks.md` — completed feature checklist
-   - `progress.md` — actual implementation details, changed files, notable findings
-   - `findings.md` — technical decisions, platform differences
+1. If no argument is given, grep `docs/*/plans/tasks.md` for header field `상태: 진행중` or `상태: 완료`. If multiple folders match, ask the user to choose.
+2. Once the folder is identified, read both files under `docs/<task-folder-name>/plans/`:
+   - `tasks.md` — header (issue, task type, status), overview, per-phase checklist, `## 진행 기록`
+   - `spec.md` — feature flows, state definitions, edge cases
 
 ## Output
 
@@ -42,19 +39,19 @@ Use the template below as the default.
 
 ## 개발 개요
 
-(구현된 기능 요약 — 2~4줄. README.md와 tasks.md 기준)
+(구현된 기능 요약 — 2~4줄. tasks.md 헤더/개요 기준)
 
 ---
 
 ## 테스트 환경
 
-### 테스트 기기
+### 사전 조건
 
-- (플랫폼별 기기 요건 — Android / iOS)
+- (로그인 요구사항, 필요 권한, 기기/브라우저 요건)
 
-### 사전 준비
+### 테스트 데이터
 
-- (테스트 전 필요한 설정, 계정, 권한, 데이터 등)
+- (필요한 구체적 데이터: 계정, 상품, 설정 등)
 
 ---
 
@@ -80,12 +77,21 @@ Use the template below as the default.
 5. Condition column: app state (foreground / background / terminated), device, preconditions.
 6. Scenario numbers follow `{group}-{index}` format (e.g., 1-1, 2-3).
 7. If platform differences exist, note Android/iOS in the Condition column.
+8. **When a feature has 2+ toggles/states/options worth checking together** (e.g. logged-in/logged-out × free/premium), add one extra row per combination directly in the same scenario table instead of a separate matrix — make the Condition column specific about which combination is under test.
 
 ## Language
 
 - Write in **Korean** (QA team's working language)
 - Keep technical terms as-is (포그라운드, 백그라운드, FCM, etc.)
 - Keep table cells concise (1–2 lines per cell)
+
+## Communication Style
+
+Apply the `caveman` skill to both:
+- Conversational output in this flow (completion report)
+- Free-text prose inside `qa-guide.md` (개발 개요, 사전 조건/테스트 데이터 bullets)
+
+Keep structured elements — the scenario table, headers — in their normal format. Do not caveman-ify those.
 
 ## Completion
 

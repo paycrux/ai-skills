@@ -47,7 +47,7 @@
 - Multi-step workflow with parallel agents
 - Deep reference material needed conditionally
 - Automated scripts for data collection
-- Example: `/evaluate`, `/task-plan`
+- Example: `/skill-creator`, `/task-plan`
 
 ## Progressive Loading Behavior
 

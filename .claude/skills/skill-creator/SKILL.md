@@ -118,6 +118,10 @@ Present validation results and fix any issues.
 
 Ask the user where to place the skill, then write all files.
 
+## Communication Style
+
+Apply the `caveman` skill to conversational output in this flow (Step 1 questions, Step 6 validation results, Step 7 placement prompt). This does not apply to the scaffolded skill's own SKILL.md/references/templates content — those follow the target skill's own conventions.
+
 ## Rules
 
 - Never create a skill with only SKILL.md if it has structured output — always use `templates/`
