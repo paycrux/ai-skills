@@ -9,7 +9,7 @@ set -euo pipefail
 REPO_URL="https://github.com/paycrux/ai-skills.git"
 MARKER_START="<!-- AI-SKILLS:START -->"
 MARKER_END="<!-- AI-SKILLS:END -->"
-VERSION="0.5.2"
+VERSION="0.6.0"
 
 # Permanent state directory (persists across installs so `ai-skills update` works)
 AI_SKILLS_HOME="$HOME/.ai-skills"
@@ -24,12 +24,25 @@ PATH_MARKER_END="# AI-SKILLS-PATH:END"
 # Set by register_path when a shell rc is modified — drives the final reload notice
 NEED_SHELL_RELOAD=""
 
-# Ensure interactive input works even when piped (curl | bash)
-if [[ ! -t 0 ]]; then
-  exec 3</dev/tty || error "Cannot open /dev/tty — run with explicit flags: bash install.sh --claude --global"
-else
-  exec 3<&0
-fi
+# Lazily bind fd 3 to an interactive input source (stdin if it's a tty, else
+# /dev/tty for the `curl | bash` case). Only called right before a prompt
+# actually needs to read something — fully-flagged, non-interactive runs
+# (CI, `--claude --global --update`, etc.) never touch this and never need
+# a controlling terminal.
+TTY_READY=false
+ensure_tty() {
+  $TTY_READY && return 0
+  if [[ -t 0 ]]; then
+    exec 3<&0
+    TTY_READY=true
+    return 0
+  fi
+  if { exec 3</dev/tty; } 2>/dev/null; then
+    TTY_READY=true
+    return 0
+  fi
+  return 1
+}
 
 # Colors
 RED='\033[0;31m'
@@ -126,6 +139,7 @@ done
 # Interactive selection if not specified
 # ─────────────────────────────────────────────
 if [[ -z "$MODE" ]]; then
+  ensure_tty || error "No interactive terminal available — run with explicit flags: bash install.sh --claude --global (see --help)"
   echo ""
   echo -e "${CYAN}Which editor?${NC}"
   echo "  1) Claude Code"
@@ -141,6 +155,7 @@ if [[ -z "$MODE" ]]; then
 fi
 
 if [[ -z "$SCOPE" ]]; then
+  ensure_tty || error "No interactive terminal available — run with explicit flags: bash install.sh --${MODE} --global (see --help)"
   echo ""
   echo -e "${CYAN}Install scope?${NC}"
   echo "  1) Global  (~/.${MODE}/) — all projects"
@@ -169,7 +184,9 @@ fi
 
 # Auto-detect existing installation for interactive mode
 if [[ -d "$TARGET_DIR/skills" || -d "$TARGET_DIR/rules" ]]; then
-  if ! $UPDATE; then
+  if ! $UPDATE && ! ensure_tty; then
+    warn "Existing installation detected at ${TARGET_DIR}/ — no interactive terminal available, defaulting to fresh install (skip existing files). Pass --update to overwrite changed files."
+  elif ! $UPDATE; then
     echo ""
     warn "Existing installation detected at ${TARGET_DIR}/"
     echo -e "  ${CYAN}1)${NC} Update (overwrite changed files with confirmation)"
@@ -248,6 +265,11 @@ copy_dir() {
           ((skipped++))
         else
           warn "Changed: $label/$rel"
+          if ! ensure_tty; then
+            warn "No interactive terminal available — defaulting to skip. Re-run in a terminal to overwrite selectively."
+            ((skipped++))
+            continue
+          fi
           echo ""
           diff --color=auto -u "$dest_file" "$file" | head -30 || true
           echo ""
@@ -854,21 +876,25 @@ register_path
 # ─────────────────────────────────────────────
 BROWSE_SETUP="$TARGET_DIR/skills/browse/setup.sh"
 if [[ -f "$BROWSE_SETUP" ]]; then
-  echo ""
-  echo -e "${CYAN}Browse (headless browser for /qa) detected.${NC}"
-  echo -e "  Browse requires bun + Playwright Chromium (~200MB)."
-  echo -e "  ${CYAN}1)${NC} Build now"
-  echo -e "  ${CYAN}2)${NC} Skip (build later with: bash $BROWSE_SETUP)"
-  read -rp "> " browse_choice <&3
-  case $browse_choice in
-    1)
-      info "Building browse..."
-      bash "$BROWSE_SETUP" && ok "browse ready!" || warn "browse build failed. Run manually: bash $BROWSE_SETUP"
-      ;;
-    *)
-      info "Skipped. Build later: bash $BROWSE_SETUP"
-      ;;
-  esac
+  if ! ensure_tty; then
+    info "Browse (headless browser for /qa) detected. No interactive terminal available — skipping build. Build later with: bash $BROWSE_SETUP"
+  else
+    echo ""
+    echo -e "${CYAN}Browse (headless browser for /qa) detected.${NC}"
+    echo -e "  Browse requires bun + Playwright Chromium (~200MB)."
+    echo -e "  ${CYAN}1)${NC} Build now"
+    echo -e "  ${CYAN}2)${NC} Skip (build later with: bash $BROWSE_SETUP)"
+    read -rp "> " browse_choice <&3
+    case $browse_choice in
+      1)
+        info "Building browse..."
+        bash "$BROWSE_SETUP" && ok "browse ready!" || warn "browse build failed. Run manually: bash $BROWSE_SETUP"
+        ;;
+      *)
+        info "Skipped. Build later: bash $BROWSE_SETUP"
+        ;;
+    esac
+  fi
 fi
 
 echo ""

@@ -242,10 +242,30 @@ task-plan에서 생성한 문서(`tasks.md`, `spec.md`) 두 개를 읽고, 단�
 
 **QA 테스트 가이드 생성**
 
-QA 팀에게 전달할 테스트 가이드를 문서로 작성합니다.
+task-plan의 `tasks.md` 안에 `## QA 가이드` 섹션을 작성합니다. 별도 파일을 만들지 않고 `tasks.md` 하나를 단일 소스로 유지합니다. `tasks.md` 헤더에 Jira 이슈 키가 있으면 `acli`로 해당 섹션을 이슈 설명에도 동기화합니다(acli 미설치/미로그인 시 자동 설치·로그인 없이 안내만 표시).
 
 ```
 /qa-guide <문서 혹은 요구사항>
+```
+
+### /create-prd
+
+**대형 문서 분할**
+
+큰 마크다운 문서(로컬 파일 또는 Notion URL/page ID)를 H2 제목 기준으로 분할해 `docs/<name>/prd/`에 섹션별 파일과, 각 파일로 링크된 `0-overview.md`를 생성합니다. Notion 소스는 `notion-cli`로 먼저 마크다운으로 가져온 뒤 분할합니다.
+
+```
+/create-prd <마크다운 파일 경로 또는 Notion URL/page ID>
+```
+
+### /notion-do
+
+**Notion 문서 읽고 임의 작업 수행**
+
+`notion-cli`로 Notion 링크를 읽어온 뒤, 요약·필드 추출·질문 답변·포맷 변환·번역·체크리스트 작성 등 사용자가 요청하는 작업을 자유롭게 수행합니다.
+
+```
+/notion-do <notion-url-or-page-id> <하고 싶은 작업>
 ```
 
 ### /browse
@@ -372,6 +392,8 @@ stop caveman         # 일반 모드로 복귀
 │   ├── git-pr/SKILL.md
 │   ├── study/SKILL.md
 │   ├── qa-guide/SKILL.md
+│   ├── create-prd/SKILL.md
+│   ├── notion-do/SKILL.md
 │   ├── skill-creator/SKILL.md
 │   └── caveman/SKILL.md
 ├── docs/

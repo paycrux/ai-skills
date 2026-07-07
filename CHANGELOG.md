@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.6.0] - 2026-07-07
+
+### Added
+
+- `create-prd` 스킬 추가 — 큰 마크다운 문서(로컬 파일 또는 Notion URL/page ID)를 H2 제목 기준으로 분할해 `docs/<name>/prd/`에 섹션별 파일 + 목차가 있는 `0-overview.md`를 생성
+- `notion-do` 스킬 추가 — Notion 링크를 `notion-cli`로 읽어와 요약/추출/질문답변/변환/번역 등 사용자가 요청하는 임의의 작업을 수행하는 범용 Notion 액션 스킬
+- `install.sh`: 실행 초반에 `/dev/tty`를 무조건 열어보던 로직을 제거하고, 실제 프롬프트가 필요한 시점에만 지연 바인딩하는 `ensure_tty()`로 교체. `--claude --global --update`처럼 필요한 플래그가 모두 주어진 비대화형 실행(CI, 파이프 등)은 더 이상 터미널을 요구하지 않음
+
+### Fixed
+
+- `install.sh`: 컨트롤링 터미널이 없는 환경에서 `error()`가 정의되기도 전에 호출되어 알아보기 힘든 `command not found` 오류로 죽던 문제 수정 — 이제 각 프롬프트 지점에서 안전한 기본값으로 대체(기존 설치 감지 시 fresh install, 파일 변경 diff 시 skip, browse 빌드 시 skip)하고 상황을 안내하는 경고를 출력
+- `qa-guide`: QA 가이드를 별도 `qa-guide.md` 파일 대신 `tasks.md` 안의 `## QA 가이드` 섹션으로 작성하도록 변경 — task-plan 산출물을 `tasks.md` 하나로 유지. `tasks.md` 헤더에 Jira 이슈 키가 있으면 `acli`로 해당 섹션을 이슈 설명에도 동기화(acli 미설치/미로그인 시 스킵하고 안내만 표시)
+
 ## [0.5.2] - 2026-07-07
 
 ### Added

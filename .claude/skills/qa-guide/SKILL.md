@@ -1,12 +1,12 @@
 ---
 name: qa-guide
-description: Generate a QA test guide in markdown from task-plan documents.
+description: Write a QA test guide as a section inside task-plan's tasks.md, optionally syncing it to the Jira issue description.
 argument-hint: [task-folder-name or jira-issue]
 ---
 
 # /qa-guide — QA Test Guide Generator
 
-Reads the task-plan documents (`tasks.md`, `spec.md`) and produces a structured QA test guide in markdown that the QA team can use for manual testing.
+Reads the task-plan documents (`tasks.md`, `spec.md`) and writes a QA test guide as a `## QA 가이드` section directly inside `tasks.md`. This is not a separate document — task-plan's `tasks.md` stays the single source of truth, and the QA team reads the guide from the same file.
 
 ## Argument Parsing
 
@@ -23,47 +23,37 @@ Reads the task-plan documents (`tasks.md`, `spec.md`) and produces a structured 
 
 ## Output
 
-**Save path:** `docs/<task-folder-name>/qa-guide.md`
+**Target file:** `docs/<task-folder-name>/plans/tasks.md` — write the guide as a `## QA 가이드` section inside this file. Do not create a separate `qa-guide.md` file.
 
-Overwrite if the file already exists (always keep it up to date).
+- If a `## QA 가이드` section already exists, replace it in place (always keep it up to date).
+- If it doesn't exist yet, insert it right before the `## 진행 기록` section. If `tasks.md` has no `## 진행 기록` section, append it at the end of the file.
 
 ## Document Structure
 
-Use the template below as the default.
+Use the template below as the default for the section content.
 
 ```markdown
-# QA 테스트 가이드 — {Feature Name}
+## QA 가이드
 
-> 이슈: {JIRA-ISSUE}
-> 작성일: {today}
+### 테스트 환경
 
-## 개발 개요
-
-(구현된 기능 요약 — 2~4줄. tasks.md 헤더/개요 기준)
-
----
-
-## 테스트 환경
-
-### 사전 조건
+#### 사전 조건
 
 - (로그인 요구사항, 필요 권한, 기기/브라우저 요건)
 
-### 테스트 데이터
+#### 테스트 데이터
 
 - (필요한 구체적 데이터: 계정, 상품, 설정 등)
 
----
+### 테스트 시나리오
 
-## 테스트 시나리오
-
-### {기능 그룹 1}
+#### {기능 그룹 1}
 
 | #   | 조건 | 액션 | 기대 결과 |
 | --- | ---- | ---- | --------- |
 | 1-1 |      |      |           |
 
-### {기능 그룹 2}
+#### {기능 그룹 2}
 
 ...
 ```
@@ -89,13 +79,41 @@ Use the template below as the default.
 
 Apply the `caveman` skill to both:
 - Conversational output in this flow (completion report)
-- Free-text prose inside `qa-guide.md` (개발 개요, 사전 조건/테스트 데이터 bullets)
+- Free-text prose inside the `## QA 가이드` section (사전 조건/테스트 데이터 bullets)
 
 Keep structured elements — the scenario table, headers — in their normal format. Do not caveman-ify those.
 
+## Jira Sync
+
+The `## QA 가이드` section in `tasks.md` is written unconditionally as the primary output. After that, check the `tasks.md` header for an `이슈:` field — if it contains a Jira issue key, additionally try to mirror just that section into the issue's description so the QA team sees it in Jira too. If there is no issue key, skip this section entirely — do not run any `acli` command.
+
+### Readiness check
+
+Run `acli jira auth status`.
+
+- If the command is not found (acli not installed), or it reports the user is not logged in, **do not install or log in automatically**. Skip the Jira sync and show the recommendation block below instead — the `## QA 가이드` section is already in `tasks.md`, so nothing is lost.
+- Only proceed to the update steps below if acli is installed and authenticated.
+
+### Update steps (acli ready)
+
+1. **Convert the `## QA 가이드` section to ADF** — convert just that section's markdown to Atlassian Document Format (ADF) JSON: headings, paragraphs, lists, code spans, horizontal rules, and tables become ordinary ADF nodes. Do not use `taskList`/`taskItem` nodes; represent any checklist-style line as a bullet list item whose text starts with `[ ]`.
+2. **Update the issue** — `acli jira workitem edit --key "<ISSUE-KEY>" --description-file "<adf-file>" --yes`
+3. **Verify** — `acli jira workitem view <ISSUE-KEY> --fields description --json` and confirm the description contains `0` `taskItem` nodes and the expected heading/list/table structure.
+
+### When acli isn't ready
+
+Don't ask to install it — just surface a recommendation:
+
+> Jira 자동 업데이트는 스킵했어 (acli 미설치 또는 로그인 안 됨). QA 섹션은 이미 tasks.md에 반영했으니 내용은 안 빠졌어.
+> 다음에 자동 동기화하려면:
+> 1. 설치 — macOS: `brew install acli` (다른 OS는 Atlassian 공식 문서 참고)
+> 2. 로그인 — `acli jira auth login`
+> 준비되면 `/qa-guide`를 다시 실행하면 Jira 이슈 설명까지 자동으로 업데이트돼.
+
 ## Completion
 
-Report the file path and a brief summary:
+Report the target file, a brief summary, and the Jira sync outcome:
 
-> `qa-guide.md` saved → `docs/{folder}/qa-guide.md`
+> `tasks.md`에 QA 가이드 반영 완료 → `docs/{folder}/plans/tasks.md`
 > {N} scenarios across {M} groups
+> Jira {ISSUE-KEY} 이슈 설명 업데이트 완료 ✅ (or: 스킵 — 이슈 없음 / acli 미설치·미로그인 → 설치·로그인 권장 안내 표시)
