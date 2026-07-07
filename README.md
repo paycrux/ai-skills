@@ -136,14 +136,19 @@ curl -fsSL https://raw.githubusercontent.com/paycrux/ai-skills/main/install.sh |
 
 **문서 기반 단계별 구현**
 
-task-plan에서 생성한 문서(spec, tasks, findings, ui-spec)를 읽고, 단계별로 직접 구현합니다. 서브에이전트 없이 메인 대화에서 코드를 작성합니다.
+task-plan에서 생성한 문서(`tasks.md`, `spec.md`) 두 개를 읽고, 단계별로 직접 구현합니다. 서브에이전트 없이 메인 대화에서 코드를 작성합니다.
 
 ```
-/implement <task-folder-name>    # docs/<task-folder-name>/ 참조
-/implement                       # 상태가 "진행중"인 작업 자동 감지
+/implement <task-folder-name>    # docs/<task-folder-name>/plans/ 참조
+/implement                       # tasks.md 헤더 상태가 "진행중"인 작업 자동 감지
+/implement <task-name> phase 2   # 특정 Phase만 실행
 ```
 
-구현 사이클: 단계별 접근 요약 → 사용자 승인 → 직접 구현 → 진행 상황 업데이트
+구현 사이클: 단계별 접근 요약 → 사용자 승인 → 직접 구현 → `tasks.md` 체크박스 토글 + `## 진행 기록` 누적
+
+- 진행 기록은 별도 `progress.md`가 아닌 `tasks.md`의 `## 진행 기록` 섹션에 누적됩니다.
+- 전체 완료 시 `tasks.md` 헤더 `상태:` 필드가 `완료`로 변경됩니다.
+- 렌더링 이슈는 구조(컴포넌트 분해 / 상태 위치 / key / 파생 값)로 먼저 해결합니다. `useMemo`/`useCallback`/`React.memo` 같은 메모이제이션 훅은 **사용자가 명시적으로 요청할 때만** 도입합니다.
 
 ### /evaluate
 
@@ -299,10 +304,12 @@ PR 본문 구성:
 
 프로젝트에 자동 적용되는 코딩 규칙입니다.
 
-| 규칙             | 적용 대상                                                             |
-| ---------------- | --------------------------------------------------------------------- |
-| react-typescript | React + TypeScript 구현 시 (Hooks, 불변성, 컴포넌트 패턴, 성능, 타입) |
-| frontend-design  | 디자인 레퍼런스 없이 UI를 직접 만들 때 (AI Slop 방지, 맥락 기반 선택) |
+| 규칙             | 적용 대상                                                                                      |
+| ---------------- | ---------------------------------------------------------------------------------------------- |
+| react-typescript | React + TypeScript 구현 시 (Hooks, 불변성, 렌더링, 컴포넌트 패턴, 메모이제이션, 타입)          |
+| frontend-design  | 디자인 레퍼런스 없이 UI를 직접 만들 때 (AI Slop 방지, 맥락 기반 선택)                          |
+
+> `react-typescript` 룰에서 **렌더링**과 **메모이제이션**은 별개 카테고리입니다. 리렌더 이슈는 구조적 해결(분해/격리/상태 위치/key)을 먼저 시도하고, 메모이제이션 훅(`useMemo`/`useCallback`/`React.memo`)은 사용자가 명시적으로 요청할 때만 도입합니다.
 
 ---
 
