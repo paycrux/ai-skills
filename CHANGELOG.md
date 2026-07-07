@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.5.1] - 2026-07-07
+
+### Added
+
+- `ai-skills update`: 기록된 설치 대상이 둘 이상이면 어떤 것을 업데이트할지 번호로 고르는 대화형 프롬프트 추가 (기존엔 항상 전부 갱신)
+- `ai-skills update`에 `--claude` / `--cursor` / `--codex` 필터 플래그 추가 — 지정한 대상만 업데이트
+- `ai-skills update --all` 추가 — 프롬프트 없이 기록된 모든 대상 업데이트 (기존 동작과 동일)
+- `README.md` "업데이트 (`ai-skills` CLI)" 섹션에 대화형 프롬프트 예시와 필터 플래그 표 추가
+
 ## [0.5.0] - 2026-07-07
 
 ### Added
