@@ -17,6 +17,14 @@ Write `docs/{task-name}/plans/tasks.md` + `spec.md` from the user input, then ha
 4. Ask the user to review. Apply requested changes and record them in `tasks.md` under `## 진행 기록`.
 5. Suggest `/implement {name}`.
 
+## Communication Style
+
+Apply the `caveman` skill to both:
+- Conversational output in this flow (review prompt, hand-off message)
+- Free-text prose inside `tasks.md`/`spec.md` (개요, 엣지 케이스 설명 등)
+
+Keep structured elements — headers, checklists, tables, file paths, figma links — in their normal format. Do not caveman-ify those.
+
 ## Notes
 
 - Task type is a header field on `tasks.md`: `작업 종류: 버그 수정 | 기능 개발 | 기능 수정`. There is no type-branching elsewhere.

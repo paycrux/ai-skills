@@ -99,8 +99,7 @@ When all Phases are done:
 1. Verify all items in `tasks.md` are checked
 2. Append a final entry under `## 진행 기록` summarizing completion
 3. Change `tasks.md` header `상태:` field to `완료`
-4. Suggest running `/evaluate` if the user wants a code quality review
-5. **QA guidance** — when the change includes frontend work:
+4. **QA guidance** — when the change includes frontend work:
 
 ```
 구현이 완료되었습니다.
@@ -119,30 +118,13 @@ When the user wants to run specific Phases only:
 - `/implement <task-name> phase 2` — run Phase 2 only
 - `/implement <task-name> phase 2-4` — run Phases 2 through 4
 
-## Step 5: Evaluation-Based Fixes
+## Communication Style
 
-When `evaluate.md` already exists in the task folder and the user requests fixes:
+Apply the `caveman` skill to both:
+- Conversational output in this flow (approach summaries, phase-completion notes, QA guidance message)
+- Free-text prose appended to `tasks.md` (`## 진행 기록` entries, blocker notes)
 
-### 5-1. Read evaluate.md
-
-Read `docs/<task-name>/evaluate.md` to identify the violation list.
-
-### 5-2. Determine Fix Targets
-
-Confirm which items the user specified:
-- "전체 수정" → fix all in CRITICAL → MAJOR → MINOR order
-- Number specification (e.g., "1, 3, 5번 수정해줘") → fix only those items
-- Category specification (e.g., "CRITICAL만 수정해줘") → fix only that severity
-
-### 5-3. Fix Directly
-
-Fix violations directly in the main conversation. Fix scope is **limited to violation items** — no surrounding code refactoring.
-
-### 5-4. Post-Fix Handling
-
-1. Report changes to the user after fixes are complete
-2. If the user requests re-evaluation, run `/evaluate`
-3. Append an evaluation-based fix entry under `tasks.md` `## 진행 기록`
+Keep structured elements — checklists, headers, file paths, code blocks — in their normal format. Do not caveman-ify those.
 
 ## Rules
 
@@ -152,5 +134,4 @@ Fix violations directly in the main conversation. Fix scope is **limited to viol
 - **Update `tasks.md` per Phase** — toggle checkboxes and append to `## 진행 기록` so handoff works even if interrupted
 - **Follow `.claude/rules/react-typescript.md`** for frontend code
 - **렌더링 이슈는 구조 우선 — 메모이제이션 훅(`useMemo`/`useCallback`/`React.memo`)은 사용자 명시 요청 시에만 도입**
-- **Evaluation-based fixes are limited to violation items** — no surrounding code refactoring or extra improvements
 - 산출물과 사용자 소통은 한국어로

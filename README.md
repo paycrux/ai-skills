@@ -10,7 +10,7 @@ AI 엔지니어링을 더 효과적으로 하기 위한 skills와 rules 모음�
 curl -fsSL https://raw.githubusercontent.com/paycrux/ai-skills/main/install.sh | bash
 ```
 
-실행하면 대화형으로 에디터(Claude Code / Cursor)와 설치 범위(Global / Project)를 선택합니다.
+실행하면 대화형으로 에디터(Claude Code / Cursor / Codex)와 설치 범위(Global / Project)를 선택합니다.
 
 ### 옵션 지정 설치
 
@@ -22,13 +22,14 @@ curl -fsSL https://raw.githubusercontent.com/paycrux/ai-skills/main/install.sh |
 | ---------- | ---------------------- |
 | `--claude` | Claude Code용으로 설치 |
 | `--cursor` | Cursor용으로 설치      |
+| `--codex`  | Codex용으로 설치       |
 
 **2) 설치 범위** — 어디에 설치할지 선택합니다.
 
-| 옵션        | 설치 경로                      | 적용 범위                                 |
-| ----------- | ------------------------------ | ----------------------------------------- |
-| `--global`  | `~/.claude/` 또는 `~/.cursor/` | 내 모든 프로젝트에 적용                   |
-| `--project` | `./.claude/` 또는 `./.cursor/` | 현재 프로젝트에만 적용 (팀원과 공유 가능) |
+| 옵션        | 설치 경로                                     | 적용 범위                                 |
+| ----------- | --------------------------------------------- | ----------------------------------------- |
+| `--global`  | `~/.claude/`, `~/.cursor/`, `~/.codex/`       | 내 모든 프로젝트에 적용                   |
+| `--project` | `./.claude/`, `./.cursor/`, `./.codex/`       | 현재 프로젝트에만 적용 (팀원과 공유 가능) |
 
 **조합 예시:**
 
@@ -56,6 +57,14 @@ Cursor + 현재 프로젝트만:
 curl -fsSL https://raw.githubusercontent.com/paycrux/ai-skills/main/install.sh | bash -s -- --cursor --project
 ```
 
+Codex + 전역:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/paycrux/ai-skills/main/install.sh | bash -s -- --codex --global
+```
+
+> Codex는 `~/.codex/`(전역) 또는 `./.codex/`(프로젝트)에 skills·rules를 복사하고, Codex가 읽는 `AGENTS.md`(전역은 `~/.codex/AGENTS.md`, 프로젝트는 루트)에 스킬 참조를 병합합니다. Cursor와 달리 rules는 `.mdc`가 아닌 일반 `.md`로 설치됩니다.
+
 ### 추가 옵션
 
 위 조합에 아래 옵션을 추가로 붙일 수 있습니다.
@@ -65,16 +74,29 @@ curl -fsSL https://raw.githubusercontent.com/paycrux/ai-skills/main/install.sh |
 | `--update`      | 이미 설치된 파일을 최신 버전으로 덮어쓰기  | ai-skills가 업데이트되었을 때 |
 | `--only <type>` | `skills`, `rules`, `docs` 중 하나만 설치   | 특정 항목만 필요할 때         |
 
-이미 설치했는데 새 버전이 나왔을 때:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/paycrux/ai-skills/main/install.sh | bash -s -- --claude --global --update
-```
-
 skills만 따로 설치하고 싶을 때:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/paycrux/ai-skills/main/install.sh | bash -s -- --claude --global --only skills
+```
+
+### 업데이트 (`ai-skills` CLI)
+
+v0.5.0부터 최초 설치 시 `~/.ai-skills/repo`에 저장소가 영구 clone되고, 짧은 전역 커맨드 `ai-skills`가 함께 설치됩니다. 이후 업데이트는 매번 `curl | bash` 전체를 다시 받을 필요 없이 아래 한 줄이면 됩니다.
+
+```bash
+ai-skills update    # 저장소 pull → 기록된 모든 설치 대상을 자동 재설치(--update)
+ai-skills version   # 로컬 설치 버전과 원격 최신 버전 비교
+```
+
+`ai-skills update`는 여러 프로젝트에 각각 설치한 경우에도 `~/.ai-skills/installs.json`에 기록된 대상을 전부 순회하며 갱신합니다. 에이전트(Claude Code / Cursor / Codex)와 무관한 순수 셸 도구입니다.
+
+> 최초 설치 직후에는 셸이 아직 rc를 다시 읽지 않아 `ai-skills`가 잡히지 않을 수 있습니다. 새 터미널을 열거나 `source ~/.zshrc`(또는 `~/.bashrc`)를 실행하세요. zsh/bash가 아닌 셸은 안내에 따라 `export PATH="$HOME/.ai-skills/bin:$PATH"`를 직접 등록하면 됩니다.
+
+CLI가 아직 등록되지 않은 환경(또는 최초 설치)에서는 기존 방식도 그대로 동작합니다:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/paycrux/ai-skills/main/install.sh | bash -s -- --claude --global --update
 ```
 
 ### 수동 설치 (개발 시 테스트)
@@ -150,24 +172,6 @@ task-plan에서 생성한 문서(`tasks.md`, `spec.md`) 두 개를 읽고, 단�
 - 전체 완료 시 `tasks.md` 헤더 `상태:` 필드가 `완료`로 변경됩니다.
 - 렌더링 이슈는 구조(컴포넌트 분해 / 상태 위치 / key / 파생 값)로 먼저 해결합니다. `useMemo`/`useCallback`/`React.memo` 같은 메모이제이션 훅은 **사용자가 명시적으로 요청할 때만** 도입합니다.
 
-### /evaluate
-
-**체크리스트 기반 코드 품질 평가**
-
-5개 도메인에 대해 코드를 직접 평가합니다:
-
-| 도메인 | 평가 항목 |
-| --- | --- |
-| React / Accessibility | Hooks 규칙, 불변성, 키보드/ARIA, 색상 대비 |
-| Engineering / Performance | 순환 참조, 코드 구조, DRY, 번들 크기, 렌더링 효율 |
-| Security | XSS, injection, 인증/인가, 민감 데이터 |
-
-```
-/evaluate                        # 최근 변경 파일 자동 감지
-/evaluate <file-or-directory>    # 특정 파일/디렉토리 평가
-/evaluate <task-folder-name>     # task-plan 기반 평가
-```
-
 ### /study
 
 **학습 보고서 작성**
@@ -176,16 +180,6 @@ task-plan에서 생성한 문서(`tasks.md`, `spec.md`) 두 개를 읽고, 단�
 
 ```
 /study <문서 혹은 요구사항>
-```
-
-### /test-case
-
-**테스트 케이스 생성**
-
-구현된 코드나 요구사항에서 테스트 케이스를 생성합니다. Happy path와 조합 상태를 커버합니다.
-
-```
-/test-case <문서 혹은 요구사항>
 ```
 
 ### /qa-guide
@@ -255,26 +249,6 @@ PR 본문 구성:
 /investigate <증상 또는 에러 메시지>
 ```
 
-### /finalize
-
-**작업 문서 최종 정리**
-
-구현, 평가, QA가 모두 끝난 후 호출합니다. 임시 문서(findings, tasks, progress, evaluate, qa-report, qa-guide)를 삭제하고, 구현 파일 매핑을 spec.md의 Implementation Map 섹션에 병합합니다.
-
-```
-/finalize <task-folder-name>    # 특정 작업 정리
-/finalize                       # 완료된 작업 자동 감지
-```
-
-정리 후 남는 문서:
-
-| 문서 | 역할 |
-| --- | --- |
-| README.md | 작업 개요/배경/목표 |
-| spec.md | 행동 명세 + Implementation Map (파일 매핑, 기술 결정) |
-| ui-spec.md | 컴포넌트 구조/상태 설계 (프론트엔드만) |
-| test-cases.md | 반복 검증용 테스트 케이스 |
-
 ### /skill-creator
 
 **스킬 생성/리팩토링**
@@ -286,6 +260,22 @@ PR 본문 구성:
 /skill-creator <existing-skill-path>  # 기존 스킬 리팩토링
 /skill-creator                        # 대화형 모드
 ```
+
+### /caveman
+
+**초압축 커뮤니케이션 모드**
+
+응답을 caveman체로 압축해 출력 토큰을 65% 절감합니다 (관사/필러/공손 표현 제거, 기술 내용은 그대로 유지). `task-plan`/`implement`/`qa-guide`/`skill-creator`는 대화 응답과 산출물 자유서술 섹션에 이 스킬을 사용합니다.
+
+```
+/caveman            # full 모드 (기본)
+/caveman lite        # 약한 압축
+/caveman ultra       # 극단적 압축
+/caveman wenyan      # 문언문(classical Chinese) 모드
+stop caveman         # 일반 모드로 복귀
+```
+
+> [JuliusBrussee/caveman](https://github.com/JuliusBrussee/caveman) (MIT License)에서 vendoring — 라이센스 전문은 `.claude/skills/caveman/LICENSE` 참고.
 
 ---
 
@@ -321,15 +311,13 @@ PR 본문 구성:
 ├── skills/
 │   ├── task-plan/SKILL.md
 │   ├── implement/SKILL.md
-│   ├── evaluate/SKILL.md
 │   ├── browse/SKILL.md
 │   ├── qa/SKILL.md
-│   ├── finalize/SKILL.md
 │   ├── git-pr/SKILL.md
 │   ├── study/SKILL.md
-│   ├── test-case/SKILL.md
 │   ├── qa-guide/SKILL.md
-│   └── skill-creator/SKILL.md
+│   ├── skill-creator/SKILL.md
+│   └── caveman/SKILL.md
 ├── docs/
 │   ├── partner-jirisan.md
 │   └── partner-option-group-factory.md
