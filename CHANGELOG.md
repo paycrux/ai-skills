@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Codex 지원** (`install.sh --codex`) — Cursor 미러링 방식으로 `~/.codex/`(전역) 또는 `./.codex/`(프로젝트)에 skills·rules 복사, Codex가 읽는 `AGENTS.md`(전역 `~/.codex/AGENTS.md` / 프로젝트 루트)에 스킬 참조 병합. rules는 `.mdc`가 아닌 일반 `.md`로 설치. 대화형 메뉴·`--help`·예시에 Codex 추가. `ai-skills update`도 기록된 codex 대상을 동일하게 순회 갱신
 - `ai-skills` 전역 CLI 추가 (`bin/ai-skills`) — `curl | bash` 전체 재다운로드 없이 한 줄로 업데이트
   - `ai-skills update`: `~/.ai-skills/repo`를 pull한 뒤 `~/.ai-skills/installs.json`에 기록된 모든 설치 대상을 저장된 mode/scope로 `install.sh --update` 재실행 (project scope는 기록된 `target_dir` 상위에서 실행해 타깃을 정확히 복원)
   - `ai-skills version`: 로컬 설치 버전과 원격 최신 버전(`origin/HEAD`)을 비교해 출력

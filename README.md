@@ -10,7 +10,7 @@ AI 엔지니어링을 더 효과적으로 하기 위한 skills와 rules 모음�
 curl -fsSL https://raw.githubusercontent.com/paycrux/ai-skills/main/install.sh | bash
 ```
 
-실행하면 대화형으로 에디터(Claude Code / Cursor)와 설치 범위(Global / Project)를 선택합니다.
+실행하면 대화형으로 에디터(Claude Code / Cursor / Codex)와 설치 범위(Global / Project)를 선택합니다.
 
 ### 옵션 지정 설치
 
@@ -22,13 +22,14 @@ curl -fsSL https://raw.githubusercontent.com/paycrux/ai-skills/main/install.sh |
 | ---------- | ---------------------- |
 | `--claude` | Claude Code용으로 설치 |
 | `--cursor` | Cursor용으로 설치      |
+| `--codex`  | Codex용으로 설치       |
 
 **2) 설치 범위** — 어디에 설치할지 선택합니다.
 
-| 옵션        | 설치 경로                      | 적용 범위                                 |
-| ----------- | ------------------------------ | ----------------------------------------- |
-| `--global`  | `~/.claude/` 또는 `~/.cursor/` | 내 모든 프로젝트에 적용                   |
-| `--project` | `./.claude/` 또는 `./.cursor/` | 현재 프로젝트에만 적용 (팀원과 공유 가능) |
+| 옵션        | 설치 경로                                     | 적용 범위                                 |
+| ----------- | --------------------------------------------- | ----------------------------------------- |
+| `--global`  | `~/.claude/`, `~/.cursor/`, `~/.codex/`       | 내 모든 프로젝트에 적용                   |
+| `--project` | `./.claude/`, `./.cursor/`, `./.codex/`       | 현재 프로젝트에만 적용 (팀원과 공유 가능) |
 
 **조합 예시:**
 
@@ -55,6 +56,14 @@ Cursor + 현재 프로젝트만:
 ```bash
 curl -fsSL https://raw.githubusercontent.com/paycrux/ai-skills/main/install.sh | bash -s -- --cursor --project
 ```
+
+Codex + 전역:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/paycrux/ai-skills/main/install.sh | bash -s -- --codex --global
+```
+
+> Codex는 `~/.codex/`(전역) 또는 `./.codex/`(프로젝트)에 skills·rules를 복사하고, Codex가 읽는 `AGENTS.md`(전역은 `~/.codex/AGENTS.md`, 프로젝트는 루트)에 스킬 참조를 병합합니다. Cursor와 달리 rules는 `.mdc`가 아닌 일반 `.md`로 설치됩니다.
 
 ### 추가 옵션
 

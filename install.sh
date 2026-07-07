@@ -48,7 +48,7 @@ error() { echo -e "${RED}[error]${NC} $1"; exit 1; }
 # ─────────────────────────────────────────────
 ONLY=""
 UPDATE=false
-MODE=""        # claude | cursor
+MODE=""        # claude | cursor | codex
 SCOPE=""       # global | project
 LOCAL=false
 
@@ -60,6 +60,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --cursor)
       MODE="cursor"
+      shift
+      ;;
+    --codex)
+      MODE="codex"
       shift
       ;;
     --global)
@@ -88,10 +92,11 @@ while [[ $# -gt 0 ]]; do
       echo "Target (required):"
       echo "  --claude          Install for Claude Code"
       echo "  --cursor          Install for Cursor"
+      echo "  --codex           Install for Codex"
       echo ""
       echo "Scope:"
-      echo "  --global          Install to ~/.claude or ~/.cursor (all projects)"
-      echo "  --project         Install to ./.claude or ./.cursor (current project only)"
+      echo "  --global          Install to ~/.claude, ~/.cursor, or ~/.codex (all projects)"
+      echo "  --project         Install to ./.claude, ./.cursor, or ./.codex (current project only)"
       echo ""
       echo "Options:"
       echo "  --only <type>     Install specific type only: skills, rules, docs"
@@ -104,6 +109,8 @@ while [[ $# -gt 0 ]]; do
       echo "  bash install.sh --claude --project           # Claude Code, this project"
       echo "  bash install.sh --cursor --global            # Cursor, all projects"
       echo "  bash install.sh --cursor --project           # Cursor, this project"
+      echo "  bash install.sh --codex --global             # Codex, all projects"
+      echo "  bash install.sh --codex --project            # Codex, this project"
       echo "  bash install.sh --claude --global --update   # Update existing"
       echo "  bash install.sh --claude --global --only skills"
       echo "  bash install.sh --claude --global --local    # Use local source"
@@ -123,10 +130,12 @@ if [[ -z "$MODE" ]]; then
   echo -e "${CYAN}Which editor?${NC}"
   echo "  1) Claude Code"
   echo "  2) Cursor"
+  echo "  3) Codex"
   read -rp "> " choice <&3
   case $choice in
     1) MODE="claude" ;;
     2) MODE="cursor" ;;
+    3) MODE="codex" ;;
     *) error "Invalid choice" ;;
   esac
 fi
@@ -565,6 +574,105 @@ ${MARKER_END}"
 }
 
 # ─────────────────────────────────────────────
+# Helper: upsert a marker-wrapped block into a file
+# (create → replace existing marked block → prepend if unmarked)
+# ─────────────────────────────────────────────
+upsert_marked_file() {
+  local dest_file="$1"
+  local marked_content="$2"
+  local label="$3"
+
+  if [[ ! -f "$dest_file" ]]; then
+    echo "$marked_content" > "$dest_file"
+    ok "$label created"
+    return
+  fi
+
+  if grep -qF "$MARKER_START" "$dest_file"; then
+    local tmp first_start last_end
+    tmp=$(mktemp)
+    first_start=$(grep -nF "$MARKER_START" "$dest_file" | head -1 | cut -d: -f1)
+    last_end=$(grep -nF "$MARKER_END" "$dest_file" | tail -1 | cut -d: -f1)
+    {
+      [[ "$first_start" -gt 1 ]] && head -n "$((first_start - 1))" "$dest_file"
+      echo "$marked_content"
+      tail -n +"$((last_end + 1))" "$dest_file" 2>/dev/null || true
+    } > "$tmp"
+    mv "$tmp" "$dest_file"
+    ok "$label updated (ai-skills section replaced)"
+  else
+    local existing
+    existing=$(cat "$dest_file")
+    {
+      echo "$marked_content"
+      echo ""
+      echo "$existing"
+    } > "$dest_file"
+    ok "$label merged (ai-skills section prepended)"
+  fi
+}
+
+# ─────────────────────────────────────────────
+# Helper: merge AGENTS.md for Codex (plain-md rule refs, ${ref}-relative paths)
+# $1 = directory the AGENTS.md lives in
+# $2 = path prefix used to reference skills/rules (".codex" for project,
+#      "$HOME/.codex" for global)
+# ─────────────────────────────────────────────
+merge_agents_md_codex() {
+  local dest_dir="$1"
+  local ref="$2"
+  local dest_file="$dest_dir/AGENTS.md"
+  local marked_content
+  marked_content="${MARKER_START}
+# AGENTS.md
+
+## Task Planning
+
+사용자가 새로운 기능 개발, 버그 수정 등 작업을 요청하면:
+- \"task-plan 스킬을 사용해서 작업 계획을 먼저 세울까요, 아니면 바로 진행할까요?\" 를 먼저 물어본다
+- 계획이 필요없다고 하면 → 바로 진행
+- 계획 작성을 원하면 → ${ref}/skills/task-plan/SKILL.md 를 읽고 그대로 따른다
+- 사용자가 디자인 문서나 요구사항을 첨부하면 → 분석 후 스킬 플로우에 반영
+
+## Implementation Rules
+
+All code changes are executed directly — no sub-agents.
+
+- Follow ${ref}/rules/react-typescript.md for frontend code
+- Follow existing patterns discovered in codebase exploration
+- When using implement skill, the workflow orchestrates phases — but code is written directly
+
+### Exceptions (direct edit without workflow)
+- Config file changes (package.json, tsconfig.json, .env, etc.)
+- Documentation file changes (*.md)
+- Simple typo/naming fixes (1-2 line changes)
+- Import path corrections
+- Lint/format fixes
+
+## Available Workflows
+
+| Workflow | File | Purpose |
+|----------|------|---------|
+| task-plan | ${ref}/skills/task-plan/SKILL.md | Task planning + document generation |
+| implement | ${ref}/skills/implement/SKILL.md | Document-driven phased implementation |
+| qa-guide | ${ref}/skills/qa-guide/SKILL.md | QA test guide generation |
+| study | ${ref}/skills/study/SKILL.md | Study report writing |
+
+## Plan Storage Path
+
+All plan documents are stored in \`docs/{task-name}/\`.
+
+## Session Handoff
+
+If there's work in progress:
+1. Read the tasks.md of the task with status \"진행중\" under \`docs/\`
+2. Report current status and continue after user approval
+${MARKER_END}"
+
+  upsert_marked_file "$dest_file" "$marked_content" "AGENTS.md"
+}
+
+# ─────────────────────────────────────────────
 # Helper: record this install so `ai-skills update` can replay it
 # ─────────────────────────────────────────────
 record_install() {
@@ -715,6 +823,22 @@ elif [[ "$MODE" == "cursor" ]]; then
     else
       info "AGENTS.md is project-specific. To add it, run with --project in your project directory."
     fi
+  fi
+
+elif [[ "$MODE" == "codex" ]]; then
+  # ── Codex install (Cursor-style wiring; plain-md rules, AGENTS.md) ──
+  if [[ -z "$ONLY" ]]; then
+    copy_dir "$SRC_DIR/skills" "$TARGET_DIR/skills" "skills"
+    copy_dir "$SRC_DIR/rules"  "$TARGET_DIR/rules"  "rules"
+
+    # AGENTS.md — Codex reads it globally (~/.codex/AGENTS.md) and per project (root)
+    if [[ "$SCOPE" == "global" ]]; then
+      merge_agents_md_codex "$TARGET_DIR" "$TARGET_DIR"
+    else
+      merge_agents_md_codex "$PROJECT_ROOT" ".codex"
+    fi
+  else
+    copy_dir "$SRC_DIR/$ONLY" "$TARGET_DIR/$ONLY" "$ONLY"
   fi
 fi
 
