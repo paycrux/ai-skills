@@ -34,6 +34,23 @@ require_repo() {
 }
 
 # ─────────────────────────────────────────────
+# ai-skills install
+# ─────────────────────────────────────────────
+cmd_install() {
+  require_repo
+
+  info "Pulling latest ai-skills ($AI_SKILLS_REPO)..."
+  if ! git -C "$AI_SKILLS_REPO" pull --ff-only; then
+    error "git pull 실패 — 오프라인이거나 원격에 접근할 수 없습니다.
+  clone이 손상된 경우: rm -rf $AI_SKILLS_REPO 후 재설치하세요."
+  fi
+
+  # No args needed — install.sh prompts interactively for editor/scope when
+  # --claude/--cursor/--codex and --global/--project aren't passed.
+  bash "$INSTALL_SH" "$@"
+}
+
+# ─────────────────────────────────────────────
 # ai-skills update
 # ─────────────────────────────────────────────
 cmd_update() {
@@ -120,9 +137,6 @@ PYEOF
   elif $all_flag || [[ ! -t 0 ]]; then
     # --all, or no tty to prompt on (e.g. piped/CI): update everything recorded
     sel_idx=($(seq 0 $((${#all_modes[@]} - 1))))
-  elif [[ ${#all_modes[@]} -eq 1 ]]; then
-    # Only one recorded target — nothing to choose between
-    sel_idx=(0)
   else
     echo ""
     echo -e "${CYAN}업데이트할 대상을 선택하세요:${NC}"
@@ -232,9 +246,18 @@ cmd_help() {
   echo "Usage: ai-skills <command> [options]"
   echo ""
   echo "Commands:"
+  echo "  install [options]  새 에디터(claude/cursor/codex)를 추가로 설치"
   echo "  update [options]   영구 clone을 pull하고 기록된 설치 대상을 재설치(--update)"
   echo "  version            로컬 설치 버전과 원격 최신 버전을 비교"
   echo "  help               이 도움말 출력"
+  echo ""
+  echo "install options (install.sh에 그대로 전달됨):"
+  echo "  --claude / --cursor / --codex   설치할 에디터"
+  echo "  --global / --project            설치 범위"
+  echo "  --only <skills|rules|docs>      특정 항목만 설치"
+  echo ""
+  echo "옵션 없이 'ai-skills install'을 실행하면, 어떤 에디터·범위에"
+  echo "설치할지 대화형으로 선택할 수 있습니다."
   echo ""
   echo "update options:"
   echo "  --claude   claude 대상만 업데이트"
@@ -242,8 +265,8 @@ cmd_help() {
   echo "  --codex    codex 대상만 업데이트"
   echo "  --all      확인 없이 기록된 모든 대상 업데이트"
   echo ""
-  echo "옵션 없이 'ai-skills update'를 실행하면, 기록된 대상이 둘 이상일 때"
-  echo "어떤 것을 업데이트할지 대화형으로 선택할 수 있습니다."
+  echo "옵션 없이 'ai-skills update'를 실행하면, 기록된 대상 중 어떤 것을"
+  echo "업데이트할지 매번 대화형으로 선택할 수 있습니다."
 }
 
 # ─────────────────────────────────────────────
@@ -252,6 +275,7 @@ cmd_help() {
 cmd="${1:-help}"
 [[ $# -gt 0 ]] && shift
 case "$cmd" in
+  install) cmd_install "$@" ;;
   update)  cmd_update "$@" ;;
   version) cmd_version ;;
   help|-h|--help) cmd_help ;;

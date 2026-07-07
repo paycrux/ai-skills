@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.5.2] - 2026-07-07
+
+### Added
+
+- `ai-skills install` 명령 추가 — 아직 설치하지 않은 에디터(claude/cursor/codex)를 추가로 설치할 때 사용. `~/.ai-skills/repo`를 pull한 뒤 `install.sh`에 인자를 그대로 위임하며, 옵션 없이 실행하면 `install.sh` 자체의 에디터/범위 대화형 선택으로 진입
+
+### Changed
+
+- `ai-skills update`: 기록된 설치 대상이 1개뿐이어도 항상 어떤 것을 업데이트할지 확인하는 대화형 프롬프트를 표시하도록 변경 (기존엔 대상이 1개면 프롬프트 없이 바로 진행)
+- `README.md`에 `ai-skills install` 사용법 추가, `ai-skills update` 설명 문구 수정
+
 ## [0.5.1] - 2026-07-07
 
 ### Added

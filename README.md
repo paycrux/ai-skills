@@ -12,6 +12,81 @@ curl -fsSL https://raw.githubusercontent.com/paycrux/ai-skills/main/install.sh |
 
 실행하면 대화형으로 에디터(Claude Code / Cursor / Codex)와 설치 범위(Global / Project)를 선택합니다.
 
+### 업데이트 (`ai-skills` CLI)
+
+v0.5.0부터 최초 설치 시 `~/.ai-skills/repo`에 저장소가 영구 clone되고, 짧은 전역 커맨드 `ai-skills`가 함께 설치됩니다. 이후 업데이트는 매번 `curl | bash` 전체를 다시 받을 필요 없이 아래 한 줄이면 됩니다.
+
+```bash
+ai-skills update    # 저장소 pull → 기록된 설치 대상을 재설치(--update)
+ai-skills version   # 로컬 설치 버전과 원격 최신 버전 비교
+```
+
+`ai-skills update`는 여러 에디터·프로젝트에 각각 설치한 경우 `~/.ai-skills/installs.json`에 기록된 모든 대상을 갱신 후보로 봅니다. 옵션 없이 실행하면 대상이 하나뿐이어도 매번 아래처럼 어떤 것을 업데이트할지 번호로 고르는 대화형 프롬프트가 뜹니다.
+
+```
+업데이트할 대상을 선택하세요:
+  1) claude (global) → ~/.claude
+  2) cursor (project) → ./.cursor
+  3) codex (global) → ~/.codex
+  a) 전체
+> (예: 1 3, 또는 a)
+```
+
+프롬프트 없이 특정 대상만 지정하고 싶다면 필터 플래그를 붙입니다.
+
+| 옵션        | 설명                                  |
+| ----------- | ------------------------------------- |
+| `--claude`  | claude로 설치된 대상만 업데이트       |
+| `--cursor`  | cursor로 설치된 대상만 업데이트       |
+| `--codex`   | codex로 설치된 대상만 업데이트        |
+| `--all`     | 확인 없이 기록된 모든 대상 업데이트   |
+
+```bash
+ai-skills update --claude          # Claude Code 대상만
+ai-skills update --cursor --codex  # Cursor + Codex 대상만
+ai-skills update --all             # 전부, 프롬프트 없이
+```
+
+에이전트(Claude Code / Cursor / Codex)와 무관한 순수 셸 도구입니다.
+
+#### 새 에디터 추가 설치 (`ai-skills install`)
+
+이미 `ai-skills`를 설치해뒀고, 다른 에디터(예: Cursor)를 추가로 설치하고 싶을 때 `curl | bash`를 다시 받을 필요 없이 아래처럼 씁니다.
+
+```bash
+ai-skills install    # 어떤 에디터·어떤 범위에 설치할지 대화형으로 선택
+```
+
+옵션 없이 실행하면 `install.sh`의 기존 대화형 선택(에디터 → 범위)으로 바로 들어갑니다.
+
+```
+Which editor?
+  1) Claude Code
+  2) Cursor
+  3) Codex
+> 2
+
+Install scope?
+  1) Global  (~/.cursor/) — all projects
+  2) Project (./.cursor/) — current project only
+> 1
+```
+
+스크립트에서 프롬프트 없이 바로 실행하고 싶다면 `install.sh`와 동일한 플래그를 그대로 붙일 수 있습니다.
+
+```bash
+ai-skills install --cursor --global
+ai-skills install --codex --project --only skills
+```
+
+> 최초 설치 직후에는 셸이 아직 rc를 다시 읽지 않아 `ai-skills`가 잡히지 않을 수 있습니다. 새 터미널을 열거나 `source ~/.zshrc`(또는 `~/.bashrc`)를 실행하세요. zsh/bash가 아닌 셸은 안내에 따라 `export PATH="$HOME/.ai-skills/bin:$PATH"`를 직접 등록하면 됩니다.
+
+CLI가 아직 등록되지 않은 환경(또는 최초 설치)에서는 기존 방식도 그대로 동작합니다:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/paycrux/ai-skills/main/install.sh | bash -s -- --claude --global --update
+```
+
 ### 옵션 지정 설치
 
 대화형 선택 대신, 옵션을 직접 지정할 수도 있습니다. 두 가지를 조합합니다:
@@ -78,51 +153,6 @@ skills만 따로 설치하고 싶을 때:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/paycrux/ai-skills/main/install.sh | bash -s -- --claude --global --only skills
-```
-
-### 업데이트 (`ai-skills` CLI)
-
-v0.5.0부터 최초 설치 시 `~/.ai-skills/repo`에 저장소가 영구 clone되고, 짧은 전역 커맨드 `ai-skills`가 함께 설치됩니다. 이후 업데이트는 매번 `curl | bash` 전체를 다시 받을 필요 없이 아래 한 줄이면 됩니다.
-
-```bash
-ai-skills update    # 저장소 pull → 기록된 설치 대상을 재설치(--update)
-ai-skills version   # 로컬 설치 버전과 원격 최신 버전 비교
-```
-
-`ai-skills update`는 여러 에디터·프로젝트에 각각 설치한 경우 `~/.ai-skills/installs.json`에 기록된 모든 대상을 갱신 후보로 봅니다. 대상이 둘 이상이면 옵션 없이 실행 시 아래처럼 어떤 것을 업데이트할지 번호로 고르는 대화형 프롬프트가 뜨고, 대상이 하나뿐이면 바로 그것을 업데이트합니다.
-
-```
-업데이트할 대상을 선택하세요:
-  1) claude (global) → ~/.claude
-  2) cursor (project) → ./.cursor
-  3) codex (global) → ~/.codex
-  a) 전체
-> (예: 1 3, 또는 a)
-```
-
-프롬프트 없이 특정 대상만 지정하고 싶다면 필터 플래그를 붙입니다.
-
-| 옵션        | 설명                                  |
-| ----------- | ------------------------------------- |
-| `--claude`  | claude로 설치된 대상만 업데이트       |
-| `--cursor`  | cursor로 설치된 대상만 업데이트       |
-| `--codex`   | codex로 설치된 대상만 업데이트        |
-| `--all`     | 확인 없이 기록된 모든 대상 업데이트   |
-
-```bash
-ai-skills update --claude          # Claude Code 대상만
-ai-skills update --cursor --codex  # Cursor + Codex 대상만
-ai-skills update --all             # 전부, 프롬프트 없이
-```
-
-에이전트(Claude Code / Cursor / Codex)와 무관한 순수 셸 도구입니다.
-
-> 최초 설치 직후에는 셸이 아직 rc를 다시 읽지 않아 `ai-skills`가 잡히지 않을 수 있습니다. 새 터미널을 열거나 `source ~/.zshrc`(또는 `~/.bashrc`)를 실행하세요. zsh/bash가 아닌 셸은 안내에 따라 `export PATH="$HOME/.ai-skills/bin:$PATH"`를 직접 등록하면 됩니다.
-
-CLI가 아직 등록되지 않은 환경(또는 최초 설치)에서는 기존 방식도 그대로 동작합니다:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/paycrux/ai-skills/main/install.sh | bash -s -- --claude --global --update
 ```
 
 ### 수동 설치 (개발 시 테스트)
