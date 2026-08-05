@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.7.0] - 2026-08-05
+
+### Changed
+
+- `git-pr`: PR 본문 템플릿 전면 개편 — 노이즈 제거가 목적. 기존 `구현사항` / `특이사항` / `핵심 리뷰 포인트` / `구현 화면` / `테스트 케이스` 5개 고정 섹션을 `변경사항` / `구현 화면` / `테스트 케이스` 3개로 축소하고, 뒤 2개는 조건을 만족할 때만 출력
+  - `변경사항`: 커밋 순서 나열 대신 사용자가 체감하는 기능/시나리오 단위로 그룹핑해 소제목(`###`)을 만들고, 그룹당 불릿 5개 상한. 판단 근거가 필요할 때만 `####` 부연설명 추가
+  - `특이사항` / `핵심 리뷰 포인트` 제거 — 항상 존재하는 섹션이라 채울 내용이 없으면 "없음"을 쓰거나 지어내게 되던 문제
+  - 조건 미충족 섹션은 제목과 구분선까지 삭제 — "없음", 빈 체크리스트, 빈 표를 남기지 않음
+- `git-pr`: PR 본문 작성 규칙 R1–R7 신설 — diff로 확인 가능한 사실만 기록, 백틱은 식별자(경로·함수명·명령어·환경변수)에만 사용하고 한글 설명문에는 사용 금지(한 불릿에 백틱 3개 초과 시 재작성), "전반적으로 개선"·"안정성 향상" 등 내용 없는 표현 금지
+- `git-pr`: mermaid 다이어그램을 "그릴지"와 "무엇으로 그릴지"로 분리. 불릿만으로 순서 파악이 안 되는 덩어리에만 그리고, 형태는 변경 성격에 따라 flowchart / sequenceDiagram / stateDiagram-v2 / erDiagram 중 선택 (기존엔 `flowchart LR` 고정)
+- `git-pr`: `테스트 케이스`를 자동 생성에서 전사 방식으로 변경 — `tasks.md`의 `## 진행 기록`에 남은 실제 검증 내역만 옮겨 적고, 기록이 없으면 섹션 삭제. 테스트 파일이 diff에 추가된 것은 실행 증거로 보지 않으며, 시나리오를 사용자에게 되묻지 않음
+- `git-pr`: `SKILL.md` 문서를 영어로 전환. `AskUserQuestion` prompt/options 등 실행 시 사용자에게 노출되는 문자열은 한국어 유지
+
+### Added
+
+- `git-pr/templates/` 추가 — `pr-body.template.md`(골격), `pr-body.example.md`(문장 톤 샘플), `mermaid-forms.md`(다이어그램 형태 5종 + 공통 제약). `SKILL.md`에 인라인으로 있던 템플릿을 분리해 `task-plan` 스킬의 `templates/` 컨벤션에 맞춤
+
 ## [0.6.1] - 2026-07-07
 
 ### Changed
