@@ -307,13 +307,23 @@ task-plan 문서를 기반으로 헤드리스 브라우저로 구현 결과를 �
 
 PR 본문 구성:
 
-| 섹션 | 작성 주체 |
-| --- | --- |
-| 구현사항 | Claude 자동 생성 |
-| 특이사항 | Claude 자동 생성 |
-| 핵심 리뷰 포인트 | Claude 자동 생성 |
-| 구현 화면 | 사용자 직접 추가 |
-| 테스트 케이스 | Claude 자동 생성 |
+| 섹션 | 작성 주체 | 출력 조건 |
+| --- | --- | --- |
+| 변경사항 | Claude 자동 생성 | 항상 |
+| 구현 화면 | 사용자 직접 추가 | UI 변경이 있을 때만 |
+| 테스트 케이스 | `tasks.md` 진행 기록에서 전사 | 실제 검증 흔적이 있을 때만 |
+
+`변경사항`은 커밋 순서가 아니라 **사용자가 체감하는 기능/시나리오 단위로 묶어** 소제목을 만듭니다. 조건을 만족하지 않는 섹션은 "없음"을 쓰지 않고 제목째 삭제되므로, 내용 없는 항목이 PR에 남지 않습니다.
+
+노이즈를 줄이기 위한 작성 규칙(`SKILL.md`의 R1–R7):
+
+- diff로 확인 가능한 사실만 기록 — 의도·기대효과 추측 금지, "전반적으로 개선" 같은 빈 문장 금지
+- 백틱은 식별자(경로·함수명·명령어·환경변수)에만. 한글 설명문을 백틱으로 감싸지 않음
+- 그룹당 불릿 5개 상한
+- mermaid는 불릿만으로 순서 파악이 안 되는 덩어리에만. 형태(flowchart / sequenceDiagram / stateDiagram-v2 / erDiagram)는 변경 성격에 맞춰 선택
+- 테스트는 `tasks.md`에 기록된 검증 내역만 옮겨 적음 — 테스트 파일이 diff에 추가된 것은 실행 증거로 보지 않음
+
+관련 템플릿: `.claude/skills/git-pr/templates/` (`pr-body.template.md`, `pr-body.example.md`, `mermaid-forms.md`)
 
 ### /investigate
 
@@ -389,7 +399,9 @@ stop caveman         # 일반 모드로 복귀
 │   ├── implement/SKILL.md
 │   ├── browse/SKILL.md
 │   ├── qa/SKILL.md
-│   ├── git-pr/SKILL.md
+│   ├── git-pr/
+│   │   ├── SKILL.md
+│   │   └── templates/     # pr-body.template.md, pr-body.example.md, mermaid-forms.md
 │   ├── study/SKILL.md
 │   ├── qa-guide/SKILL.md
 │   ├── create-prd/SKILL.md
