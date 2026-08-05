@@ -1,9 +1,9 @@
 ---
 name: git-pr
-description: "Full Git PR workflow: choose git-only, PR-only, or both. Branch modes: create fresh branch from base, or commit/push current branch with optional suffix sub-branch and rebase. Handles staged and unstaged changes. Use /git-pr [--mode git|pr|both] [--new <name>] [--suffix <dev|stg>] [--base <branch>] [--no-rebase] [--also-pr <branch>]"
-argument-hint: "[--mode git|pr|both] [--new <name>] [--suffix <dev|stg>] [--base <branch>] [--no-rebase] [--also-pr <branch>]"
+description: "Full Git PR workflow: choose git-only, PR-only, or both. Branch modes: create fresh branch from base, or commit/push current branch with optional suffix sub-branch and rebase. Handles staged and unstaged changes. Use /git-pr [--mode git|pr|both] [--new <name>] [--suffix <dev|stg>] [--base <branch>] [--no-rebase] [--also-pr <branch>] [--preview]"
+argument-hint: "[--mode git|pr|both] [--new <name>] [--suffix <dev|stg>] [--base <branch>] [--no-rebase] [--also-pr <branch>] [--preview]"
 disable-model-invocation: true
-allowed-tools: Bash, AskUserQuestion
+allowed-tools: Bash, AskUserQuestion, Read, Write, Edit
 ---
 
 # /git-pr — Git PR Workflow
@@ -259,20 +259,35 @@ Read `${CLAUDE_SKILL_DIR}/templates/pr-body.example.md` to calibrate sentence to
 Group changes into user-facing scenarios or feature flows (`## {flow name}`). One flow spans however many files it needs — data serving (file execution or API call) → state/hook/store → UI rendering. Never order bullets by commit sequence.
 If there is only one group, omit the `##` heading and write the bullets directly under `## 변경사항`.
 
-**R2 — Diagram only when the bullets cannot carry it.**
+**R2 — A diagram is the exception. The default is no diagram.**
 
-Two independent decisions: whether to draw, then what form to draw. Do not collapse them.
+A diagram that a reviewer reads *instead of* the bullets, and learns less from, actively hurts. A picture draws the eye first, so a low-information diagram costs more than it gives. Most PRs — including most multi-file feature PRs — ship with no diagram at all. That is the normal outcome, not a failure.
 
-*Whether.* A group gets a diagram only if it is a chunk that has to be understood as a whole, and at least one holds:
-- the order or direction of the flow cannot be reconstructed from the bullet list
-- three or more participants (layers, files, services, actors) interact
-- new branching, retries, or state transitions were introduced
-- a data model relationship changed
+Run this gate only after every group's bullets are final. Never sketch a diagram first and fit bullets around it.
 
-Never for: single-file changes, styling, copy, config, dependency bumps, renames, docs.
-The test is whether a reviewer would otherwise have to open three files to work out the order. If the bullets already answer it, no diagram.
+*Step 1 — Veto. If any of these hold, stop; no diagram for this group.*
+- single-file change; or styling, copy, config, dependency bump, rename, docs-only
+- **the flow is linear** — a single path `A → B → C` with no branch, no loop-back, no parallelism. A straight line is exactly what a bullet list already conveys; drawing it adds nothing and buries the bullets.
+- the group's changes are independent of each other rather than one connected mechanism
 
-*What form.* Read `${CLAUDE_SKILL_DIR}/templates/mermaid-forms.md` and pick the form that matches the change — flow across layers, ordered exchange, state transitions, entity relations, or branching. If none of the listed forms fits, write the form that does, or omit the diagram. Never force a change into `flowchart LR` because it is the familiar shape.
+Note that "three or more files touched" is not a reason to draw. Form → hook → api → cache is four participants and still a straight line.
+
+*Step 2 — Pass conditions. All four must hold.*
+- (a) the group has to be understood as a whole; reading any one part is misleading on its own
+- (b) the structure is genuinely non-linear — at least one of: two or more branch outcomes, a cycle or retry, a state transition, bidirectional traffic, or an async ordering where who waits on whom is the point
+- (c) you can state, in one sentence, the specific question this diagram answers — e.g. `토큰이 만료됐을 때 재발급 실패하면 어디로 가는가?`. A vague framing like `이 기능의 구조는?` is a fail, not a question
+- (d) the answer to (c) is not already recoverable from the finalized bullets
+
+*Step 3 — Budget. Maximum one diagram per PR, not per group.*
+If several groups pass, keep only the one whose (c) question is hardest to answer without the picture. Delete the rest.
+
+*Step 4 — Self-check before shipping.* Write down the (c) question, then answer it looking only at the drawn diagram.
+- cannot answer it from the diagram alone → delete the diagram
+- can answer it from the bullets alone → delete the diagram
+
+When in doubt, delete. The (c) question is an internal check; never write it into the PR body.
+
+*What form.* Read `${CLAUDE_SKILL_DIR}/templates/mermaid-forms.md`, which also carries the mandatory delta-marking and render-safety rules. Pick the form that matches the change — fan-in/fan-out across layers, ordered exchange, state transitions, entity relations, or branching. If none of the listed forms fits, write the form that does, or omit the diagram. Never force a change into `flowchart LR` because it is the familiar shape.
 
 **R3 — Bullet form.**
 `{대상} — {무엇이 어떻게}`, ending in a noun phrase. State only what the diff shows. Do not describe intent, expected benefit, or effort.
@@ -319,23 +334,78 @@ If no `tasks.md` exists, or it holds no evidence, delete the section. Do not ask
 
 ### Confirm and create
 
+Two review modes. Use **preview-file mode** when `--preview` is in `$ARGUMENTS` or the user asked to review the PR as a markdown document (`미리보기 문서로 먼저 보여줘`, `md로 확인하고 생성해줘`, and similar). Otherwise use inline mode.
+
+Always pass the body via `--body-file`, never `--body "{BODY}"` — a body containing mermaid fences, backticks, or quotes does not survive shell interpolation.
+
+#### Inline mode
+
 Show the generated title and body to the user in plain conversation (in Korean), then call `AskUserQuestion` with:
 - prompt: `"PR 초안을 확인해주세요. 이대로 생성할까요?"`
 - options: `["생성", "수정할게요 — 수정 후 다시 확인"]`
 
 If `수정할게요` is chosen, ask what to change in plain conversation, apply the edits, and show the updated draft again. Repeat until confirmed.
 
+On confirmation, write the body to `{REPO_ROOT}/.pr-body.tmp.md` and go to [Create the PR].
+
+#### Preview-file mode
+
+Resolve the repository root:
+
+```bash
+git rev-parse --show-toplevel
+```
+
+Write the draft to `{REPO_ROOT}/.pr-preview.md` with this exact layout — the preamble is for the user only and never reaches the PR:
+
+```markdown
+<!-- /git-pr PR 미리보기 — 생성이 끝나면 이 파일은 자동 삭제됩니다 -->
+
+# {TITLE}
+
+- head: `{HEAD_BRANCH}`
+- base: `{PR_BASE}`
+
+이 파일을 직접 수정해도 됩니다. 수정 후 대화에서 "생성"을 고르면 수정된 내용 그대로 올라갑니다.
+
+<!-- ↓↓↓ PR 본문 시작 ↓↓↓ -->
+
+{BODY}
+```
+
+Everything below the `<!-- ↓↓↓ PR 본문 시작 ↓↓↓ -->` marker is the PR body, verbatim. The marker line is the only delimiter — do not rely on `---` separators, which occur inside the body itself.
+
+Then tell the user in Korean: the absolute file path, and that they should open it in their editor's markdown preview to check the rendering (mermaid included). Call `AskUserQuestion` with:
+- prompt: `"미리보기 문서를 확인해주세요. 이대로 PR을 생성할까요?"`
+- options: `["생성 — 미리보기 파일은 삭제됨", "수정할게요 — 파일을 직접 고쳤거나 요청할 내용이 있음"]`
+
+If `수정할게요` is chosen: **re-read `.pr-preview.md` first** — the user may have edited it directly. Apply any additional requests they state in conversation on top of the file's current content, rewrite the file, and ask again. Repeat until confirmed.
+
+On confirmation, re-read `.pr-preview.md` one final time, and write everything after the marker line to `{REPO_ROOT}/.pr-body.tmp.md`.
+
+#### Create the PR
+
 **Primary PR:**
 
 ```bash
-gh pr create --head {HEAD_BRANCH} --base {PR_BASE} --title "{TITLE}" --body "{BODY}"
+gh pr create --head {HEAD_BRANCH} --base {PR_BASE} --title "{TITLE}" --body-file "{REPO_ROOT}/.pr-body.tmp.md"
 ```
 
 **Secondary PR** (only when an additional PR was requested):
 
 ```bash
-gh pr create --head {ORIGIN_BRANCH} --base {ALSO_PR_TARGET} --title "{TITLE}" --body "{BODY}"
+gh pr create --head {ORIGIN_BRANCH} --base {ALSO_PR_TARGET} --title "{TITLE}" --body-file "{REPO_ROOT}/.pr-body.tmp.md"
 ```
+
+#### Clean up
+
+Only after every requested PR has been created successfully:
+
+```bash
+rm -f "{REPO_ROOT}/.pr-body.tmp.md" "{REPO_ROOT}/.pr-preview.md"
+```
+
+If `gh pr create` fails, leave both files in place, report the error in Korean, and let the user retry from the existing preview.
 
 Capture and display all PR URLs.
 
@@ -349,6 +419,7 @@ Summarize the completed work in Korean:
 - Sub-branch: created and pushed (when a suffix was used)
 - Rebase: onto `origin/{BASE}` (when a rebase ran)
 - PR: list of URLs (when the PR Phase ran)
+- Preview file: deleted (when preview-file mode ran)
 
 ---
 
@@ -383,6 +454,9 @@ When the user selects `master (or main)`, determine which name actually exists i
 - Always generate PR title and body from commit log and diff analysis — never use `--fill`
 - Follow the PR body authoring rules (R1–R7); they override any habit of filling every section
 - Never write `없음`, an empty checklist, or an empty table — delete the section instead
+- No diagram is the default outcome; run the full R2 gate and delete when in doubt — max one diagram per PR
+- Always pass the PR body with `--body-file`, never `--body "{BODY}"`
+- Never `git add` or commit `.pr-preview.md` / `.pr-body.tmp.md`; delete them only after the PRs are created
 - Do not fill in the `구현 화면` table rows — leave them blank for the user
 - Never claim a test was run or a scenario was verified unless `tasks.md` records it
 - If `gh` is not installed, stop and tell the user in Korean
