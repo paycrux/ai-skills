@@ -247,7 +247,7 @@ Generate:
 1. **PR title** — one line, what this PR does (Korean allowed)
 2. **PR body** — apply the authoring rules below to `${CLAUDE_SKILL_DIR}/templates/pr-body.template.md`
 
-Read `${CLAUDE_SKILL_DIR}/templates/pr-body.example.md` to calibrate sentence tone and density. It is a writing sample, not content to copy, and it deliberately contains no diagram — most groups need none. Diagram decisions belong to R2 alone.
+Read `${CLAUDE_SKILL_DIR}/templates/pr-body.example.md` to calibrate sentence tone and density. It is a writing sample, not content to copy.
 
 ---
 
@@ -259,35 +259,9 @@ Read `${CLAUDE_SKILL_DIR}/templates/pr-body.example.md` to calibrate sentence to
 Group changes into user-facing scenarios or feature flows (`## {flow name}`). One flow spans however many files it needs — data serving (file execution or API call) → state/hook/store → UI rendering. Never order bullets by commit sequence.
 If there is only one group, omit the `##` heading and write the bullets directly under `## 변경사항`.
 
-**R2 — A diagram is the exception. The default is no diagram.**
+**R2 — Prose and bullets only. No diagrams.**
 
-A diagram that a reviewer reads *instead of* the bullets, and learns less from, actively hurts. A picture draws the eye first, so a low-information diagram costs more than it gives. Most PRs — including most multi-file feature PRs — ship with no diagram at all. That is the normal outcome, not a failure.
-
-Run this gate only after every group's bullets are final. Never sketch a diagram first and fit bullets around it.
-
-*Step 1 — Veto. If any of these hold, stop; no diagram for this group.*
-- single-file change; or styling, copy, config, dependency bump, rename, docs-only
-- **the flow is linear** — a single path `A → B → C` with no branch, no loop-back, no parallelism. A straight line is exactly what a bullet list already conveys; drawing it adds nothing and buries the bullets.
-- the group's changes are independent of each other rather than one connected mechanism
-
-Note that "three or more files touched" is not a reason to draw. Form → hook → api → cache is four participants and still a straight line.
-
-*Step 2 — Pass conditions. All four must hold.*
-- (a) the group has to be understood as a whole; reading any one part is misleading on its own
-- (b) the structure is genuinely non-linear — at least one of: two or more branch outcomes, a cycle or retry, a state transition, bidirectional traffic, or an async ordering where who waits on whom is the point
-- (c) you can state, in one sentence, the specific question this diagram answers — e.g. `토큰이 만료됐을 때 재발급 실패하면 어디로 가는가?`. A vague framing like `이 기능의 구조는?` is a fail, not a question
-- (d) the answer to (c) is not already recoverable from the finalized bullets
-
-*Step 3 — Budget. Maximum one diagram per PR, not per group.*
-If several groups pass, keep only the one whose (c) question is hardest to answer without the picture. Delete the rest.
-
-*Step 4 — Self-check before shipping.* Write down the (c) question, then answer it looking only at the drawn diagram.
-- cannot answer it from the diagram alone → delete the diagram
-- can answer it from the bullets alone → delete the diagram
-
-When in doubt, delete. The (c) question is an internal check; never write it into the PR body.
-
-*What form.* Read `${CLAUDE_SKILL_DIR}/templates/mermaid-forms.md`, which also carries the mandatory delta-marking and render-safety rules. Pick the form that matches the change — fan-in/fan-out across layers, ordered exchange, state transitions, entity relations, or branching. If none of the listed forms fits, write the form that does, or omit the diagram. Never force a change into `flowchart LR` because it is the familiar shape.
+The PR body carries no mermaid blocks, ASCII art, or images. If a flow is too tangled to state in bullets, that is a signal to split the group — not to draw it.
 
 **R3 — Bullet form.**
 `{대상} — {무엇이 어떻게}`, ending in a noun phrase. State only what the diff shows. Do not describe intent, expected benefit, or effort.
@@ -336,7 +310,7 @@ If no `tasks.md` exists, or it holds no evidence, delete the section. Do not ask
 
 Two review modes. Use **preview-file mode** when `--preview` is in `$ARGUMENTS` or the user asked to review the PR as a markdown document (`미리보기 문서로 먼저 보여줘`, `md로 확인하고 생성해줘`, and similar). Otherwise use inline mode.
 
-Always pass the body via `--body-file`, never `--body "{BODY}"` — a body containing mermaid fences, backticks, or quotes does not survive shell interpolation.
+Always pass the body via `--body-file`, never `--body "{BODY}"` — a body containing backticks, quotes, or `$` does not survive shell interpolation.
 
 #### Inline mode
 
@@ -375,7 +349,7 @@ Write the draft to `{REPO_ROOT}/.pr-preview.md` with this exact layout — the p
 
 Everything below the `<!-- ↓↓↓ PR 본문 시작 ↓↓↓ -->` marker is the PR body, verbatim. The marker line is the only delimiter — do not rely on `---` separators, which occur inside the body itself.
 
-Then tell the user in Korean: the absolute file path, and that they should open it in their editor's markdown preview to check the rendering (mermaid included). Call `AskUserQuestion` with:
+Then tell the user in Korean: the absolute file path, and that they should open it in their editor's markdown preview to check it. Call `AskUserQuestion` with:
 - prompt: `"미리보기 문서를 확인해주세요. 이대로 PR을 생성할까요?"`
 - options: `["생성 — 미리보기 파일은 삭제됨", "수정할게요 — 파일을 직접 고쳤거나 요청할 내용이 있음"]`
 
@@ -454,7 +428,7 @@ When the user selects `master (or main)`, determine which name actually exists i
 - Always generate PR title and body from commit log and diff analysis — never use `--fill`
 - Follow the PR body authoring rules (R1–R7); they override any habit of filling every section
 - Never write `없음`, an empty checklist, or an empty table — delete the section instead
-- No diagram is the default outcome; run the full R2 gate and delete when in doubt — max one diagram per PR
+- Never put a mermaid block, ASCII art, or an image in the PR body
 - Always pass the PR body with `--body-file`, never `--body "{BODY}"`
 - Never `git add` or commit `.pr-preview.md` / `.pr-body.tmp.md`; delete them only after the PRs are created
 - Do not fill in the `구현 화면` table rows — leave them blank for the user
