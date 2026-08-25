@@ -9,7 +9,7 @@ set -euo pipefail
 REPO_URL="https://github.com/paycrux/ai-skills.git"
 MARKER_START="<!-- AI-SKILLS:START -->"
 MARKER_END="<!-- AI-SKILLS:END -->"
-VERSION="0.8.0"
+VERSION="0.9.0"
 
 # Permanent state directory (persists across installs so `ai-skills update` works)
 AI_SKILLS_HOME="$HOME/.ai-skills"

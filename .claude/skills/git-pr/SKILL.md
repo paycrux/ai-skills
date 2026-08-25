@@ -276,8 +276,14 @@ Hard check: if one bullet needs more than 3 backticked spans, rewrite it — tha
 **R5 — Length ceiling.**
 Max 5 bullets per group. If a group exceeds it, split the group or drop the minor details. Do not pad a short PR.
 
-**R6 — `###` sub-headings carry "why" only.**
+**R6 — `###` sub-headings carry "why" only, in plain language.**
 Under a group, a `###` block explains a judgment call or trade-off that the bullets cannot: why this approach over the obvious alternative, what cost it accepts. If it restates a bullet, delete it.
+
+The reviewer did not implement this and does not know the internals you just learned. So:
+- Background first, conclusion second. Start from the situation anyone can see, then the choice you made.
+- No unexplained internal term — serialization formats, protocol details, library internals, framework behavior. Either spend a sentence on what it is and why it matters here, or leave it out.
+- Three sentences maximum. **If the background needs more than that, do not write the block — fold the point into a single bullet under the group.** One line a reviewer understands beats a paragraph they skip.
+- A block that a reader can only follow after reading the diff has failed. Delete it.
 
 **R7 — Conditional sections.**
 `## 구현 화면` and `## 테스트 케이스` are emitted only when their trigger is met. When not met, delete the heading and its `---` separator entirely. Never write `없음`, never leave an empty checkbox list, never leave an empty table.
@@ -428,6 +434,7 @@ When the user selects `master (or main)`, determine which name actually exists i
 - Always generate PR title and body from commit log and diff analysis — never use `--fill`
 - Follow the PR body authoring rules (R1–R7); they override any habit of filling every section
 - Never write `없음`, an empty checklist, or an empty table — delete the section instead
+- Never leave an unexplained internal term in the body — explain it in a sentence or drop the point to one line (R6)
 - Never put a mermaid block, ASCII art, or an image in the PR body
 - Always pass the PR body with `--body-file`, never `--body "{BODY}"`
 - Never `git add` or commit `.pr-preview.md` / `.pr-body.tmp.md`; delete them only after the PRs are created

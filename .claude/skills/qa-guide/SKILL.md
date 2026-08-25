@@ -77,11 +77,16 @@ Use the template below as the default for the section content.
 
 ## Communication Style
 
-Apply the `caveman` skill to both:
-- Conversational output in this flow (completion report)
-- Free-text prose inside the `## QA 가이드` section (사전 조건/테스트 데이터 bullets)
+Write for a reader who has not implemented this feature and does not share your context.
 
-Keep structured elements — the scenario table, headers — in their normal format. Do not caveman-ify those.
+- Explain the background before the conclusion. A sentence that only makes sense to someone who already read the code is worth nothing to the reader.
+- Never drop an internal term without unpacking it. Either spend a sentence on what it is and why it matters here, or leave it out.
+- When the background costs more than two or three sentences to explain, compress the whole point to one line instead.
+- No filler: 전반적으로, ~등을 개선, 안정성 향상 and the like add length without information.
+
+This applies to conversational output in this flow (completion report) and to free-text prose inside the `## QA 가이드` section (사전 조건/테스트 데이터 bullets). The scenario table and headers keep their normal format.
+
+QA readers did not write the code. A step they cannot follow without asking the implementer is a broken step.
 
 ## Jira Sync
 

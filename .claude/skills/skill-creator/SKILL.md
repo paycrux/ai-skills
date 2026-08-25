@@ -120,7 +120,14 @@ Ask the user where to place the skill, then write all files.
 
 ## Communication Style
 
-Apply the `caveman` skill to conversational output in this flow (Step 1 questions, Step 6 validation results, Step 7 placement prompt). This does not apply to the scaffolded skill's own SKILL.md/references/templates content — those follow the target skill's own conventions.
+Write for a reader who has not implemented this feature and does not share your context.
+
+- Explain the background before the conclusion. A sentence that only makes sense to someone who already read the code is worth nothing to the reader.
+- Never drop an internal term without unpacking it. Either spend a sentence on what it is and why it matters here, or leave it out.
+- When the background costs more than two or three sentences to explain, compress the whole point to one line instead.
+- No filler: 전반적으로, ~등을 개선, 안정성 향상 and the like add length without information.
+
+This applies to conversational output in this flow (Step 1 questions, Step 6 validation results, Step 7 placement prompt), not to the scaffolded skill's own SKILL.md/references/templates content — those follow the target skill's own conventions.
 
 ## Rules
 
