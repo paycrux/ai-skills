@@ -1,14 +1,16 @@
 ---
 name: git-pr
-description: "Full Git PR workflow: choose git-only, PR-only, or both. Branch modes: create fresh branch from base, or commit/push current branch with optional suffix sub-branch and rebase. Handles staged and unstaged changes. Use /git-pr [--mode git|pr|both] [--new <name>] [--suffix <dev|stg>] [--base <branch>] [--no-rebase] [--also-pr <branch>] [--preview]"
-argument-hint: "[--mode git|pr|both] [--new <name>] [--suffix <dev|stg>] [--base <branch>] [--no-rebase] [--also-pr <branch>] [--preview]"
+description: "Full Git PR workflow: choose git-only, PR-only, or both. Branch modes: create fresh branch from base, or commit/push current branch with optional suffix sub-branch and rebase. Handles staged and unstaged changes. Use /git-pr [--mode git|pr|both] [--new <name>] [--suffix <dev|stg>] [--base <branch>] [--no-rebase] [--also-pr <branch>] [--preview] [--issue <no>] [--no-issue] [--review|--no-review]"
+argument-hint: "[--mode git|pr|both] [--new <name>] [--suffix <dev|stg>] [--base <branch>] [--no-rebase] [--also-pr <branch>] [--preview] [--issue <no>] [--no-issue] [--review|--no-review]"
 disable-model-invocation: true
-allowed-tools: Bash, AskUserQuestion, Read, Write, Edit
+allowed-tools: Bash, AskUserQuestion, Read, Write, Edit, Skill, Grep, Glob
 ---
 
 # /git-pr — Git PR Workflow
 
-> All strings quoted in `AskUserQuestion` prompts and options are the literal Korean text shown to the user. Emit them verbatim.
+> All quoted prompts and options are the literal Korean text shown to the user. Emit them verbatim.
+> Where the host provides `AskUserQuestion`, use it. Where it does not (Cursor, Codex), ask the same
+> question in plain conversation and list the same options — every step here must work either way.
 
 ## Step 1: Choose the operation
 
@@ -85,7 +87,7 @@ If not provided via flags:
   - prompt: `"어느 브랜치에서 분기할까요?"`
   - options: `["develop", "master (or main)", "staging"]`
 
-> If `master (or main)` is selected, resolve the real branch name via **Base branch resolution** below.
+> If `master (or main)` is selected, resolve the real branch name via **Base branch resolution** in `${CLAUDE_SKILL_DIR}/references/resolution.md`.
 
 ### A2: Execute
 
@@ -116,7 +118,7 @@ If not provided via flags:
   - prompt: `"어느 브랜치 기준으로 리베이스할까요?"`
   - options: `["develop", "master (or main)", "staging", "리베이스 안 함"]`
 
-> If `master (or main)` is selected, resolve the real branch name via **Base branch resolution** below.
+> If `master (or main)` is selected, resolve the real branch name via **Base branch resolution** in `${CLAUDE_SKILL_DIR}/references/resolution.md`.
 
 ### B2: Identify the current branch
 
@@ -212,7 +214,7 @@ Call `AskUserQuestion` with:
 - prompt: `"PR의 대상 브랜치(base)를 선택해주세요."`
 - options: `["develop", "master (or main)", "staging"]`
 
-> If `master (or main)` is selected, resolve the real branch name via **Base branch resolution** below.
+> If `master (or main)` is selected, resolve the real branch name via **Base branch resolution** in `${CLAUDE_SKILL_DIR}/references/resolution.md`.
 
 Call `AskUserQuestion` with:
 - prompt: `"추가로 다른 브랜치에도 PR을 생성할까요? (예: develop → staging 동시 PR)"`
@@ -242,9 +244,9 @@ git diff origin/{PR_BASE}..{HEAD_BRANCH} --name-status
 
 Read the actual diff of the most substantial files before writing. Grouping requires knowing what the code does, not just which files changed.
 
-Generate:
+Resolve the issue number first via **Issue number resolution** in `${CLAUDE_SKILL_DIR}/references/resolution.md`, then generate:
 
-1. **PR title** — one line, what this PR does (Korean allowed)
+1. **PR title** — `[{ISSUE_NO}] {요약}`, one line, what this PR does (Korean allowed). `{요약}` never repeats the issue number. When no issue number was resolved, the title is `{요약}` alone with no bracket. Store the finished string as `TITLE`.
 2. **PR body** — apply the authoring rules below to `${CLAUDE_SKILL_DIR}/templates/pr-body.template.md`
 
 Read `${CLAUDE_SKILL_DIR}/templates/pr-body.example.md` to calibrate sentence tone and density. It is a writing sample, not content to copy.
@@ -309,6 +311,45 @@ Not evidence — omit the section if this is all that exists:
 - implementation items that merely imply the feature works
 
 If no `tasks.md` exists, or it holds no evidence, delete the section. Do not ask the user to supply scenarios, and do not restate a scenario in stronger terms than the record supports.
+
+---
+
+### Pre-PR review
+
+Before showing the draft, offer a review of the branch changes:
+
+- prompt: `"PR 생성 전에 변경사항을 리뷰할까요?"`
+- options: `["리뷰 실행", "건너뛰기 — 바로 초안 확인"]`
+
+Skip this step entirely when `--no-review` is in `$ARGUMENTS`; run it without asking when
+`--review` is.
+
+**How to run it depends on the host.** The built-in reviews exist only in Claude Code, so they are
+an accelerator, not the mechanism:
+
+| Host | Method |
+|---|---|
+| `/code-review` available | Invoke it. Also invoke `/security-review` when the diff touches auth, permissions, payments, secrets, or user-supplied input reaching a query or a shell |
+| No built-in review (Cursor, Codex, ...) | Read `git diff origin/{PR_BASE}..{HEAD_BRANCH}` and review it against the checklist below |
+
+Fallback checklist — one pass over the diff, reporting only what you can point at a line for:
+
+- 에러·실패 경로가 빠진 곳 (네트워크 실패, 빈 응답, 권한 없음)
+- 사용자 입력이 검증 없이 쿼리·명령·렌더링까지 흘러가는 경로
+- 이 저장소의 기존 패턴을 두고 새 방식을 도입한 곳
+- 남은 디버그 로그, 죽은 코드, 커밋된 임시 파일이나 시크릿
+- `spec.md`의 엣지 케이스 중 구현에 반영되지 않은 것
+
+**What to do with the result:**
+
+- **리뷰는 PR을 막지 않는다.** Show the findings and let the user decide. A review that blocks the
+  workflow is a review people learn to skip.
+- If the user wants fixes: apply them, commit, push to `HEAD_BRANCH`, then regenerate the draft
+  from the updated diff.
+- **Never put review findings in the PR body.** The body records what the diff does (R1); a
+  reviewer's concerns are not that. Findings go in the conversation, or -- in preview-file mode --
+  above the `<!-- ↓↓↓ PR 본문 시작 ↓↓↓ -->` marker where they never reach the PR.
+- If no finding survives, say so in one line and move on.
 
 ---
 
@@ -403,27 +444,6 @@ Summarize the completed work in Korean:
 
 ---
 
-## Base branch resolution
-
-When the user selects `master (or main)`, determine which name actually exists in the repository.
-
-1. Query both candidates on the remote:
-
-   ```bash
-   git ls-remote --heads origin master main
-   ```
-
-2. Decide:
-   - **Only one exists** → use that name as `BASE` (do not ask the user)
-   - **Both exist** → ask via `AskUserQuestion`:
-     - prompt: `"원격에 master와 main이 모두 있어요. 어느 쪽을 사용할까요?"`
-     - options: `["master", "main"]`
-   - **Neither exists** → tell the user in Korean: `"원격에 master/main 브랜치가 없어요. 브랜치명을 직접 입력해주세요."` and wait for input
-
-3. Store the resolved value in `BASE` and continue.
-
----
-
 ## Rules
 
 - Never delete remote branches
@@ -432,6 +452,8 @@ When the user selects `master (or main)`, determine which name actually exists i
 - Always return to `{ORIGIN_BRANCH}` after sub-branch work
 - Only auto-stage with explicit user confirmation (`전체 스테이징 후 커밋`)
 - Always generate PR title and body from commit log and diff analysis — never use `--fill`
+- Always prefix the PR title with `[{ISSUE_NO}]` when an issue number resolves; never invent one, and never write `[없음]` or an empty bracket
+- Offer a pre-PR review, and never let its findings block PR creation or leak into the PR body
 - Follow the PR body authoring rules (R1–R7); they override any habit of filling every section
 - Never write `없음`, an empty checklist, or an empty table — delete the section instead
 - Never leave an unexplained internal term in the body — explain it in a sentence or drop the point to one line (R6)

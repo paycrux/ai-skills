@@ -199,7 +199,10 @@ curl -fsSL https://raw.githubusercontent.com/paycrux/ai-skills/main/install.sh |
 | tasks.md | 작업 종류·범위·Phase별 구현 단계 + 진행 기록 (탐색 결과 인라인)      |
 | spec.md  | 도메인 로직 / 행동 명세                                              |
 
-- 코드베이스 탐색 결과(재사용 컴포넌트, 라이브러리 패턴, 관련 파일)는 해당 Phase 항목의 sub-bullet로 인라인됩니다.
+- 한 파일 한 줄짜리 변경이면 계획 문서를 만들지 않고 바로 진행할지 먼저 물어봅니다.
+- **Phase는 "끝났을 때 검증할 수 있는 단위"**로 나눕니다. 순서는 타입·상수 → 데이터·API → 상태·훅 → UI → 화면 연결이고, 한 Phase는 3–6개 항목, 의존성은 한 방향입니다.
+- 코드베이스 탐색은 "이미 있는 걸 다시 만들 위험 / 이 프로젝트의 방식 / 손댈 파일의 현재 형태" 세 가지만 확인하고, 결과는 해당 Phase 항목의 sub-bullet로 인라인됩니다. 별도 조사 문서를 만들지 않습니다.
+- `tasks.md`는 **무엇을 어떤 순서로**, `spec.md`는 **무엇이 맞는 동작인지**를 담고 같은 내용을 양쪽에 쓰지 않습니다.
 - Figma 노드는 task 라인에 인라인 링크로 표기됩니다.
 - "기능 수정" 작업은 원본 plans에 `참조:` 헤더 링크만 추가하고, 원본 파일은 수정하지 않습니다.
 
@@ -248,6 +251,8 @@ task-plan에서 생성한 문서(`tasks.md`, `spec.md`) 두 개를 읽고, 단�
 
 task-plan의 `tasks.md` 안에 `## QA 가이드` 섹션을 작성합니다. 별도 파일을 만들지 않고 `tasks.md` 하나를 단일 소스로 유지합니다. `tasks.md` 헤더에 Jira 이슈 키가 있으면 `acli`로 해당 섹션을 이슈 설명에도 동기화합니다(acli 미설치/미로그인 시 자동 설치·로그인 없이 안내만 표시).
 
+- 마크다운 → ADF(Atlassian Document Format) 변환은 모델이 손으로 하지 않고 `scripts/md_to_adf.py`가 처리합니다. 헤딩·문단·중첩 불릿·표·코드블록·인라인 마크를 지원하고, `taskList`/`taskItem`은 구조적으로 만들지 않습니다(`- [ ]`는 `[ ]`로 시작하는 일반 불릿).
+
 ```
 /qa-guide <문서 혹은 요구사항>
 ```
@@ -256,7 +261,7 @@ task-plan의 `tasks.md` 안에 `## QA 가이드` 섹션을 작성합니다. 별�
 
 **대형 문서 분할**
 
-큰 마크다운 문서(로컬 파일 또는 Notion URL/page ID)를 H2 제목 기준으로 분할해 `docs/<name>/prd/`에 섹션별 파일과, 각 파일로 링크된 `0-overview.md`를 생성합니다. Notion 소스는 `notion-cli`로 먼저 마크다운으로 가져온 뒤 분할합니다.
+큰 마크다운 문서(로컬 파일 또는 Notion URL/page ID)를 H2 제목 기준으로 분할해 `docs/<name>/prd/`에 섹션별 파일과, 각 파일로 링크된 `0-overview.md`를 생성합니다. Notion 소스는 `notion-cli`로 먼저 마크다운으로 가져온 뒤 분할합니다(가져오기 스크립트는 `/notion-do`와 공유 — `skills/_shared/notion/`).
 
 ```
 /create-prd <마크다운 파일 경로 또는 Notion URL/page ID>
@@ -283,22 +288,31 @@ task-plan의 `tasks.md` 안에 `## QA 가이드` 섹션을 작성합니다. 별�
 /browse                          # 대화형 모드
 ```
 
+- **테스트·QA·검증은 browse로만** 합니다. 호스트에 다른 브라우저 도구(Claude Code의 `claude-in-chrome`, Playwright/Puppeteer MCP)가 있어도 섞어 쓰지 않습니다 — 쿠키·세션·`@e` ref·`snapshot -D` 기준점이 갈라지면 diff와 재현 단계가 무의미해지기 때문입니다.
+- 공개 문서 한 페이지 읽기 같은 곁가지 조회는 호스트 기본 도구를 쓰세요. 그것 때문에 browse 서버를 띄울 이유는 없습니다.
+
 ### /qa
 
 **브라우저 기반 QA 검증**
 
-task-plan 문서를 기반으로 헤드리스 브라우저로 구현 결과를 검증하고, 버그 리포트를 작성합니다.
+`docs/<task-name>/plans/`의 `tasks.md` + `spec.md`를 읽고, browse로 구현 결과를 검증한 뒤 `plans/qa-report.md`에 리포트를 씁니다. 이슈 요약 한 줄은 `tasks.md`의 `## 진행 기록`에 남습니다.
 
 ```
 /qa <task-folder-name>           # task-plan 기반 QA
 /qa <URL>                        # URL 직접 검증
+/qa                              # 상태가 "진행중"인 task 자동 탐지
 ```
+
+- `tasks.md`에 `/qa-guide`가 쓴 `## QA 가이드` 섹션이 있으면 그 시나리오 표를 우선 실행합니다.
+- 모든 브라우저 조작은 browse로 합니다.
 
 ### /git-pr
 
 **Git 브랜치 작업 + PR 생성 통합 워크플로우**
 
 브랜치 생성/푸시부터 PR 생성까지 하나의 스킬에서 처리합니다. 커밋 로그와 diff를 분석해 PR 제목과 본문 초안을 자동으로 작성하고 사용자가 확인 후 생성합니다.
+
+초안을 보여주기 전에 **변경사항 리뷰를 한 번 제안**합니다. Claude Code에서는 빌트인 `/code-review`(인증·권한·결제·시크릿이 걸리면 `/security-review`까지)를 호출하고, Cursor·Codex에서는 diff를 직접 읽어 체크리스트로 리뷰합니다. 리뷰는 PR 생성을 막지 않고, 결과가 PR 본문에 들어가지도 않습니다 — 본문은 diff에서 확인되는 사실만 담습니다.
 
 ```
 /git-pr                          # 대화형 모드 (브랜치 방식 + PR 여부 선택)
@@ -307,7 +321,13 @@ task-plan 문서를 기반으로 헤드리스 브라우저로 구현 결과를 �
 /git-pr --mode both              # 브랜치 작업 + PR 생성
 /git-pr --new <branch-name>      # 새 브랜치 생성 모드
 /git-pr --suffix dev             # 현재 브랜치에 -dev 서브 브랜치 생성
+/git-pr --issue ABC-123          # PR 제목 앞에 붙일 이슈 번호 직접 지정
+/git-pr --review                 # 확인 없이 PR 생성 전 리뷰 실행
+/git-pr --no-review              # 리뷰 단계 건너뛰기
+/git-pr --no-issue               # 이슈 번호 없이 제목만 사용
 ```
+
+PR 제목은 `[이슈번호] 요약` 형태로 생성됩니다. 이슈 번호는 `--issue` → `tasks.md` 헤더의 `> 이슈:` → 브랜치명의 Jira 키(`feature/ABC-123-login`) 순으로 찾고, 어디에도 없으면 직접 입력할지 생략할지 물어봅니다.
 
 PR 본문 구성:
 
@@ -324,20 +344,10 @@ PR 본문 구성:
 - diff로 확인 가능한 사실만 기록 — 의도·기대효과 추측 금지, "전반적으로 개선" 같은 빈 문장 금지
 - 백틱은 식별자(경로·함수명·명령어·환경변수)에만. 한글 설명문을 백틱으로 감싸지 않음
 - 그룹당 불릿 5개 상한
-- mermaid는 불릿만으로 순서 파악이 안 되는 덩어리에만. 형태(flowchart / sequenceDiagram / stateDiagram-v2 / erDiagram)는 변경 성격에 맞춰 선택
+- 산문과 불릿만 사용 — mermaid·ASCII 아트·이미지 금지. 불릿으로 설명이 안 되면 그룹을 쪼갠다
 - 테스트는 `tasks.md`에 기록된 검증 내역만 옮겨 적음 — 테스트 파일이 diff에 추가된 것은 실행 증거로 보지 않음
 
-관련 템플릿: `.claude/skills/git-pr/templates/` (`pr-body.template.md`, `pr-body.example.md`, `mermaid-forms.md`)
-
-### /investigate
-
-**체계적 디버깅 + 근본원인 분석**
-
-증상 수집 → 가설 생성 → 검증 루프를 반복하여 근본 원인을 분석합니다. `/task-plan`보다 가벼운 디버깅 워크플로우.
-
-```
-/investigate <증상 또는 에러 메시지>
-```
+관련 템플릿: `.claude/skills/git-pr/templates/` (`pr-body.template.md`, `pr-body.example.md`)
 
 ### /skill-creator
 
@@ -351,27 +361,11 @@ PR 본문 구성:
 /skill-creator                        # 대화형 모드
 ```
 
-### /caveman
-
-**초압축 커뮤니케이션 모드**
-
-응답을 caveman체로 압축해 출력 토큰을 65% 절감합니다 (관사/필러/공손 표현 제거, 기술 내용은 그대로 유지). 원할 때 직접 호출해서 쓰는 스킬이며, 다른 스킬이 자동으로 적용하지는 않습니다.
-
-```
-/caveman            # full 모드 (기본)
-/caveman lite        # 약한 압축
-/caveman ultra       # 극단적 압축
-/caveman wenyan      # 문언문(classical Chinese) 모드
-stop caveman         # 일반 모드로 복귀
-```
-
-> [JuliusBrussee/caveman](https://github.com/JuliusBrussee/caveman) (MIT License)에서 vendoring — 라이센스 전문은 `.claude/skills/caveman/LICENSE` 참고.
-
 ---
 
 ## Docs
 
-프로젝트별 UI 패턴 레퍼런스 문서입니다. `/task-plan` 실행 시 Figma/디자인을 분석해 해당 패턴을 자동으로 감지하고 `ui-spec.md`에 embed합니다.
+프로젝트별 UI 패턴 레퍼런스 문서입니다. `/task-plan`이 해당 화면을 다룰 때 참고해, 재사용·패턴 sub-bullet으로 `tasks.md`에 인라인합니다.
 
 | 문서 | 적용 대상 |
 | --- | --- |
@@ -388,6 +382,9 @@ stop caveman         # 일반 모드로 복귀
 | ---------------- | ---------------------------------------------------------------------------------------------- |
 | react-typescript | React + TypeScript 구현 시 (Hooks, 불변성, 렌더링, 컴포넌트 패턴, 메모이제이션, 타입)          |
 | frontend-design  | 디자인 레퍼런스 없이 UI를 직접 만들 때 (AI Slop 방지, 맥락 기반 선택)                          |
+| writing          | 사람이 읽는 산문을 쓸 때 (계획 문서, 진행 기록, PR 본문, QA 가이드, 대화 출력)                  |
+
+> `writing` 룰은 `/task-plan`·`/implement`·`/qa-guide`·`/skill-creator`가 각자 들고 있던 동일한 `Communication Style` 블록의 원본입니다. 각 스킬에는 한 문단 요약과 이 파일 링크만 남아 있으니, 규칙을 고칠 때는 `rules/writing.md`를 먼저 고치세요.
 
 > `react-typescript` 룰에서 **렌더링**과 **메모이제이션**은 별개 카테고리입니다. 리렌더 이슈는 구조적 해결(분해/격리/상태 위치/key)을 먼저 시도하고, 메모이제이션 훅(`useMemo`/`useCallback`/`React.memo`)은 사용자가 명시적으로 요청할 때만 도입합니다.
 
@@ -405,17 +402,22 @@ stop caveman         # 일반 모드로 복귀
 │   ├── qa/SKILL.md
 │   ├── git-pr/
 │   │   ├── SKILL.md
-│   │   └── templates/     # pr-body.template.md, pr-body.example.md, mermaid-forms.md
+│   │   ├── references/    # resolution.md (이슈 번호·base 브랜치 해석)
+│   │   └── templates/     # pr-body.template.md, pr-body.example.md
 │   ├── study/SKILL.md
-│   ├── qa-guide/SKILL.md
+│   ├── qa-guide/
+│   │   ├── SKILL.md
+│   │   └── scripts/       # md_to_adf.py
 │   ├── create-prd/SKILL.md
 │   ├── notion-do/SKILL.md
-│   ├── skill-creator/SKILL.md
-│   └── caveman/SKILL.md
+│   ├── _shared/           # 스킬 아님 — 둘 이상이 쓰는 코드
+│   │   └── notion/fetch_notion_markdown.py
+│   └── skill-creator/
 ├── docs/
 │   ├── partner-jirisan.md
 │   └── partner-option-group-factory.md
 └── rules/
     ├── react-typescript.md
-    └── frontend-design.md
+    ├── frontend-design.md
+    └── writing.md
 ```

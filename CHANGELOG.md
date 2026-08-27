@@ -4,11 +4,53 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.10.0] - 2026-08-27
+
+### Fixed
+
+- `skill-creator`: `references/frontmatter-spec.md`의 `model:` 예시가 `claude-opus-4-6`, `references/agent-authoring.md`가 `claude-sonnet-4-6`으로 두 세대 전 모델을 가리키고 있던 것을 `claude-opus-5` / `claude-sonnet-5`로 갱신. `effort:` 설명의 "Opus 4.6 only"도 특정 모델을 못 박지 않는 문구로 교체
+- `qa`: `/task-plan`이 v0.4.4에서 없앤 `README.md` / `ui-spec.md` / `progress.md`를 여전히 읽으라고 지시하던 문제 수정. 이제 `docs/<name>/plans/`의 `tasks.md` + `spec.md`만 읽고, 테스트 대상은 `spec.md`의 흐름·상태·엣지 케이스에서 도출. `tasks.md`에 `/qa-guide`가 쓴 `## QA 가이드`가 있으면 그 시나리오 표를 우선 실행
+  - 결과 기록 대상을 없어진 `progress.md`에서 `tasks.md`의 `## 진행 기록` 한 줄로 변경 (기존 지시는 대상 파일이 없어 항상 실패했음)
+  - 리포트 경로를 `docs/<name>/qa-report.md` → `docs/<name>/plans/qa-report.md`로 이동
+  - 인자 없이 호출할 때의 자동 탐지 대상을 `docs/*/plans/tasks.md`의 헤더 `상태: 진행중`으로 명시
+- `README.md`: 삭제된 `/investigate` 스킬 섹션, 0.8.0에서 제거된 mermaid 규칙과 `mermaid-forms.md` 참조, task-plan 경량화 때 없어진 `ui-spec.md` 언급 제거
+- `install.sh`: `cleanup_legacy_skills`에 `investigate` 추가 — 통합 이전에 설치한 사용자 디스크에 스킬 디렉터리가 그대로 남아 있었음
+
+### Added
+
+- `skill-creator`: `references/host-integration.md` 신설. 스킬 / 서브에이전트 / hook / 룰 중 어느 층에 넣을지 판단하는 표, 스킬 번들 `agents/`와 프로젝트 `.claude/agents/`의 구분, hook을 써야 하는 경우와 쓰면 안 되는 경우, 그리고 **호스트 이식성** — 이 저장소는 Claude Code·Cursor·Codex에 모두 설치되므로 `AskUserQuestion`·MCP·빌트인 스킬·hook은 전부 선택적 가속 장치이고 주 경로가 되면 안 된다는 규칙
+  - Step 6 검증 체크리스트에 3개 추가: 번들 경로 실재 여부, 이식 가능한 주 경로, **다른 스킬이 만드는 파일을 읽는다면 그 스킬이 아직 그 파일을 만드는지** (스킬이 썩는 가장 흔한 경로)
+- `browse`: `## 언제 browse를 쓰는가` 섹션 신설. 테스트·QA·검증·회귀·버그 재현은 browse 필수, 공개 문서 한 페이지 조회나 로그인된 실제 브라우저 세션이 필요한 작업은 호스트 기본 도구. 도구를 섞으면 쿠키·세션·`@e` ref·`snapshot -D` 기준 스냅샷이 갈라져 diff와 재현 단계가 신뢰를 잃기 때문
+- `qa`: 브라우저 조작을 전부 `$B`로 하도록 규칙 추가 — `claude-in-chrome`·Playwright MCP 등 다른 브라우저 도구와 섞어 쓰지 않고, `NEEDS_SETUP`이어도 우회하지 않고 빌드 후 진행
+- `qa-guide`: `scripts/md_to_adf.py` 신설. 마크다운 → ADF 변환을 모델 프롬프트에서 스크립트로 내림 — 헤딩·문단·중첩 불릿·순서 리스트·표(빈 셀 패딩 포함)·코드블록·수평선과 `code`/`strong`/`em`/`strike`/`link` 인라인 마크를 지원하고, `--section "## QA 가이드"`로 섹션만 잘라내며, `taskList`/`taskItem`을 **구조적으로 만들 수 없음**(`- [ ]`는 `[ ]`로 시작하는 일반 불릿). 결과로 "taskItem 0개인지 확인" 검증 단계가 불필요해짐
+- `git-pr`: PR 생성 전 리뷰 단계 추가 (`--review` / `--no-review`). Claude Code에서는 빌트인 `/code-review`를 호출하고(인증·권한·결제·시크릿·사용자 입력이 diff에 걸리면 `/security-review`까지), 빌트인이 없는 호스트에서는 diff를 직접 읽어 체크리스트로 리뷰하는 폴백 경로. **리뷰는 PR 생성을 막지 않고, 결과를 PR 본문에 쓰지 않음** — 본문은 diff에서 확인되는 사실만 담는다는 R1이 유지됨
+- `git-pr`: `references/resolution.md` 분리 — 특정 분기에서만 필요한 이슈 번호 해석·base 브랜치 해석을 SKILL.md에서 빼냄 (477 → 467줄). R1–R7 작성 규칙은 PR 본문을 쓸 때마다 필요하므로 인라인 유지
+- `skills/_shared/` 신설 — 둘 이상의 스킬이 쓰는 코드를 두는 자리. `SKILL.md`가 없어 스킬 탐색에서 무시되고, 밑줄 접두사로 스킬이 아님을 표시. 왜 여기 있는지와 참조 방법을 `_shared/README.md`에 기록
+  - `fetch_notion_markdown.py`가 `create-prd/scripts/`와 `notion-do/scripts/`에 md5까지 같은 사본으로 두 벌 있었음. CI가 없어 어긋나도 아무도 못 알아채는 상태였고, 한쪽만 고치면 다른 쪽이 조용히 뒤처짐. `skills/_shared/notion/`에 한 벌만 두고 양쪽이 `${CLAUDE_SKILL_DIR}/../_shared/notion/`으로 참조
+  - 두 스킬 중 하나가 소유하는 방식을 쓰지 않은 이유 — 이 저장소는 스킬을 자주 지운다(지금까지 7개). 소유 스킬이 사라지면 의존하는 쪽이 같이 죽음
+  - `install.sh`에 `cleanup_moved_scripts` 추가 — 기존 설치본의 사본 두 개와 빈 `scripts/` 디렉터리를 제거. `copy_dir`가 `skills/`를 재귀 복사하므로 설치 로직 자체는 변경 없음(`--only skills`도 그대로 동작)
+- `rules/writing.md` 신설 — `/task-plan`·`/implement`·`/qa-guide`·`/skill-creator`에 네 벌로 복사돼 있던(그리고 이미 서로 어긋나 있던) `Communication Style` 블록의 원본. 각 스킬에는 한 문단 요약 + 이 파일 링크 + 스킬별 적용 범위 한 줄만 남김. 룰 파일이 설치되지 않은 환경에서도 요약만으로 동작하도록 자립적으로 작성
+
+### Changed
+
+- `task-plan`: 5줄짜리 Flow를 실행 가능한 단계로 확장. 계획이 필요한 작업인지 먼저 판단(Step 0), 코드베이스 탐색의 목적·중단 시점 명시(Step 2), **Phase 분해 기준 신설**(Step 3) — Phase는 끝났을 때 검증 가능한 단위, 순서는 타입·상수 → 데이터·API → 상태·훅 → UI → 화면 연결, 3–6개 항목, 의존성은 한 방향
+  - `tasks.md`(무엇을 어떤 순서로)와 `spec.md`(무엇이 맞는 동작인지)의 경계를 표로 고정하고 같은 내용을 양쪽에 쓰지 않도록 규칙화
+  - 리뷰 요청 형식 고정 — 문서 경로 / Phase 목록 / 확인 필요 건수
+  - 호스트 이식성 규칙 추가: 모든 질문과 보고는 평문 대화가 기본. 구조화된 질문 도구는 있으면 쓰되 없어도 동작해야 함
+- `implement`: 구현 완료 후 "컨텍스트가 무거우므로 **새 대화에서** `/qa`를 실행해주세요" 안내 제거. 리포트가 파일로 나가므로 대화를 갈아탈 이유가 없음 — 지금 이어서 실행할지 묻고, 새 세션을 원하는지는 사용자가 정함
+- `skill-creator`: 문서 분리 기준을 "내용 종류"에서 **"매번 필요한가, 가끔 필요한가"**로 교체. 매번 참조하는 규칙을 `templates/`로 빼면 읽기 한 번만 늘고 절약이 0이므로 인라인 유지가 맞고, 특정 분기에서만 필요한 것만 `references/`로 보냄. `No inline policies` 체크 항목을 `Conditional content extracted`로 대체하고 `writing-guide.md`의 원칙 1·5와 안티패턴 목록도 같은 기준으로 정정
+- `git-pr`: 상단 안내를 `AskUserQuestion` 전제에서 "있으면 쓰고, 없으면 같은 질문을 평문으로"로 교체 — Cursor·Codex에서도 모든 단계가 동작해야 함
+
+### Removed
+
+- `caveman` 스킬 삭제. v0.9.0에서 다른 스킬의 자동 적용을 이미 끊어 직접 호출로만 남아 있었고, "출력 토큰 65% 절감"은 구 모델 기준 측정치라 현행 모델에서는 근거가 약함. `install.sh`가 기존 설치본에서 자동 제거
+
 ## [0.9.0] - 2026-08-25
 
 ### Changed
 
 - `task-plan`, `implement`, `qa-guide`, `skill-creator`: `## Communication Style` 섹션에서 `caveman` 자동 적용을 제거하고, "구현하지 않은 사람이 읽는다"는 기준의 서술 규칙으로 교체. 압축이 아니라 이해 가능성이 목표 — 배경 → 결론 순서, 구현자만 아는 용어는 한 문장으로 풀거나 삭제, 배경 설명이 두세 문장을 넘으면 문단 대신 한 줄로 접기. `/caveman`은 사용자가 직접 호출할 때만 동작
+- `git-pr`: PR 제목을 `[이슈번호] 요약` 형태로 생성. 이슈 번호는 `--issue <no>` 플래그 → `tasks.md` 헤더의 `> 이슈:` → 브랜치명의 Jira 키(`ABC-123`) 순으로 찾고, 아무 데서도 안 나오면 직접 입력할지 생략할지 물어봄. `--no-issue`를 주면 묻지 않고 요약만 사용. 브랜치명에 그냥 들어간 숫자(`fix/500-error`)는 이슈 번호로 보지 않음
 - `git-pr`: R6(`####` 판단 근거 블록) 규칙에 리뷰어 기준 조항 추가 — 최대 3문장, 용어는 풀거나 빼고, 배경이 3문장을 넘으면 블록을 쓰지 말고 불릿 한 줄로 접음. diff를 읽어야만 이해되는 문단은 삭제
   - `pr-body.example.md`에 나쁜 예/좋은 예 비교 블록 추가, `pr-body.template.md`의 `####` 자리 안내 문구 교체
 - `implement`: Phase마다 접근법을 요약하고 승인을 받던 게이트 제거 — 계획은 `task-plan`에서 이미 합의된 것으로 보고 Phase를 안내만 한 뒤 바로 구현하고, 끝나면 다음 Phase로 자동 진행. 중단 지점을 예전의 "Phase 시작 전 매번"에서 실제로 사람이 필요한 순간으로 옮긴 것

@@ -179,17 +179,21 @@ When all Phases are done:
 1. Verify all items in `tasks.md` are checked
 2. Append one closing line under `## 진행 기록` — `- 전체 구현 완료`. Do not re-summarize the Phases; they are already checked off and recorded.
 3. Change `tasks.md` header `상태:` field to `완료`. Delete `tasks.md`'s `## 확인 필요` and `spec.md`'s `## 결정이 필요한 부분` — a finished plan carries no open question. If either still holds an unanswered item, the work is not complete: ask instead of closing.
-4. **QA guidance** — when the change includes frontend work:
+4. **QA guidance** — when the change includes frontend work, offer to continue right here:
 
 ```
 구현이 완료되었습니다.
 
-브라우저 기반 QA 검증을 권장합니다.
-컨텍스트가 무거우므로, **새 대화에서 `/qa <task-folder-name>`을 실행해주세요**.
+브라우저 기반 QA 검증을 권장합니다. `/qa <task-folder-name>`은 이 계획 문서를 기준으로
+헤드리스 브라우저로 실제 앱을 탐색하고, 발견된 버그를 스크린샷과 함께
+`plans/qa-report.md`에 정리합니다.
 
-/qa는 task-plan 문서를 기반으로 헤드리스 브라우저로 실제 앱을 탐색하고,
-발견된 버그를 스크린샷과 함께 리포트합니다.
+지금 이어서 실행할까요?
 ```
+
+Run it in this conversation when the user agrees — the report is written to a file, so nothing is
+lost either way. Do not tell the user to open a new conversation. If they prefer a fresh session,
+that is their call to make, not a default.
 
 ## Step 4 (Optional): Partial Execution
 
@@ -200,12 +204,11 @@ When the user wants to run specific Phases only:
 
 ## Communication Style
 
-Write for a reader who has not implemented this feature and does not share your context.
+Write for a reader who has not implemented this feature and does not share your context: background
+before conclusion, no unexplained internal term, one clear line instead of a paragraph they skip, no
+filler (전반적으로, ~등을 개선, 안정성 향상), and what actually is rather than what was intended.
 
-- Explain the background before the conclusion. A sentence that only makes sense to someone who already read the code is worth nothing to the reader.
-- Never drop an internal term without unpacking it — serialization formats, protocol details, library internals, framework behavior. Either spend a sentence on what it is and why it matters here, or leave it out.
-- When the background costs more than two or three sentences to explain, compress the whole point to one line instead. One clear line beats a paragraph the reader skips.
-- No filler: 전반적으로, ~등을 개선, 안정성 향상 and the like add length without information.
+Full rules: `${CLAUDE_SKILL_DIR}/../../rules/writing.md`.
 
 This applies to conversational output in this flow and to free-text prose appended to `tasks.md`. Structured elements — checklists, headers, file paths, code blocks — keep their normal format.
 

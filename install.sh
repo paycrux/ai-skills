@@ -9,7 +9,7 @@ set -euo pipefail
 REPO_URL="https://github.com/paycrux/ai-skills.git"
 MARKER_START="<!-- AI-SKILLS:START -->"
 MARKER_END="<!-- AI-SKILLS:END -->"
-VERSION="0.9.0"
+VERSION="0.10.0"
 
 # Permanent state directory (persists across installs so `ai-skills update` works)
 AI_SKILLS_HOME="$HOME/.ai-skills"
@@ -303,6 +303,8 @@ cleanup_legacy_skills() {
     "test-case"
     "evaluate"
     "finalize"
+    "investigate"
+    "caveman"
   )
 
   local cleaned=0
@@ -314,7 +316,7 @@ cleanup_legacy_skills() {
   done
 
   if [[ $cleaned -gt 0 ]]; then
-    ok "Cleaned up ${cleaned} legacy skill directories (git-branch/pr consolidated into git-pr in v0.4.3; test-case merged into qa-guide in v0.4.6; evaluate/finalize removed in v0.4.7)"
+    ok "Cleaned up ${cleaned} legacy skill directories (git-branch/pr consolidated into git-pr in v0.4.3; test-case merged into qa-guide in v0.4.6; evaluate/finalize removed in v0.4.7; investigate merged into task-plan; caveman removed in v0.10.0)"
   fi
 }
 
@@ -354,6 +356,41 @@ cleanup_legacy_agents() {
   if [[ -d "$agents_dir" ]] && [[ -z "$(ls -A "$agents_dir" 2>/dev/null)" ]]; then
     rmdir "$agents_dir"
     info "Removed empty agents/ directory"
+  fi
+}
+
+# ─────────────────────────────────────────────
+# Helper: clean up scripts that moved into skills/_shared/
+# (fetch_notion_markdown.py was duplicated in create-prd and notion-do)
+# ─────────────────────────────────────────────
+cleanup_moved_scripts() {
+  local skills_dir="$1/skills"
+  if [[ ! -d "$skills_dir" ]]; then
+    return
+  fi
+
+  local moved_paths=(
+    "create-prd/scripts/fetch_notion_markdown.py"
+    "notion-do/scripts/fetch_notion_markdown.py"
+  )
+
+  local cleaned=0
+  for path in "${moved_paths[@]}"; do
+    local full="$skills_dir/$path"
+    if [[ -f "$full" ]]; then
+      rm -f "$full"
+      ((cleaned++))
+      # drop the scripts/ directory too, if nothing else is in it
+      local parent
+      parent="$(dirname "$full")"
+      if [[ -d "$parent" ]] && [[ -z "$(ls -A "$parent" 2>/dev/null)" ]]; then
+        rmdir "$parent"
+      fi
+    fi
+  done
+
+  if [[ $cleaned -gt 0 ]]; then
+    ok "Cleaned up ${cleaned} duplicated scripts (fetch_notion_markdown.py moved to skills/_shared/notion/ in v0.10.0)"
   fi
 }
 
@@ -774,6 +811,7 @@ mkdir -p "$TARGET_DIR"
 # Clean up legacy agents and skills from previous versions
 cleanup_legacy_skills "$TARGET_DIR"
 cleanup_legacy_agents "$TARGET_DIR"
+cleanup_moved_scripts "$TARGET_DIR"
 cleanup_task_plan_legacy "$TARGET_DIR"
 
 if [[ "$MODE" == "claude" ]]; then
