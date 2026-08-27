@@ -489,6 +489,23 @@ PYEOF
 }
 
 # ─────────────────────────────────────────────
+# Helper: per-rule Cursor metadata (description|globs)
+# Any rules/*.md without an entry still ships, with a generic description.
+# ─────────────────────────────────────────────
+rule_mdc_meta() {
+  case "$1" in
+    react-typescript)
+      echo 'React + TypeScript 프론트엔드 구현 시 적용|["*.tsx", "*.ts"]' ;;
+    frontend-design)
+      echo '디자인 레퍼런스 없이 UI를 직접 만들 때 적용|["*.tsx", "*.css", "*.scss"]' ;;
+    writing)
+      echo '사람이 읽는 산문(계획 문서, 진행 기록, PR 본문, QA 가이드)을 쓸 때 적용|["*.md"]' ;;
+    *)
+      echo "ai-skills rule: $1|[]" ;;
+  esac
+}
+
+# ─────────────────────────────────────────────
 # Helper: create Cursor .mdc rule file
 # ─────────────────────────────────────────────
 create_mdc_rule() {
@@ -835,21 +852,19 @@ elif [[ "$MODE" == "cursor" ]]; then
     mkdir -p "$TARGET_DIR/rules"
     local_count=0
 
-    if create_mdc_rule \
-      "$SRC_DIR/rules/react-typescript.md" \
-      "$TARGET_DIR/rules/react-typescript.mdc" \
-      "React + TypeScript 프론트엔드 구현 시 적용" \
-      '["*.tsx", "*.ts"]'; then
-      ((local_count++))
-    fi
-
-    if create_mdc_rule \
-      "$SRC_DIR/rules/frontend-design.md" \
-      "$TARGET_DIR/rules/frontend-design.mdc" \
-      "디자인 레퍼런스 없이 UI를 직접 만들 때 적용" \
-      '["*.tsx", "*.css", "*.scss"]'; then
-      ((local_count++))
-    fi
+    # Every rules/*.md becomes an .mdc — adding a rule file needs no change here.
+    for rule_file in "$SRC_DIR"/rules/*.md; do
+      [[ -f "$rule_file" ]] || continue
+      rule_name="$(basename "$rule_file" .md)"
+      rule_meta="$(rule_mdc_meta "$rule_name")"
+      if create_mdc_rule \
+        "$rule_file" \
+        "$TARGET_DIR/rules/${rule_name}.mdc" \
+        "${rule_meta%%|*}" \
+        "${rule_meta#*|}"; then
+        local_count=$((local_count + 1))
+      fi
+    done
 
     ok "rules: ${local_count} .mdc files created"
   fi

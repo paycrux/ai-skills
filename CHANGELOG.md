@@ -14,7 +14,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - 리포트 경로를 `docs/<name>/qa-report.md` → `docs/<name>/plans/qa-report.md`로 이동
   - 인자 없이 호출할 때의 자동 탐지 대상을 `docs/*/plans/tasks.md`의 헤더 `상태: 진행중`으로 명시
 - `README.md`: 삭제된 `/investigate` 스킬 섹션, 0.8.0에서 제거된 mermaid 규칙과 `mermaid-forms.md` 참조, task-plan 경량화 때 없어진 `ui-spec.md` 언급 제거
-- `install.sh`: `cleanup_legacy_skills`에 `investigate` 추가 — 통합 이전에 설치한 사용자 디스크에 스킬 디렉터리가 그대로 남아 있었음
+- `install.sh`: `cleanup_legacy_skills`에 `investigate` 추가 — 통합 이전에 설치한 사용자 디스크에 스킬 디렉터리가 그대로 남아 있었음 (실제로 `~/.cursor/skills/investigate`가 남아 있는 것을 설치 테스트에서 확인)
+- `install.sh`: Cursor `.mdc` 룰 변환이 `react-typescript`·`frontend-design` 두 개를 하드코딩하고 있어 새 룰이 Cursor에 설치되지 않던 문제 수정. `rules/*.md`를 순회하도록 바꿔 룰 파일을 추가해도 설치 스크립트를 고칠 필요가 없음. 설명·globs는 `rule_mdc_meta`에서 이름으로 찾고, 항목이 없는 룰도 일반 설명으로 설치됨 (Claude·Codex는 `copy_dir`를 쓰므로 영향 없음)
 
 ### Added
 
