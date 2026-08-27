@@ -70,11 +70,9 @@ def parse_inline(text, marks=None):
 
 
 def paragraph(text):
-    content = parse_inline(text.strip())
-    node = {"type": "paragraph"}
-    if content:
-        node["content"] = content
-    return node
+    # content is always present, empty list included — an empty table cell still needs a
+    # paragraph node, and Atlassian serializes empty paragraphs as "content": [].
+    return {"type": "paragraph", "content": parse_inline(text.strip())}
 
 
 # ── block parsing ───────────────────────────────────────────────────────────
@@ -116,16 +114,26 @@ def convert(lines):
         fence = FENCE_RE.match(line)
         if fence:
             lang = fence.group(1)
+            opened_at = i + 1  # 1-indexed, for the error message
             i += 1
             body = []
             while i < n and not FENCE_RE.match(lines[i]):
                 body.append(lines[i])
                 i += 1
+            if i >= n:
+                # Without this the rest of the document — headings, tables, lists —
+                # becomes code-block body and disappears from the ADF with no error.
+                sys.exit(
+                    "unclosed code fence opened at line %d; everything after it would be "
+                    "swallowed into the code block. Close the fence and re-run." % opened_at
+                )
             i += 1  # closing fence
             node = {"type": "codeBlock"}
             if lang:
                 node["attrs"] = {"language": lang}
             if body:
+                # Guarded on purpose: an ADF text node with an empty string is invalid,
+                # so an empty code block must carry no content at all.
                 node["content"] = [{"type": "text", "text": "\n".join(body)}]
             blocks.append(node)
             continue
@@ -138,11 +146,11 @@ def convert(lines):
         h = HEADING_RE.match(line)
         if h:
             level = min(len(h.group(1)), 6)
-            node = {"type": "heading", "attrs": {"level": level}}
-            content = parse_inline(h.group(2).strip())
-            if content:
-                node["content"] = content
-            blocks.append(node)
+            blocks.append({
+                "type": "heading",
+                "attrs": {"level": level},
+                "content": parse_inline(h.group(2).strip()),
+            })
             i += 1
             continue
 
