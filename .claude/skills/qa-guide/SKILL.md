@@ -77,11 +77,15 @@ Use the template below as the default for the section content.
 
 ## Communication Style
 
-Apply the `caveman` skill to both:
-- Conversational output in this flow (completion report)
-- Free-text prose inside the `## QA 가이드` section (사전 조건/테스트 데이터 bullets)
+Write for a reader who has not implemented this feature and does not share your context: background
+before conclusion, no unexplained internal term, one clear line instead of a paragraph they skip, no
+filler (전반적으로, ~등을 개선, 안정성 향상), and what actually is rather than what was intended.
 
-Keep structured elements — the scenario table, headers — in their normal format. Do not caveman-ify those.
+Full rules: `${CLAUDE_SKILL_DIR}/../../rules/writing.md`.
+
+This applies to conversational output in this flow (completion report) and to free-text prose inside the `## QA 가이드` section (사전 조건/테스트 데이터 bullets). The scenario table and headers keep their normal format.
+
+QA readers did not write the code. A step they cannot follow without asking the implementer is a broken step.
 
 ## Jira Sync
 
@@ -96,9 +100,26 @@ Run `acli jira auth status`.
 
 ### Update steps (acli ready)
 
-1. **Convert the `## QA 가이드` section to ADF** — convert just that section's markdown to Atlassian Document Format (ADF) JSON: headings, paragraphs, lists, code spans, horizontal rules, and tables become ordinary ADF nodes. Do not use `taskList`/`taskItem` nodes; represent any checklist-style line as a bullet list item whose text starts with `[ ]`.
-2. **Update the issue** — `acli jira workitem edit --key "<ISSUE-KEY>" --description-file "<adf-file>" --yes`
-3. **Verify** — `acli jira workitem view <ISSUE-KEY> --fields description --json` and confirm the description contains `0` `taskItem` nodes and the expected heading/list/table structure.
+1. **Convert the section to ADF with the bundled script** — do not hand-write the JSON:
+
+   ```bash
+   python3 "${CLAUDE_SKILL_DIR}/scripts/md_to_adf.py" \
+     "docs/<task-folder-name>/plans/tasks.md" \
+     --section "## QA 가이드" \
+     -o /tmp/qa-guide-adf.json
+   ```
+
+   It extracts the section, stops at the next `##`, and emits ADF for headings, paragraphs,
+   bullet/ordered lists (including nested), tables, code blocks, horizontal rules, and the inline
+   marks `code` / `strong` / `em` / `strike` / `link`. It never emits `taskList`/`taskItem` — a
+   `- [ ]` line becomes a plain bullet whose text starts with `[ ]`. The script prints a node
+   tally so you can sanity-check the shape without opening the JSON.
+
+   If it exits non-zero, report the message and stop. Do not fall back to writing ADF by hand —
+   a hand-built document is exactly what this script exists to prevent.
+
+2. **Update the issue** — `acli jira workitem edit --key "<ISSUE-KEY>" --description-file /tmp/qa-guide-adf.json --yes`
+3. **Verify** — `acli jira workitem view <ISSUE-KEY> --fields description --json`, and confirm the heading/list/table structure arrived.
 
 ### When acli isn't ready
 

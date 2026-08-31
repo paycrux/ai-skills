@@ -29,13 +29,15 @@ For a **Notion source**, fetch it as markdown first:
 
 ```bash
 notion-cli whoami
-python3 "${CLAUDE_SKILL_DIR}/scripts/fetch_notion_markdown.py" "<notion-url-or-id>" \
+python3 "${CLAUDE_SKILL_DIR}/../_shared/notion/fetch_notion_markdown.py" "<notion-url-or-id>" \
   --output /tmp/create-prd-source.md --metadata /tmp/create-prd-source.json --check-auth
 ```
 
 - If `whoami` or the fetch fails, tell the user authentication or page-share permission is
   required, include the failing command and a short stderr excerpt, and stop.
 - Set the working source file to `/tmp/create-prd-source.md`.
+- The fetch script lives in `skills/_shared/notion/` because `notion-do` uses the same one. If the
+  path does not exist, the install is incomplete — tell the user to run `ai-skills update`.
 - Derive `{name}` (used for the output directory in Step 2) from the Notion page **title**
   in `/tmp/create-prd-source.json` (fall back to the first H1 in the markdown), converted to
   an English kebab-case slug. Confirm the derived `{name}` with the user before writing files.

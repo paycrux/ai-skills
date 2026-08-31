@@ -8,7 +8,7 @@ Place in `agents/<agent-name>.md` within the skill directory.
 ---
 name: <agent-name>
 description: "What this agent evaluates/produces"
-model: claude-sonnet-4-6    # Optional model override
+model: claude-sonnet-5      # Optional model override
 ---
 
 # <Agent Name>

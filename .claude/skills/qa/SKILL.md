@@ -19,9 +19,9 @@ task-plan 문서를 기반으로 browse 헤드리스 브라우저를 사용해 �
 
 ## Argument Parsing
 
-- `/qa <task-folder-name>` — `docs/<task-folder-name>/` 기준
+- `/qa <task-folder-name>` — `docs/<task-folder-name>/plans/` 기준
 - `/qa <url>` — URL 직접 지정
-- `/qa` (인자 없음) — `docs/`에서 상태가 "진행중"인 task 자동 탐지
+- `/qa` (인자 없음) — `docs/*/plans/tasks.md`에서 헤더 `상태: 진행중`인 task 자동 탐지. 여러 건이면 사용자에게 선택 요청
 
 ## Step 1: Browse 설정
 
@@ -49,22 +49,22 @@ fi
 
 ### 2-1. Task-plan 문서 로드
 
-인자로 task-folder가 주어진 경우, 다음 파일을 병렬 Read:
+인자로 task-folder가 주어진 경우, `docs/<task-folder-name>/plans/`의 두 파일을 병렬 Read:
 
 | 파일 | 용도 |
 |------|------|
-| `README.md` | 목표, 범위 |
+| `tasks.md` | 헤더(이슈·작업 종류·상태), 개요, Phase별 체크리스트, `## 진행 기록` |
 | `spec.md` | 기능 흐름, 상태 정의, 엣지 케이스 |
-| `tasks.md` | Phase별 구현 체크리스트 |
-| `ui-spec.md` | (있으면) 화면 구조, 컴포넌트 구성 |
-| `progress.md` | 현재 진행 상태 |
+
+`/task-plan`이 만드는 문서는 이 둘뿐이다. 다른 파일을 찾지 말 것.
 
 ### 2-2. 테스트 대상 파악
 
 task-plan 문서가 있는 경우:
-1. `spec.md`에서 기능 흐름 추출 → 테스트 시나리오로 변환
-2. `ui-spec.md`에서 화면/컴포넌트 목록 → 검증 대상 페이지
-3. `tasks.md`에서 완료된 Phase의 변경 파일 → 영향받는 라우트 파악
+1. `spec.md`의 `## 화면/기능 흐름`과 `## 상태 정의` → 테스트 시나리오로 변환
+2. `spec.md`의 `## 엣지 케이스` → 추가 검증 항목
+3. `tasks.md`에서 체크된 Phase 항목의 파일 경로 → 영향받는 화면/라우트 파악
+4. `tasks.md`에 `## QA 가이드` 섹션이 있으면(`/qa-guide` 산출물) 그 시나리오 표를 우선 실행 대상으로 삼는다
 
 task-plan 문서가 없는 경우 (URL만 주어진 경우):
 1. git diff로 변경 파일 분석
@@ -124,7 +124,7 @@ spec.md (또는 변경 범위)에서 도출한 각 시나리오에 대해:
 
 ## Step 4: 리포트 작성
 
-`docs/<task-name>/qa-report.md`에 결과 저장:
+`docs/<task-name>/plans/qa-report.md`에 결과 저장:
 
 ```markdown
 # QA Report: {task-name}
@@ -204,13 +204,15 @@ QA 검증이 완료되었습니다.
 
 ## Task-plan 연동
 
-QA 리포트 작성 완료 후, 관련 task-plan 폴더(`docs/*/`)가 존재하면 `progress.md`에 결과 요약을 append한다:
+QA 리포트 작성 완료 후, 관련 task-plan 폴더가 존재하면 `docs/<task-name>/plans/tasks.md`의 `## 진행 기록`에 한 줄만 append한다. 별도 `progress.md`는 없다.
 
 ```markdown
-### /qa 결과 — {YYYY-MM-DD}
-- Critical: {N}건, High: {N}건, Medium: {N}건, Low: {N}건
-- 리포트: `{qa-report.md 경로}`
+### {YYYY-MM-DD}
+
+- QA: Critical {N} / High {N} / Medium {N} / Low {N} — `plans/qa-report.md`
 ```
+
+건수가 모두 0이면 `- QA: 이슈 없음 — plans/qa-report.md` 한 줄.
 
 ## 규칙
 
@@ -219,5 +221,6 @@ QA 리포트 작성 완료 후, 관련 task-plan 폴더(`docs/*/`)가 존재하�
 - **스크린샷 보여주기** — 촬영 후 반드시 Read 도구로 사용자에게 보여줄 것
 - **콘솔 확인 필수** — 모든 인터랙션 후 `$B console --errors` 체크
 - **비밀정보 포함 금지** — 비밀번호 등은 `[REDACTED]`로 표기
-- **browse 사용 거부 금지** — /qa 호출 시 반드시 브라우저 기반 테스트 수행
+- **브라우저 조작은 전부 `$B`(browse)로** — `/qa`의 모든 이동·클릭·입력·검증은 browse로 수행한다. 호스트가 제공하는 다른 브라우저 도구(Claude Code의 `claude-in-chrome`, Playwright MCP, Puppeteer MCP 등)를 섞어 쓰지 말 것. 도구를 섞으면 세션·쿠키·`@e` ref·`snapshot -D`의 기준 스냅샷이 갈라져서 diff와 재현 단계가 전부 무의미해진다
+- **browse가 없으면 빌드하고 진행** — Step 1이 `NEEDS_SETUP`이면 사용자 승인을 받아 `setup.sh`를 실행한다. 빌드를 건너뛰고 다른 브라우저 도구로 우회하지 말 것
 - 사용자와 한국어로 소통

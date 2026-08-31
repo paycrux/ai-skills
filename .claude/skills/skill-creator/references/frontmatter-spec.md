@@ -10,8 +10,8 @@ argument-hint: "[issue-number]"     # Shown during autocomplete. Optional.
 disable-model-invocation: true      # Prevents Claude from auto-triggering. For side-effectful skills.
 user-invocable: false               # Hides from / menu. For passive knowledge skills.
 allowed-tools: Read, Grep, Glob     # Tools usable without per-use approval. Optional.
-model: claude-opus-4-6              # Override model. Optional.
-effort: high                        # low | medium | high | max. Opus 4.6 only. Optional.
+model: claude-opus-5                # Override model. Optional.
+effort: high                        # low | medium | high | max. Only on models that support effort control. Optional.
 context: fork                       # Runs in isolated subagent context. Optional.
 agent: Explore                      # Built-in or custom agent. Requires context: fork. Optional.
 paths: "src/**/*.ts,*.go"           # Auto-activates only for matching file patterns. Optional.

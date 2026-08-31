@@ -46,11 +46,14 @@ URL, runs an auth check, and writes the body to a file so long documents are not
 into the conversation.
 
 ```bash
-python3 "${CLAUDE_SKILL_DIR}/scripts/fetch_notion_markdown.py" "$TARGET" --output /tmp/notion-page.md --check-auth
+python3 "${CLAUDE_SKILL_DIR}/../_shared/notion/fetch_notion_markdown.py" "$TARGET" --output /tmp/notion-page.md --check-auth
 ```
 
 Explore `/tmp/notion-page.md` with `Read`, `Grep`, or `rg` instead of dumping the full
 source to the user.
+
+> `fetch_notion_markdown.py`는 `create-prd`와 공유하는 스크립트라 `skills/_shared/notion/`에 있습니다.
+> 경로가 없으면 설치가 불완전한 것이니 `ai-skills update`로 재설치하도록 안내하세요.
 
 ### Step 3: Understand the document
 
@@ -63,7 +66,7 @@ Fetch metadata or child blocks, or follow one level of linked Notion pages, **on
 the intent requires it** (e.g. "include sub-pages", "list every linked doc", "who owns each item").
 
 ```bash
-python3 "${CLAUDE_SKILL_DIR}/scripts/fetch_notion_markdown.py" "$TARGET" \
+python3 "${CLAUDE_SKILL_DIR}/../_shared/notion/fetch_notion_markdown.py" "$TARGET" \
   --metadata /tmp/notion-page.json --children /tmp/notion-children.json --output /tmp/notion-page.md
 notion-cli search --query "<title-or-keyword>" --limit 10 --json
 ```

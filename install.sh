@@ -9,7 +9,7 @@ set -euo pipefail
 REPO_URL="https://github.com/paycrux/ai-skills.git"
 MARKER_START="<!-- AI-SKILLS:START -->"
 MARKER_END="<!-- AI-SKILLS:END -->"
-VERSION="0.8.0"
+VERSION="0.10.0"
 
 # Permanent state directory (persists across installs so `ai-skills update` works)
 AI_SKILLS_HOME="$HOME/.ai-skills"
@@ -303,6 +303,8 @@ cleanup_legacy_skills() {
     "test-case"
     "evaluate"
     "finalize"
+    "investigate"
+    "caveman"
   )
 
   local cleaned=0
@@ -314,7 +316,7 @@ cleanup_legacy_skills() {
   done
 
   if [[ $cleaned -gt 0 ]]; then
-    ok "Cleaned up ${cleaned} legacy skill directories (git-branch/pr consolidated into git-pr in v0.4.3; test-case merged into qa-guide in v0.4.6; evaluate/finalize removed in v0.4.7)"
+    ok "Cleaned up ${cleaned} legacy skill directories (git-branch/pr consolidated into git-pr in v0.4.3; test-case merged into qa-guide in v0.4.6; evaluate/finalize removed in v0.4.7; investigate merged into task-plan; caveman removed in v0.10.0)"
   fi
 }
 
@@ -354,6 +356,41 @@ cleanup_legacy_agents() {
   if [[ -d "$agents_dir" ]] && [[ -z "$(ls -A "$agents_dir" 2>/dev/null)" ]]; then
     rmdir "$agents_dir"
     info "Removed empty agents/ directory"
+  fi
+}
+
+# ─────────────────────────────────────────────
+# Helper: clean up scripts that moved into skills/_shared/
+# (fetch_notion_markdown.py was duplicated in create-prd and notion-do)
+# ─────────────────────────────────────────────
+cleanup_moved_scripts() {
+  local skills_dir="$1/skills"
+  if [[ ! -d "$skills_dir" ]]; then
+    return
+  fi
+
+  local moved_paths=(
+    "create-prd/scripts/fetch_notion_markdown.py"
+    "notion-do/scripts/fetch_notion_markdown.py"
+  )
+
+  local cleaned=0
+  for path in "${moved_paths[@]}"; do
+    local full="$skills_dir/$path"
+    if [[ -f "$full" ]]; then
+      rm -f "$full"
+      ((cleaned++))
+      # drop the scripts/ directory too, if nothing else is in it
+      local parent
+      parent="$(dirname "$full")"
+      if [[ -d "$parent" ]] && [[ -z "$(ls -A "$parent" 2>/dev/null)" ]]; then
+        rmdir "$parent"
+      fi
+    fi
+  done
+
+  if [[ $cleaned -gt 0 ]]; then
+    ok "Cleaned up ${cleaned} duplicated scripts (fetch_notion_markdown.py moved to skills/_shared/notion/ in v0.10.0)"
   fi
 }
 
@@ -449,6 +486,23 @@ PYEOF
     } > "$dest_file"
     ok "CLAUDE.md merged (ai-skills section prepended)"
   fi
+}
+
+# ─────────────────────────────────────────────
+# Helper: per-rule Cursor metadata (description|globs)
+# Any rules/*.md without an entry still ships, with a generic description.
+# ─────────────────────────────────────────────
+rule_mdc_meta() {
+  case "$1" in
+    react-typescript)
+      echo 'React + TypeScript 프론트엔드 구현 시 적용|["*.tsx", "*.ts"]' ;;
+    frontend-design)
+      echo '디자인 레퍼런스 없이 UI를 직접 만들 때 적용|["*.tsx", "*.css", "*.scss"]' ;;
+    writing)
+      echo '사람이 읽는 산문(계획 문서, 진행 기록, PR 본문, QA 가이드)을 쓸 때 적용|["*.md"]' ;;
+    *)
+      echo "ai-skills rule: $1|[]" ;;
+  esac
 }
 
 # ─────────────────────────────────────────────
@@ -774,6 +828,7 @@ mkdir -p "$TARGET_DIR"
 # Clean up legacy agents and skills from previous versions
 cleanup_legacy_skills "$TARGET_DIR"
 cleanup_legacy_agents "$TARGET_DIR"
+cleanup_moved_scripts "$TARGET_DIR"
 cleanup_task_plan_legacy "$TARGET_DIR"
 
 if [[ "$MODE" == "claude" ]]; then
@@ -797,21 +852,19 @@ elif [[ "$MODE" == "cursor" ]]; then
     mkdir -p "$TARGET_DIR/rules"
     local_count=0
 
-    if create_mdc_rule \
-      "$SRC_DIR/rules/react-typescript.md" \
-      "$TARGET_DIR/rules/react-typescript.mdc" \
-      "React + TypeScript 프론트엔드 구현 시 적용" \
-      '["*.tsx", "*.ts"]'; then
-      ((local_count++))
-    fi
-
-    if create_mdc_rule \
-      "$SRC_DIR/rules/frontend-design.md" \
-      "$TARGET_DIR/rules/frontend-design.mdc" \
-      "디자인 레퍼런스 없이 UI를 직접 만들 때 적용" \
-      '["*.tsx", "*.css", "*.scss"]'; then
-      ((local_count++))
-    fi
+    # Every rules/*.md becomes an .mdc — adding a rule file needs no change here.
+    for rule_file in "$SRC_DIR"/rules/*.md; do
+      [[ -f "$rule_file" ]] || continue
+      rule_name="$(basename "$rule_file" .md)"
+      rule_meta="$(rule_mdc_meta "$rule_name")"
+      if create_mdc_rule \
+        "$rule_file" \
+        "$TARGET_DIR/rules/${rule_name}.mdc" \
+        "${rule_meta%%|*}" \
+        "${rule_meta#*|}"; then
+        local_count=$((local_count + 1))
+      fi
+    done
 
     ok "rules: ${local_count} .mdc files created"
   fi

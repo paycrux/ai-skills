@@ -24,11 +24,16 @@ Reference to templates/
 
 ## Principles
 
-### 1. Stay Under 500 Lines
-- SKILL.md is fully loaded when triggered — every line costs tokens
-- Move deep detail to `references/`
-- Move output formats to `templates/`
-- Move policies/strategies to `templates/`
+### 1. Split by When It's Needed, Not by What It Is
+`SKILL.md` is fully loaded when triggered, so the only real saving is moving out what a given run
+does **not** need.
+
+- Always consulted (authoring rules the skill applies every time) → keep inline. Moving it to
+  `references/` costs a read and saves nothing.
+- Only some branches need it (a lookup for one flag, a format used by one mode) → `references/`.
+- Output formats → `templates/`, always.
+- Still over 500 lines with only always-needed content left? The skill is doing two jobs. Split the
+  skill, not the file.
 
 ### 2. Steps Are Actions, Not Descriptions
 Each step should be an imperative action Claude can execute.
@@ -61,8 +66,9 @@ Not: "See references/api-spec.md"
 | Content type | Location |
 |---|---|
 | Execution flow (steps) | SKILL.md |
+| Rules applied on every run | SKILL.md |
 | Output format (templates) | `templates/<name>.md` |
-| Save/write policies | `templates/<name>-policy.md` |
+| Lookups/policies only some branches need | `references/<topic>.md` |
 | Deep reference docs | `references/<topic>.md` |
 | Agent prompts | `agents/<name>.md` |
 | Automation scripts | `scripts/<name>.sh` |
@@ -75,7 +81,8 @@ Not: "See references/api-spec.md"
 ## Anti-Patterns to Avoid
 
 - **Wall of text**: Long prose paragraphs instead of structured steps
-- **Inline everything**: Templates, policies, reference docs all in SKILL.md
+- **Inline everything**: Templates and branch-specific lookups sitting in SKILL.md
+- **Extract everything**: Splitting out rules the skill needs on every run — pure overhead, no saving
 - **Vague triggers**: Description that doesn't tell Claude when to activate
 - **Missing argument parsing**: No guidance on how to interpret user input
 - **Nested references**: SKILL.md → ref A → ref B (keep one level deep)
