@@ -4,6 +4,28 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.11.0] - 2026-09-10
+
+### Added
+
+- `tracker` 스킬 추가 — 지라 이슈 여러 개에 걸친 작업의 단일 진입점. 처음 한 번 `/tracker <노션> <지라들> <피그마>`로 링크를 주면 기획서를 범위로 갈라 `docs/<name>/meta-plan.md`를 쓰고, 그 다음부터는 `/tracker`만 치면 현재 상태를 판정해 다음 할 일(워크트리 → `/task-plan` → `/implement` → `/qa`)을 진행하고 메타 플랜을 스스로 갱신
+  - 상태 판정 근거는 항상 파일. 문서가 파일과 어긋나면 문서를 먼저 고치고 이어가므로, 갱신을 빼먹은 채 중단돼도 사람이 손댈 필요가 없음
+  - 워크트리는 `orca worktree create` 우선, `orca`가 없으면 `git worktree add`. 일괄로 만들지 순차로 만들지는 최초 1회만 묻고 메타 플랜 헤더에 기록
+  - 한 번에 한 범위만 진행. 워크트리를 일괄 생성해도 실행은 하나씩
+  - 기획서는 요약하지 않고 발췌 + 앵커 링크. 사용자 노출 문구(스낵바·모달·에러)는 범위마다 표로 따로 뽑음 — 본문에 묻어두면 구현 때 놓침
+  - 피그마는 `get_metadata`(노드 이름)까지만. `get_design_context`는 구현 시점 전용
+  - `/git-pr`은 `disable-model-invocation: true`라 호출하지 못하고 안내만 함
+
+### Removed
+
+- `qa-guide` 스킬 제거. 재설치 시 설치본에서도 삭제됨 (`install.sh`의 `removed_skills`)
+  - `scripts/md_to_adf.py`는 `skills/_shared/jira/md_to_adf.py`로 옮겨 보존. 지금 쓰는 스킬은 없고, 지라 설명에 섹션을 쓰는 일이 다시 필요해서 남긴 것
+  - 잔여 참조 정리: `qa/SKILL.md`의 "QA 가이드 섹션이 있으면 우선 실행" 항목, `rules/writing.md` 머리말, `skill-creator/references/directory-structure.md` 예시, `README.md` 섹션·트리·`/qa` 각주
+
+### Fixed
+
+- `_shared/notion/fetch_notion_markdown.py`: 노션 URL에서 페이지 ID를 잘못 뽑던 버그 두 개. `?v=<view-id>`가 붙은 링크(데이터베이스 뷰에서 복사한 형태)에서 마지막 UUID인 뷰 ID를 페이지 ID로 잡았고, 뽑아낸 ID를 쓰지 않고 원본 URL을 그대로 `notion-cli`에 넘겨 `app.notion.com/p/...` 형태가 거부됐음. 이제 쿼리스트링을 뗀 경로에서 ID를 찾고, 찾은 ID를 CLI에 넘김. `/create-prd`와 `/notion-do`도 같은 스크립트를 쓰므로 함께 고쳐짐
+
 ## [0.10.0] - 2026-08-27
 
 ### Fixed

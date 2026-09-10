@@ -245,17 +245,26 @@ task-plan에서 생성한 문서(`tasks.md`, `spec.md`) 두 개를 읽고, 단�
 /study <문서 혹은 요구사항>
 ```
 
-### /qa-guide
+### /tracker
 
-**QA 테스트 가이드 생성**
+**여러 이슈에 걸친 작업의 단일 진입점**
 
-task-plan의 `tasks.md` 안에 `## QA 가이드` 섹션을 작성합니다. 별도 파일을 만들지 않고 `tasks.md` 하나를 단일 소스로 유지합니다. `tasks.md` 헤더에 Jira 이슈 키가 있으면 `acli`로 해당 섹션을 이슈 설명에도 동기화합니다(acli 미설치/미로그인 시 자동 설치·로그인 없이 안내만 표시).
-
-- 마크다운 → ADF(Atlassian Document Format) 변환은 모델이 손으로 하지 않고 `scripts/md_to_adf.py`가 처리합니다. 헤딩·문단·중첩 불릿·표·코드블록·인라인 마크를 지원하고, `taskList`/`taskItem`은 구조적으로 만들지 않습니다(`- [ ]`는 `[ ]`로 시작하는 일반 불릿).
+노션 기획서 하나에 지라 이슈 여러 개 분량이 뭉쳐 있을 때, 링크를 한 번 주면 범위를 갈라 `docs/<name>/meta-plan.md`를 쓰고, 그 다음부터는 `/tracker`만 치면 현재 상태를 판정해 다음 할 일을 진행합니다.
 
 ```
-/qa-guide <문서 혹은 요구사항>
+/tracker <노션> <지라들> <피그마>   # 처음 한 번
+/tracker                            # 그 다음부터 계속 이것만
 ```
+
+한 번 돌 때: 워크트리 생성 → `/task-plan` → `/implement` → `/qa` → 메타 플랜 갱신 → 다음 범위.
+
+- **사용자는 메타 플랜을 손으로 고치지 않습니다.** 상태·브랜치·계획 경로 칸은 전부 tracker가 씁니다.
+- 상태 판정 근거는 항상 파일입니다. 문서가 파일과 어긋나면 문서를 먼저 고치고 이어갑니다.
+- 워크트리는 `orca worktree create` 우선, 없으면 `git worktree add`. 일괄 생성할지 순차로 만들지는 최초 1회만 묻습니다.
+- 한 번에 한 범위만 진행합니다. 워크트리를 일괄로 만들어도 실행은 하나씩입니다.
+- 기획서는 요약하지 않고 발췌 + 앵커 링크로 남기고, 사용자 노출 문구(스낵바·모달·에러)는 범위마다 표로 따로 뽑습니다.
+- 피그마는 `get_metadata`(노드 이름)까지만 읽습니다. `get_design_context`는 구현 시점 일입니다.
+- `/git-pr`은 `disable-model-invocation`이라 호출하지 못하고 안내만 합니다.
 
 ### /create-prd
 
@@ -303,7 +312,6 @@ task-plan의 `tasks.md` 안에 `## QA 가이드` 섹션을 작성합니다. 별�
 /qa                              # 상태가 "진행중"인 task 자동 탐지
 ```
 
-- `tasks.md`에 `/qa-guide`가 쓴 `## QA 가이드` 섹션이 있으면 그 시나리오 표를 우선 실행합니다.
 - 모든 브라우저 조작은 browse로 합니다.
 
 ### /git-pr
@@ -384,7 +392,7 @@ PR 본문 구성:
 | frontend-design  | 디자인 레퍼런스 없이 UI를 직접 만들 때 (AI Slop 방지, 맥락 기반 선택)                          |
 | writing          | 사람이 읽는 산문을 쓸 때 (계획 문서, 진행 기록, PR 본문, QA 가이드, 대화 출력)                  |
 
-> `writing` 룰은 `/task-plan`·`/implement`·`/qa-guide`·`/skill-creator`가 각자 들고 있던 동일한 `Communication Style` 블록의 원본입니다. 각 스킬에는 한 문단 요약과 이 파일 링크만 남아 있으니, 규칙을 고칠 때는 `rules/writing.md`를 먼저 고치세요.
+> `writing` 룰은 `/task-plan`·`/implement`·`/skill-creator`가 각자 들고 있던 동일한 `Communication Style` 블록의 원본입니다. 각 스킬에는 한 문단 요약과 이 파일 링크만 남아 있으니, 규칙을 고칠 때는 `rules/writing.md`를 먼저 고치세요.
 
 > `react-typescript` 룰에서 **렌더링**과 **메모이제이션**은 별개 카테고리입니다. 리렌더 이슈는 구조적 해결(분해/격리/상태 위치/key)을 먼저 시도하고, 메모이제이션 훅(`useMemo`/`useCallback`/`React.memo`)은 사용자가 명시적으로 요청할 때만 도입합니다.
 
@@ -405,13 +413,14 @@ PR 본문 구성:
 │   │   ├── references/    # resolution.md (이슈 번호·base 브랜치 해석)
 │   │   └── templates/     # pr-body.template.md, pr-body.example.md
 │   ├── study/SKILL.md
-│   ├── qa-guide/
+│   ├── tracker/
 │   │   ├── SKILL.md
-│   │   └── scripts/       # md_to_adf.py
+│   │   └── templates/     # meta-plan.template.md
 │   ├── create-prd/SKILL.md
 │   ├── notion-do/SKILL.md
 │   ├── _shared/           # 스킬 아님 — 둘 이상이 쓰는 코드
-│   │   └── notion/fetch_notion_markdown.py
+│   │   ├── notion/fetch_notion_markdown.py
+│   │   └── jira/md_to_adf.py
 │   └── skill-creator/
 ├── docs/
 │   ├── partner-jirisan.md

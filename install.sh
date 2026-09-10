@@ -9,7 +9,7 @@ set -euo pipefail
 REPO_URL="https://github.com/paycrux/ai-skills.git"
 MARKER_START="<!-- AI-SKILLS:START -->"
 MARKER_END="<!-- AI-SKILLS:END -->"
-VERSION="0.10.0"
+VERSION="0.11.0"
 
 # Permanent state directory (persists across installs so `ai-skills update` works)
 AI_SKILLS_HOME="$HOME/.ai-skills"
@@ -305,6 +305,7 @@ cleanup_legacy_skills() {
     "finalize"
     "investigate"
     "caveman"
+    "qa-guide"
   )
 
   local cleaned=0
@@ -316,7 +317,7 @@ cleanup_legacy_skills() {
   done
 
   if [[ $cleaned -gt 0 ]]; then
-    ok "Cleaned up ${cleaned} legacy skill directories (git-branch/pr consolidated into git-pr in v0.4.3; test-case merged into qa-guide in v0.4.6; evaluate/finalize removed in v0.4.7; investigate merged into task-plan; caveman removed in v0.10.0)"
+    ok "Cleaned up ${cleaned} legacy skill directories (git-branch/pr consolidated into git-pr in v0.4.3; test-case merged into qa-guide in v0.4.6; evaluate/finalize removed in v0.4.7; investigate merged into task-plan; caveman removed in v0.10.0; qa-guide removed)"
   fi
 }
 

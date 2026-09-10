@@ -20,6 +20,7 @@ and a skill that owned shared code would take its dependents down with it.
 | Path | Used by | What it does |
 |---|---|---|
 | `notion/fetch_notion_markdown.py` | `create-prd`, `notion-do` | Fetches a Notion page as markdown through `notion-cli` — extracts the page ID from a URL, optionally checks auth, and writes body/metadata/children to files |
+| `jira/md_to_adf.py` | (none right now) | Converts one markdown section to Atlassian Document Format for `acli ... --description-file`. Never emits `taskList`/`taskItem`. Parked here when `qa-guide` was removed — kept because writing a section into a Jira description is wanted again, not because two skills use it today |
 
 ## Referencing from a skill
 

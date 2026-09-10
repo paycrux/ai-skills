@@ -17,7 +17,11 @@ UUID_RE = re.compile(
 
 
 def extract_page_id(value: str) -> str | None:
-    matches = UUID_RE.findall(value)
+    # The page id lives in the URL path. A query string can carry other ids -- a
+    # database view (`?v=`) is one -- so search the path first and fall back to the
+    # whole string only for a bare id.
+    path = re.split(r"[?#]", value, maxsplit=1)[0]
+    matches = UUID_RE.findall(path) or UUID_RE.findall(value)
     if not matches:
         return None
     raw = matches[-1].replace("-", "").lower()
@@ -91,7 +95,10 @@ def main() -> None:
             stderr = auth.stderr.strip() or auth.stdout.strip() or "no stderr"
             fail(f"notion-cli authentication check failed\n{stderr}", auth.returncode)
 
-    markdown_command = [cli, "markdown", "get", args.source]
+    # Resolve the id ourselves rather than handing notion-cli the raw URL: it rejects
+    # some URL shapes outright (`app.notion.com/p/<id>?v=<view-id>`, for one).
+    page_id = extract_page_id(args.source)
+    markdown_command = [cli, "markdown", "get", page_id or args.source]
     if args.output:
         output_path = Path(args.output).expanduser()
         output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -107,7 +114,6 @@ def main() -> None:
             fail(f"command failed: {' '.join(markdown_command)}\n{stderr}", result.returncode)
         print(result.stdout, end="")
 
-    page_id = extract_page_id(args.source)
     if (args.metadata or args.children) and not page_id:
         fail("could not extract a page ID for metadata or child block fetch")
 

@@ -1,7 +1,7 @@
 # Writing Rules (documents and conversation)
 
 > The canonical version of the `## Communication Style` block that `/task-plan`, `/implement`,
-> `/qa-guide`, and `/skill-creator` each carry a one-paragraph summary of. Edit here first.
+> and `/skill-creator` each carry a one-paragraph summary of. Edit here first.
 
 Applies to prose written for a person to read — plan documents, progress notes, PR bodies, QA
 guides, and conversational output. Structured elements (checklists, headers, tables, file paths,
