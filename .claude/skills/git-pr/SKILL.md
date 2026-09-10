@@ -287,30 +287,10 @@ The reviewer did not implement this and does not know the internals you just lea
 - Three sentences maximum. **If the background needs more than that, do not write the block — fold the point into a single bullet under the group.** One line a reviewer understands beats a paragraph they skip.
 - A block that a reader can only follow after reading the diff has failed. Delete it.
 
-**R7 — Conditional sections.**
-`## 구현 화면` and `## 테스트 케이스` are emitted only when their trigger is met. When not met, delete the heading and its `---` separator entirely. Never write `없음`, never leave an empty checkbox list, never leave an empty table.
+**R7 — Conditional section.**
+`## 구현 화면` is emitted only when its trigger is met. When not met, delete the heading and its `---` separator entirely. Never write `없음`, never leave an empty table.
 
 `## 구현 화면` trigger: the diff changes rendered UI. Leave the table rows blank for the user.
-
-`## 테스트 케이스` trigger: `tasks.md` records that testing actually happened. This section transcribes evidence; it never generates scenarios.
-
-Locate `tasks.md` — prefer one changed by this branch, otherwise the `docs/*/plans/tasks.md` matching the branch topic:
-
-```bash
-git diff origin/{PR_BASE}..{HEAD_BRANCH} --name-only -- '**/tasks.md'
-```
-
-Read its `## 진행 기록` entries and its checklists, then include only what counts as evidence:
-- a `## 진행 기록` entry describing a scenario that was verified, manually or automatically
-- a recorded test command and its result (suite run, e2e run, build check)
-- a checked-off item that is itself a test or QA step
-
-Not evidence — omit the section if this is all that exists:
-- unchecked boxes, or items phrased as intent (`테스트 예정`, `확인 필요`)
-- test files appearing in the diff — adding a test is not proof of running it
-- implementation items that merely imply the feature works
-
-If no `tasks.md` exists, or it holds no evidence, delete the section. Do not ask the user to supply scenarios, and do not restate a scenario in stronger terms than the record supports.
 
 ---
 

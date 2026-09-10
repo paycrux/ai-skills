@@ -21,6 +21,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `qa-guide` 스킬 제거. 재설치 시 설치본에서도 삭제됨 (`install.sh`의 `removed_skills`)
   - `scripts/md_to_adf.py`는 `skills/_shared/jira/md_to_adf.py`로 옮겨 보존. 지금 쓰는 스킬은 없고, 지라 설명에 섹션을 쓰는 일이 다시 필요해서 남긴 것
   - 잔여 참조 정리: `qa/SKILL.md`의 "QA 가이드 섹션이 있으면 우선 실행" 항목, `rules/writing.md` 머리말, `skill-creator/references/directory-structure.md` 예시, `README.md` 섹션·트리·`/qa` 각주
+- `git-pr`: PR 본문의 `## 테스트 케이스` 섹션 제거 — 템플릿·예시·R7 조건, `tasks.md` 진행 기록에서 검증 흔적을 전사하던 규칙 전부. 본문은 `변경사항` + (UI 변경 시) `구현 화면`만 남음
+  - `references/resolution.md`가 "`## 테스트 케이스`와 같은 방식으로 `tasks.md`를 찾는다"고 가리키던 부분은 찾는 명령을 그 자리에 옮겨 적음
+  - `implement`: 진행 기록에 실행한 명령만 적는 규칙은 유지하고, 근거로 들던 "`/git-pr`이 테스트 케이스로 전사한다" 문장만 삭제
 
 ### Fixed
 

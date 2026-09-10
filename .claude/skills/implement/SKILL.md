@@ -78,7 +78,7 @@ A Phase is not done because the code is written. Check it with whatever the proj
 - Failure → fix it and re-run. This loop stays inside the Phase; it needs no approval.
 - **Same failure twice with no progress → stop (2-4).** Do not keep patching around it.
 - If the project has no such command, verify by reading the change against `spec.md` — the flows and edge cases it lists.
-- Record the command and its result in `## 진행 기록` only when it actually ran. `/git-pr` transcribes those lines into the PR's 테스트 케이스 section, so an unrun claim becomes a false claim in the PR.
+- Record the command and its result in `## 진행 기록` only when it actually ran. A verification line for a command that never ran is a false record.
 
 ### 2-4. When to stop
 
