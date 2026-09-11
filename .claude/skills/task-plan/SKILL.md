@@ -33,6 +33,12 @@ Extract:
 If the input references an existing feature (`기능 수정`), find the original `docs/*/plans/` folder
 and record it as a `참조:` header link. Never modify a file in the original folder.
 
+If the input names a `/tracker` meta-plan (an absolute path) and an issue in it, record both as the
+`메타 플랜:` header line, and use that issue's blocks in the meta-plan as the spec source — 기획 발췌,
+사용자 노출 문구, 디자인 노드, 미정. Do not re-fetch the 기획서. Every design node the meta-plan
+lists for the issue, modal and state frames included, lands on the task item that renders it: an
+implementer should never have to open the meta-plan to find a design.
+
 ## Step 2: Explore the codebase
 
 The point is not to understand the whole architecture. It is to answer three questions well enough
@@ -110,7 +116,9 @@ start it from this skill.
 ## Open questions
 
 Anything the plan cannot decide on its own goes in a `## 확인 필요` section in `tasks.md` — one line
-per question, phrased so the answer is a choice, not an essay.
+per question, phrased so the answer is a choice, not an essay. End each line with what it holds up —
+`막는 항목: Phase 2 로그인 버튼` — or `구현 영향 없음`. `/implement` reads this to start everything
+that does not wait on the answer.
 
 Once a question is answered, **delete the question line and keep only the decision.** Never leave
 the request and its answer side by side; a reader opening the doc later needs the conclusion, not

@@ -42,7 +42,12 @@ Last entry in `## 진행 기록` → determine next Phase to start
 
 If there is interrupted work, say in one line where you are resuming from and continue. Do not ask whether to resume — an unfinished plan means the work is still wanted.
 
-If `tasks.md` still has an unanswered `## 확인 필요` item, or `spec.md` still has a `## 결정이 필요한 부분` block from an earlier run, ask about it **now**, before any code — one message covering every open item, in the 2-4 shape. Starting a Phase that depends on an unanswered question wastes the work.
+Open items from planning — `tasks.md` `## 확인 필요`, or a `spec.md` `## 결정이 필요한 부분` block left by an earlier run — do not hold up the start. Sort them:
+
+- **Holds up an item** (its `막는 항목:` names one, or the item plainly cannot be built without the answer) → append `— **blocker**: {무엇을 정해야 하는지}` to that checklist item and skip it for now.
+- **Holds up nothing** (`구현 영향 없음`) → leave it where it is.
+
+Then start. Blocked items are asked about at the 2-4 stop point, together with anything else that comes up, once every independent part is done — later Phases included. Ask in this session; do not route the question to another session.
 
 ## Step 2: Implementation Loop
 
@@ -144,6 +149,7 @@ Rules for both steps:
 - Name the one thing you need. "확인 부탁드립니다" without naming the decision is not an ask.
 - Never ask a bare "이렇게 할까요?" — options and a recommendation come in the same message.
 - **Do not stop the whole run for it.** Finish every part that does not depend on the answer first — later Phases included — then write every blocked decision into `spec.md` and ask once.
+- Mark every `tasks.md` item that waits on the decision with `— **blocker**: {한 줄}`, so anyone reading the checklist — including `/tracker` from another session — sees what is stuck and why.
 
 #### Step 3 — After the answer
 
@@ -151,6 +157,7 @@ Delete the `###` block from `spec.md`. In its place:
 
 - The decision goes where it belongs in `spec.md` — 화면/기능 흐름, 상태 정의, 엣지 케이스 — as if it had been specified from the start. Keep the one line of 배경 that makes the decision make sense later; drop the options and the recommendation.
 - One `결정:` line in `tasks.md` `## 진행 기록`.
+- Remove the `— **blocker**: …` marker from the items the decision was holding up.
 - When the last block is gone, delete the `## 결정이 필요한 부분` section itself. It never carries answered items.
 
 ### 2-5. Phase Completion
@@ -178,8 +185,9 @@ When all Phases are done:
 
 1. Verify all items in `tasks.md` are checked
 2. Append one closing line under `## 진행 기록` — `- 전체 구현 완료`. Do not re-summarize the Phases; they are already checked off and recorded.
-3. Change `tasks.md` header `상태:` field to `완료`. Delete `tasks.md`'s `## 확인 필요` and `spec.md`'s `## 결정이 필요한 부분` — a finished plan carries no open question. If either still holds an unanswered item, the work is not complete: ask instead of closing.
-4. **QA guidance** — when the change includes frontend work, offer to continue right here:
+3. Change `tasks.md` header `상태:` field to `완료`. An item still marked `**blocker**` means the work is not complete — ask instead of closing. A question marked `구현 영향 없음` does not hold it open: keep it under `## 확인 필요` and list it in the completion report. Delete `spec.md`'s `## 결정이 필요한 부분` once it is empty.
+4. **React Native / Expo** (`package.json` depends on `react-native` or `expo`) — `/qa` drives a headless browser and cannot run the app, so do not offer it. Append a `## 기기 확인` checklist to `tasks.md` instead: one line per screen or flow from `spec.md` that a person has to see on a device, phrased as what to do and what should appear. Only what this plan changed. The user checks it off.
+5. **QA guidance** (web projects) — when the change includes frontend work, offer to continue right here:
 
 ```
 구현이 완료되었습니다.
@@ -217,6 +225,7 @@ This applies to conversational output in this flow and to free-text prose append
 - **Do not implement without documents** — `tasks.md` and `spec.md` are required
 - **Run the approved plan straight through** — no per-Phase approval gate; announce the Phase and start
 - **Stop only for the 2-4 conditions** — and when you do, write the background into `spec.md` `## 결정이 필요한 부분` first, then ask in chat with the 확인이 필요합니다 block
+- **An open question holds up only the items that depend on it** — mark them `**blocker**` and keep going on the rest; a `구현 영향 없음` question never blocks the start or the finish
 - **An answered decision leaves no question behind** — the spec block becomes spec text, the record becomes one `결정:` line
 - **Verify each Phase before moving on** — and never write a verification line for a command you did not run
 - **`## 진행 기록` carries verification, decisions, and blockers only** — the checklist already records what was implemented; do not write it twice
