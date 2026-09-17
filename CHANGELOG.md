@@ -17,6 +17,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - 메타 플랜은 원래 체크아웃에 커밋 없이 두고 `.git/info/exclude`로 제외, tracker만 씀
   - 설계 근거는 COMP-342~346 실사용 기록: 메타 플랜이 한 워크트리에만 있어 다른 워크트리가 못 봄, 커밋이 없어 앞 범위 코드를 뒤 범위가 못 씀, 같은 탈퇴 모달·문구 상수를 두 범위가 따로 만듦, 확인 필요 항목 때문에 19/19 구현이 `진행중`에 묶임
 
+- `git-pr`: `구현 화면` 스크린샷 촬영 — UI가 바뀐 PR이면 찍을지 묻고, 찍으면 표를 채워서 PR을 올림. `--shots both|after|none`으로 질문 생략
+  - 모바일: `scripts/shot-mobile.sh`로 iOS 시뮬레이터·Android 기기에서 딥링크로 화면을 열어 캡처. After는 라이트/다크 두 벌. compose_mobile_order의 `renew-shot.sh`에서 촬영 부분만 가져오고, 박혀 있던 scheme·번들 ID는 `.git/git-pr-shot.env`로 뺌
+  - 웹: `/browse`로 캡처. 프로젝트에 다크 모드가 있을 때만 다크 칸 추가
+  - Before는 따로 물어봄. base 브랜치로 잠깐 `git switch --detach` 했다가 돌아옴. 작업 트리가 더럽거나, 네이티브 코드·의존성이 바뀐 브랜치면 Before를 건너뜀
+  - 찍은 칸은 전부 채우고 실패한 칸만 비움. 찍은 이미지는 전부 Read로 열어 스플래시·에러 화면이 아닌지 확인
+  - 업로드는 `gh attach`. PR 번호가 있어야 올릴 수 있어서 draft로 만들고 → 이미지 업로드 → 본문 교체 → `gh pr ready`. 이미지 없는 본문이 리뷰어에게 보이는 순간이 없음
+  - R2(본문 이미지 금지)와 "`구현 화면` 표는 비워 둔다" 규칙을 촬영한 경우에 한해 완화
+
 ### Changed
 
 - `task-plan`: `/tracker`가 넘긴 작업이면 `tasks.md` 머리말에 `> 메타 플랜: {절대경로} — {이슈 키}`를 적고 메타 플랜의 해당 이슈 블록을 기획 원본으로 씀. 모달·상태 프레임까지 디자인 노드를 그 화면 항목으로 옮겨, 구현자가 메타 플랜을 따로 찾지 않게 함. `## 확인 필요` 각 줄 끝에 `막는 항목:` 또는 `구현 영향 없음`
@@ -30,6 +38,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - 잔여 참조 정리: `qa/SKILL.md`의 "QA 가이드 섹션이 있으면 우선 실행" 항목, `rules/writing.md` 머리말, `skill-creator/references/directory-structure.md` 예시, `README.md` 섹션·트리·`/qa` 각주
 - `git-pr`: PR 본문의 `## 테스트 케이스` 섹션 제거 — 템플릿·예시·R7 조건, `tasks.md` 진행 기록에서 검증 흔적을 전사하던 규칙 전부. 본문은 `변경사항` + (UI 변경 시) `구현 화면`만 남음
   - `references/resolution.md`가 "`## 테스트 케이스`와 같은 방식으로 `tasks.md`를 찾는다"고 가리키던 부분은 찾는 명령을 그 자리에 옮겨 적음
+  - `README.md`의 git-pr 작성 규칙 목록에 남아 있던 "테스트는 `tasks.md`에 기록된 검증 내역만 옮겨 적음" 줄 삭제
   - `implement`: 진행 기록에 실행한 명령만 적는 규칙은 유지하고, 근거로 들던 "`/git-pr`이 테스트 케이스로 전사한다" 문장만 삭제
 
 ### Fixed

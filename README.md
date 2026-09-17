@@ -335,6 +335,7 @@ task-plan에서 생성한 문서(`tasks.md`, `spec.md`) 두 개를 읽고, 단�
 /git-pr --review                 # 확인 없이 PR 생성 전 리뷰 실행
 /git-pr --no-review              # 리뷰 단계 건너뛰기
 /git-pr --no-issue               # 이슈 번호 없이 제목만 사용
+/git-pr --shots both             # 구현 화면 Before + After 촬영 (after: After만, none: 촬영 안 함)
 ```
 
 PR 제목은 `[이슈번호] 요약` 형태로 생성됩니다. 이슈 번호는 `--issue` → `tasks.md` 헤더의 `> 이슈:` → 브랜치명의 Jira 키(`feature/ABC-123-login`) 순으로 찾고, 어디에도 없으면 직접 입력할지 생략할지 물어봅니다.
@@ -344,7 +345,7 @@ PR 본문 구성:
 | 섹션 | 작성 주체 | 출력 조건 |
 | --- | --- | --- |
 | 변경사항 | Claude 자동 생성 | 항상 |
-| 구현 화면 | 사용자 직접 추가 | UI 변경이 있을 때만 |
+| 구현 화면 | 스크린샷 촬영 시 Claude가 채움, 건너뛰면 사용자 직접 추가 | UI 변경이 있을 때만 |
 
 `변경사항`은 커밋 순서가 아니라 **사용자가 체감하는 기능/시나리오 단위로 묶어** 소제목을 만듭니다. 조건을 만족하지 않는 섹션은 "없음"을 쓰지 않고 제목째 삭제되므로, 내용 없는 항목이 PR에 남지 않습니다.
 
@@ -353,8 +354,16 @@ PR 본문 구성:
 - diff로 확인 가능한 사실만 기록 — 의도·기대효과 추측 금지, "전반적으로 개선" 같은 빈 문장 금지
 - 백틱은 식별자(경로·함수명·명령어·환경변수)에만. 한글 설명문을 백틱으로 감싸지 않음
 - 그룹당 불릿 5개 상한
-- 산문과 불릿만 사용 — mermaid·ASCII 아트·이미지 금지. 불릿으로 설명이 안 되면 그룹을 쪼갠다
-- 테스트는 `tasks.md`에 기록된 검증 내역만 옮겨 적음 — 테스트 파일이 diff에 추가된 것은 실행 증거로 보지 않음
+- 산문과 불릿만 사용 — mermaid·ASCII 아트 금지. 이미지는 `구현 화면` 표의 스크린샷만. 불릿으로 설명이 안 되면 그룹을 쪼갠다
+
+**구현 화면 스크린샷** — UI가 바뀐 PR이면 촬영할지 묻고, 찍기로 하면:
+
+- 모바일(RN/Expo)은 부팅된 iOS 시뮬레이터·연결된 Android 기기에서 딥링크로 화면을 열어 찍음(`scripts/shot-mobile.sh`). After는 라이트/다크 두 벌
+- 웹은 `/browse` 헤드리스 브라우저로 찍음. 프로젝트에 다크 모드가 있으면 다크도
+- Before는 따로 물어봄. 찍기로 하면 base 브랜치 코드로 잠깐 전환해 찍고 원래 브랜치로 돌아옴. 네이티브 코드·의존성이 바뀐 브랜치는 자동 반영이 안 돼서 Before를 건너뜀
+- 찍은 칸은 전부 채우고, 실패한 칸만 비운 뒤 이유를 알려줌
+- 이미지는 `gh attach`로 올림. 업로드하려면 PR이 먼저 있어야 해서 draft로 만들고, 이미지를 채운 뒤 공개(`gh pr ready`)하므로 이미지 없는 PR이 리뷰어에게 보이지 않음
+- 모바일 앱의 딥링크 scheme·번들 ID는 처음 한 번 `app.json`에서 읽거나 물어보고 `.git/git-pr-shot.env`에 저장(커밋되지 않음, 워크트리끼리 공유)
 
 관련 템플릿: `.claude/skills/git-pr/templates/` (`pr-body.template.md`, `pr-body.example.md`)
 
@@ -411,7 +420,8 @@ PR 본문 구성:
 │   ├── qa/SKILL.md
 │   ├── git-pr/
 │   │   ├── SKILL.md
-│   │   ├── references/    # resolution.md (이슈 번호·base 브랜치 해석)
+│   │   ├── references/    # resolution.md (이슈 번호·base 브랜치 해석), screenshots.md (구현 화면 촬영)
+│   │   ├── scripts/       # shot-mobile.sh (iOS 시뮬레이터·Android 기기 캡처)
 │   │   └── templates/     # pr-body.template.md, pr-body.example.md
 │   ├── study/SKILL.md
 │   ├── tracker/
