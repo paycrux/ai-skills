@@ -156,7 +156,10 @@ Rules for both steps:
 Delete the `###` block from `spec.md`. In its place:
 
 - The decision goes where it belongs in `spec.md` — 화면/기능 흐름, 상태 정의, 엣지 케이스 — as if it had been specified from the start. Keep the one line of 배경 that makes the decision make sense later; drop the options and the recommendation.
-- One `결정:` line in `tasks.md` `## 진행 기록`.
+- A `결정:` sub-bullet on the `tasks.md` item the decision changed, beside `재사용:` / `패턴:` — one
+  line naming what settled it (사용자 지시, 피그마 기준, 기획서대로). It stays there after the item is
+  checked off. A decision that changed no single item goes as one `결정:` line under `## 진행 기록`
+  instead.
 - Remove the `— **blocker**: …` marker from the items the decision was holding up.
 - When the last block is gone, delete the `## 결정이 필요한 부분` section itself. It never carries answered items.
 
@@ -169,14 +172,15 @@ Delete the `###` block from `spec.md`. In its place:
 
    - Phase N 완료
    - 검증: {실행한 명령과 결과} <!-- 실제로 실행했을 때만 -->
-   - 결정: {계획과 달라진 판단 + 이유 한 줄} <!-- 있을 때만 -->
+   - 결정: {항목 하나에 붙지 않는 판단 + 이유 한 줄} <!-- 있을 때만. 항목 하나를 바꾼 결정은 그 항목의 `결정:` 서브 불릿에 -->
    - 블로커: {있으면}
    ```
 3. Start the next Phase.
 
 **진행 기록 원칙 — 중복 금지:**
 - The checklist already says what was built. Do not restate it in prose, do not list the files again, do not summarize the code.
-- Record only what the checkboxes cannot carry: a verification that ran, a decision made during implementation and why, a deviation from the plan, a blocker.
+- Record only what the checkboxes cannot carry: a verification that ran, a deviation from the plan, a blocker, and a decision that belongs to no single item.
+- A decision that changed how one item is built goes on that item as a `결정:` sub-bullet — not here. Kept after the item is checked, it is what stops the next reader from re-opening a settled question.
 - One line per item. If a Phase produced no decision and no blocker, `- Phase N 완료` alone is the whole entry.
 
 ## Step 3: Full Completion
@@ -228,7 +232,8 @@ This applies to conversational output in this flow and to free-text prose append
 - **An open question holds up only the items that depend on it** — mark them `**blocker**` and keep going on the rest; a `구현 영향 없음` question never blocks the start or the finish
 - **An answered decision leaves no question behind** — the spec block becomes spec text, the record becomes one `결정:` line
 - **Verify each Phase before moving on** — and never write a verification line for a command you did not run
-- **`## 진행 기록` carries verification, decisions, and blockers only** — the checklist already records what was implemented; do not write it twice
+- **`## 진행 기록` carries verification, cross-item decisions, and blockers only** — the checklist already records what was implemented; do not write it twice
+- **A decision about one item lives on that item** — a `결정:` sub-bullet in `tasks.md`, never deleted once the item is checked
 - **Prioritize existing patterns from tasks.md sub-bullets** — introducing a new library or pattern is a 2-4 stop
 - **Update `tasks.md` per Phase** — toggle checkboxes and append to `## 진행 기록` so handoff works even if interrupted
 - **Follow `.claude/rules/react-typescript.md`** for frontend code

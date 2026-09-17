@@ -57,7 +57,8 @@ def parse_inline(text, marks=None):
 
     if name == "code":
         # No nested marks inside code spans.
-        nodes.append(_text_node(m.group(1), marks + [{"type": "code"}]))
+        link_marks = [mk for mk in marks if mk["type"] == "link"]
+        nodes.append(_text_node(m.group(1), link_marks + [{"type": "code"}]))
     elif name == "link":
         label = m.group(1) or m.group(2)
         nodes.append(_text_node(label, marks + [{"type": "link", "attrs": {"href": m.group(2)}}]))
