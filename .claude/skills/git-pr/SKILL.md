@@ -1,7 +1,7 @@
 ---
 name: git-pr
-description: "Full Git PR workflow: choose git-only, PR-only, or both. Branch modes: create fresh branch from base, or commit/push current branch with optional suffix sub-branch and rebase. Handles staged and unstaged changes. Use /git-pr [--mode git|pr|both] [--new <name>] [--suffix <dev|stg>] [--base <branch>] [--no-rebase] [--also-pr <branch>] [--preview] [--issue <no>] [--no-issue] [--review|--no-review]"
-argument-hint: "[--mode git|pr|both] [--new <name>] [--suffix <dev|stg>] [--base <branch>] [--no-rebase] [--also-pr <branch>] [--preview] [--issue <no>] [--no-issue] [--review|--no-review]"
+description: "Full Git PR workflow: choose git-only, PR-only, or both. Branch modes: create fresh branch from base, or commit/push current branch with optional suffix sub-branch and rebase. Handles staged and unstaged changes. Use /git-pr [--mode git|pr|both] [--new <name>] [--suffix <dev|stg>] [--base <branch>] [--no-rebase] [--also-pr <branch>] [--preview] [--issue <no>] [--no-issue] [--review|--no-review] [--shots <both|after|none>]"
+argument-hint: "[--mode git|pr|both] [--new <name>] [--suffix <dev|stg>] [--base <branch>] [--no-rebase] [--also-pr <branch>] [--preview] [--issue <no>] [--no-issue] [--review|--no-review] [--shots <both|after|none>]"
 disable-model-invocation: true
 allowed-tools: Bash, AskUserQuestion, Read, Write, Edit, Skill, Grep, Glob
 ---
@@ -263,7 +263,7 @@ If there is only one group, omit the `##` heading and write the bullets directly
 
 **R2 — Prose and bullets only. No diagrams.**
 
-The PR body carries no mermaid blocks, ASCII art, or images. If a flow is too tangled to state in bullets, that is a signal to split the group — not to draw it.
+The PR body carries no mermaid blocks or ASCII art. Images appear only as screenshot cells in the `## 구현 화면` table, produced by [Capture screenshots]. If a flow is too tangled to state in bullets, that is a signal to split the group — not to draw it.
 
 **R3 — Bullet form.**
 `{대상} — {무엇이 어떻게}`, ending in a noun phrase. State only what the diff shows. Do not describe intent, expected benefit, or effort.
@@ -287,30 +287,10 @@ The reviewer did not implement this and does not know the internals you just lea
 - Three sentences maximum. **If the background needs more than that, do not write the block — fold the point into a single bullet under the group.** One line a reviewer understands beats a paragraph they skip.
 - A block that a reader can only follow after reading the diff has failed. Delete it.
 
-**R7 — Conditional sections.**
-`## 구현 화면` and `## 테스트 케이스` are emitted only when their trigger is met. When not met, delete the heading and its `---` separator entirely. Never write `없음`, never leave an empty checkbox list, never leave an empty table.
+**R7 — Conditional section.**
+`## 구현 화면` is emitted only when its trigger is met. When not met, delete the heading and its `---` separator entirely. Never write `없음`, never leave an empty table.
 
-`## 구현 화면` trigger: the diff changes rendered UI. Leave the table rows blank for the user.
-
-`## 테스트 케이스` trigger: `tasks.md` records that testing actually happened. This section transcribes evidence; it never generates scenarios.
-
-Locate `tasks.md` — prefer one changed by this branch, otherwise the `docs/*/plans/tasks.md` matching the branch topic:
-
-```bash
-git diff origin/{PR_BASE}..{HEAD_BRANCH} --name-only -- '**/tasks.md'
-```
-
-Read its `## 진행 기록` entries and its checklists, then include only what counts as evidence:
-- a `## 진행 기록` entry describing a scenario that was verified, manually or automatically
-- a recorded test command and its result (suite run, e2e run, build check)
-- a checked-off item that is itself a test or QA step
-
-Not evidence — omit the section if this is all that exists:
-- unchecked boxes, or items phrased as intent (`테스트 예정`, `확인 필요`)
-- test files appearing in the diff — adding a test is not proof of running it
-- implementation items that merely imply the feature works
-
-If no `tasks.md` exists, or it holds no evidence, delete the section. Do not ask the user to supply scenarios, and do not restate a scenario in stronger terms than the record supports.
+`## 구현 화면` trigger: the diff changes rendered UI. When [Capture screenshots] ran, fill every cell it produced; only cells whose capture failed stay blank. When it was skipped, keep the template's blank table for the user.
 
 ---
 
@@ -350,6 +330,18 @@ Fallback checklist — one pass over the diff, reporting only what you can point
   reviewer's concerns are not that. Findings go in the conversation, or -- in preview-file mode --
   above the `<!-- ↓↓↓ PR 본문 시작 ↓↓↓ -->` marker where they never reach the PR.
 - If no finding survives, say so in one line and move on.
+
+---
+
+### Capture screenshots
+
+Run only when the `## 구현 화면` trigger (R7) is met. It runs after the review so fixes the review produced are already on screen. `--shots none` skips it; `--shots both` or `--shots after` answers the Before question in advance. Otherwise call `AskUserQuestion`:
+- prompt: `"구현 화면 스크린샷을 찍어서 PR에 넣을까요?"`
+- options: `["찍기 — 모바일은 시뮬레이터·기기, 웹은 헤드리스 브라우저로 촬영", "건너뛰기 — 구현 화면 표는 비워 둠"]`
+
+When capturing, follow `${CLAUDE_SKILL_DIR}/references/screenshots.md` through step 6: it picks the screens, asks whether to capture Before, captures and verifies each image, and fills the table with local paths. Upload happens at [Create the PR].
+
+Set `HAS_SHOTS = true` when at least one image landed in the table.
 
 ---
 
@@ -412,6 +404,8 @@ On confirmation, re-read `.pr-preview.md` one final time, and write everything a
 gh pr create --head {HEAD_BRANCH} --base {PR_BASE} --title "{TITLE}" --body-file "{REPO_ROOT}/.pr-body.tmp.md"
 ```
 
+When `HAS_SHOTS` is true, add `--draft` to this command, then follow step 7 of `${CLAUDE_SKILL_DIR}/references/screenshots.md`: upload the images, swap local paths for URLs, `gh pr edit`, `gh pr ready`. The secondary PR is created only after that, from the finished body.
+
 **Secondary PR** (only when an additional PR was requested):
 
 ```bash
@@ -425,6 +419,8 @@ Only after every requested PR has been created successfully:
 ```bash
 rm -f "{REPO_ROOT}/.pr-body.tmp.md" "{REPO_ROOT}/.pr-preview.md"
 ```
+
+When `HAS_SHOTS` is true, the PR must also be published (`gh pr ready`) before cleanup; delete the shots directory named in `references/screenshots.md` at the same time.
 
 If `gh pr create` fails, leave both files in place, report the error in Korean, and let the user retry from the existing preview.
 
@@ -440,6 +436,7 @@ Summarize the completed work in Korean:
 - Sub-branch: created and pushed (when a suffix was used)
 - Rebase: onto `origin/{BASE}` (when a rebase ran)
 - PR: list of URLs (when the PR Phase ran)
+- Screenshots: captured cells, and each blank cell with its reason (when screenshots were captured)
 - Preview file: deleted (when preview-file mode ran)
 
 ---
@@ -457,10 +454,12 @@ Summarize the completed work in Korean:
 - Follow the PR body authoring rules (R1–R7); they override any habit of filling every section
 - Never write `없음`, an empty checklist, or an empty table — delete the section instead
 - Never leave an unexplained internal term in the body — explain it in a sentence or drop the point to one line (R6)
-- Never put a mermaid block, ASCII art, or an image in the PR body
+- Never put a mermaid block or ASCII art in the PR body; images go only in the `구현 화면` table via [Capture screenshots]
 - Always pass the PR body with `--body-file`, never `--body "{BODY}"`
 - Never `git add` or commit `.pr-preview.md` / `.pr-body.tmp.md`; delete them only after the PRs are created
-- Do not fill in the `구현 화면` table rows — leave them blank for the user
+- Fill every `구현 화면` cell a capture produced; leave a cell blank only when its capture failed, and report why
+- Never publish a PR whose body still holds a local image path — keep it as a draft until the upload succeeds
+- Always return to `HEAD_BRANCH` after a Before capture, even when the capture failed
 - Never claim a test was run or a scenario was verified unless `tasks.md` records it
 - If `gh` is not installed, stop and tell the user in Korean
 - All user-facing messages and questions must be in Korean

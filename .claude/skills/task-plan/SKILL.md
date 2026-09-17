@@ -33,6 +33,12 @@ Extract:
 If the input references an existing feature (`기능 수정`), find the original `docs/*/plans/` folder
 and record it as a `참조:` header link. Never modify a file in the original folder.
 
+If the input names a `/tracker` meta-plan (an absolute path) and an issue in it, record both as the
+`메타 플랜:` header line, and use that issue's blocks in the meta-plan as the spec source — 기획 발췌,
+사용자 노출 문구, 디자인 노드, 미정. Do not re-fetch the 기획서. Every design node the meta-plan
+lists for the issue, modal and state frames included, lands on the task item that renders it: an
+implementer should never have to open the meta-plan to find a design.
+
 ## Step 2: Explore the codebase
 
 The point is not to understand the whole architecture. It is to answer three questions well enough
@@ -110,14 +116,21 @@ start it from this skill.
 ## Open questions
 
 Anything the plan cannot decide on its own goes in a `## 확인 필요` section in `tasks.md` — one line
-per question, phrased so the answer is a choice, not an essay.
+per question, phrased so the answer is a choice, not an essay. End each line with what it holds up —
+`막는 항목: Phase 2 로그인 버튼` — or `구현 영향 없음`. `/implement` reads this to start everything
+that does not wait on the answer.
 
 Once a question is answered, **delete the question line and keep only the decision.** Never leave
 the request and its answer side by side; a reader opening the doc later needs the conclusion, not
 the negotiation that produced it.
 
-- The decision goes wherever it changes the work — the Phase task line, `spec.md`, or one line
-  under `## 진행 기록` when it changes neither.
+- The decision goes where the work it changed is:
+  - **one item is built differently** → a `결정:` sub-bullet on that item, beside `재사용:` / `패턴:`
+  - **the behavior changes** → `spec.md`, written as if it had been specified from the start
+  - **neither** → one line under `## 진행 기록`
+- A `결정:` sub-bullet stays after the item is checked off, and names what settled it — 사용자 지시,
+  피그마 기준, 기획서대로. It is the only place a later reader can find out why the item looks the way
+  it does; deleting it puts them back where the question started.
 - Record the decision only, in one line. No restating the options, no "사용자 확인 완료" markers.
 - When the last question is answered, delete the `## 확인 필요` section itself.
 
@@ -137,6 +150,7 @@ This applies to conversational output in this flow and to free-text prose inside
 - **Explore before writing, and inline what you found** — a Phase item with no `재사용:`/`패턴:` line means either nothing exists to reuse, or the exploration was skipped
 - **Never write the same thing in both documents** — order in `tasks.md`, behavior in `spec.md`
 - **Never invent user-facing text** — 안내·동의·에러 문구가 없으면 `## 확인 필요`에 올린다
+- **A decision that shaped one item stays on that item** — `결정:` sub-bullet, kept after the check
 - **Do not start `/implement`** — suggest it and stop
 - **Do not modify the original `plans/`** when the task type is `기능 수정`
 - **Portable by default** — plain conversation for every question and report. If the host offers a

@@ -41,7 +41,7 @@
 ### Medium (SKILL.md + templates/)
 - Produces reports, documents, or structured files
 - Has file save policies
-- Example: `/qa-guide`, `/study`
+- Example: `/tracker`, `/study`
 
 ### Full (all directories)
 - Multi-step workflow with parallel agents

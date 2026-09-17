@@ -14,16 +14,24 @@ from pathlib import Path
 UUID_RE = re.compile(
     r"(?i)([0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12})"
 )
+SIGNED_IMAGE_RE = re.compile(r"!\[([^\]]*)\]\((https?://[^)\s]*X-Amz-[^)\s]*)\)")
 
 
 def extract_page_id(value: str) -> str | None:
-    matches = UUID_RE.findall(value)
+    path = re.split(r"[?#]", value, maxsplit=1)[0]
+    matches = UUID_RE.findall(path) or UUID_RE.findall(value)
     if not matches:
         return None
     raw = matches[-1].replace("-", "").lower()
     if len(raw) != 32:
         return None
     return f"{raw[:8]}-{raw[8:12]}-{raw[12:16]}-{raw[16:20]}-{raw[20:]}"
+
+
+def strip_signed_images(markdown: str) -> str:
+    return SIGNED_IMAGE_RE.sub(
+        lambda m: f"![{m.group(1) or 'image'}](notion-image)", markdown
+    )
 
 
 def run(command: list[str], timeout: int) -> subprocess.CompletedProcess[str]:
@@ -74,6 +82,11 @@ def main() -> None:
         help="Run notion-cli whoami before fetching",
     )
     parser.add_argument(
+        "--keep-image-urls",
+        action="store_true",
+        help="Keep signed S3 image URLs instead of replacing them with a placeholder",
+    )
+    parser.add_argument(
         "--timeout",
         type=int,
         default=60,
@@ -91,7 +104,8 @@ def main() -> None:
             stderr = auth.stderr.strip() or auth.stdout.strip() or "no stderr"
             fail(f"notion-cli authentication check failed\n{stderr}", auth.returncode)
 
-    markdown_command = [cli, "markdown", "get", args.source]
+    page_id = extract_page_id(args.source)
+    markdown_command = [cli, "markdown", "get", page_id or args.source]
     if args.output:
         output_path = Path(args.output).expanduser()
         output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -99,15 +113,20 @@ def main() -> None:
         if result.returncode != 0:
             stderr = result.stderr.strip() or result.stdout.strip() or "no stderr"
             fail(f"command failed: {' '.join(markdown_command)}\n{stderr}", result.returncode)
+        if not args.keep_image_urls:
+            text = output_path.read_text(encoding="utf-8")
+            output_path.write_text(strip_signed_images(text), encoding="utf-8")
         print(str(output_path))
     else:
         result = run(markdown_command, args.timeout)
         if result.returncode != 0:
             stderr = result.stderr.strip() or result.stdout.strip() or "no stderr"
             fail(f"command failed: {' '.join(markdown_command)}\n{stderr}", result.returncode)
-        print(result.stdout, end="")
+        print(
+            result.stdout if args.keep_image_urls else strip_signed_images(result.stdout),
+            end="",
+        )
 
-    page_id = extract_page_id(args.source)
     if (args.metadata or args.children) and not page_id:
         fail("could not extract a page ID for metadata or child block fetch")
 

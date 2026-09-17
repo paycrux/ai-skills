@@ -16,7 +16,14 @@ at the first hit.
    value verbatim.
 
 2. **`tasks.md` header** — the `> 이슈:` field written by `/task-plan`, the authoritative source
-   when the branch has a plan document. Locate the file the same way `## 테스트 케이스` does, then:
+   when the branch has a plan document. Locate it — prefer a `tasks.md` changed by this branch,
+   otherwise the `docs/*/plans/tasks.md` matching the branch topic:
+
+   ```bash
+   git diff origin/{PR_BASE}..{HEAD_BRANCH} --name-only -- '**/tasks.md'
+   ```
+
+   Then:
 
    ```bash
    grep -m1 '^> 이슈:' {TASKS_MD}
