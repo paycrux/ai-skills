@@ -1,0 +1,11 @@
+.cols { display: grid; grid-template-columns: minmax(300px, 400px) 1fr; gap: 28px; margin-top: 12px; }
+@media (max-width: 1100px) { .cols { grid-template-columns: 1fr; } .shot { position: static; max-height: none; } }
+.shot { position: sticky; top: 52px; max-height: calc(100vh - 68px); overflow: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); padding: 12px; scroll-behavior: smooth; }
+.fig { position: relative; margin: 0 auto; } .fig img { display: block; border-radius: 6px; }
+.pin { position: absolute; transform: translate(-50%, -50%); width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--surface); font: 600 11px var(--mono); color: #fff; background: var(--red); cursor: pointer; padding: 0; box-shadow: 0 1px 3px rgba(0, 0, 0, .25); transition: transform .15s; }
+.pin.k-pend { background: var(--amber); } .pin.k-out { background: var(--wait); }
+.pin.hot { transform: translate(-50%, -50%) scale(1.45); z-index: 2; outline: 3px solid var(--now); }
+tr.hot td { background: var(--now-bg); } tbody tr[data-i] { cursor: pointer; }
+.nt { color: var(--muted); font-size: 12px; margin-top: 3px; }
+.sum { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 0; }
+.sum span { font: 12px var(--mono); border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; background: var(--surface); }

@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.0] - 2026-10-23
+
+### Added
+
+- `flow` 스킬 추가 — 기획서와 Figma 링크를 받아 화면 하나를 PR까지 끌고 가는 흐름. 결과는 `docs/<작업명>/`의 HTML 페이지 묶음(`index` + 단계 6개)이고, 브라우저로 웹페이지처럼 넘겨 봄
+  - 단계: 01 기획 → 02 화면 · SOT 맵 → 03 질문 → 04 구현 계획 · 구현 → 05 검증 → 06 완료. 사람이 멈추는 곳은 질문 답, 계획 승인, 막힌 항목, 완료 확인 네 군데
+  - 모든 페이지 맨 위에 `결론` 블록. 다음 단계는 앞 단계의 결론만 읽어서, 이어받는 세션이 문서 전체를 다시 읽지 않음. 왼쪽 단계 목록과 개요 페이지는 이 결론에서 `build.py`가 만듦 — 진행도를 손으로 맞추지 않음
+  - 02 SOT 맵: compose_mobile_order `sot-map`(박윤국)의 방법론을 가져옴. Figma 화면 요소마다 값의 출처를 Data · Computed · Action · 확인 필요 · 범위 제외로 나누고 화면 밖 상태까지 적음. 마커 위치는 Figma 구조 정보로 계산하고(컴포넌트 안쪽은 `merge-xml`로 합침), 글자는 스크린샷 기준 — 레이어 이름과 화면 글자가 다른 경우가 있음
+  - spec 문서는 없음. 화면 동작은 02, 결정은 03이 맡음
+  - 03 질문: 페이지에서 바로 답하고, 결정된 뒤에도 고칠 수 있음. 고친 답은 Claude가 다시 반영할 때까지 주황으로 표시되고 `check`가 실패함. 결정은 키워드 나열이 아니라 사람이 읽는 문장으로
+  - 저장은 서버 없이: 크롬 계열 브라우저에서 `폴더 연결`(File System Access API)로 `data/inbox.json`에 쓰고, `build.py apply`가 문서에 반영. 페이지를 iframe으로 묶지 않는 이유는 파일로 연 페이지의 iframe에서는 폴더 선택이 막히기 때문
+  - 버그 리포트는 05에 쌓이고, 고치는 일은 04에 `B1 수정` 항목으로
+
+### Changed
+
+- 설치본(`~/.claude/skills`)에서 직접 고쳐져 저장소에 없던 HTML 계획 형식을 가져옴: `task-plan`의 `tasks.html`/`spec.html` 템플릿, `_shared/plan-format.md`, `implement`·`qa`·`tracker`·`git-pr`의 HTML 계획 읽기, `md_to_adf.py`의 HTML 입력, `git-pr/scripts/upload-images.sh`
+- `task-plan`은 그대로 둠. 새 작업은 `/flow`, 진행 중이던 계획은 기존 흐름으로
+
 ## [0.12.0] - 2026-09-17
 
 ### Added

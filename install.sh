@@ -9,7 +9,7 @@ set -euo pipefail
 REPO_URL="https://github.com/paycrux/ai-skills.git"
 MARKER_START="<!-- AI-SKILLS:START -->"
 MARKER_END="<!-- AI-SKILLS:END -->"
-VERSION="0.12.0"
+VERSION="1.0.0"
 
 # Permanent state directory (persists across installs so `ai-skills update` works)
 AI_SKILLS_HOME="$HOME/.ai-skills"
@@ -571,6 +571,7 @@ All code changes are executed directly — no sub-agents.
 
 | Workflow | File | Purpose |
 |----------|------|---------|
+| flow | @.cursor/skills/flow/SKILL.md | PRD → Figma SOT map → questions → plan → build → verify, as linked HTML pages |
 | task-plan | @.cursor/skills/task-plan/SKILL.md | Task planning + document generation |
 | implement | @.cursor/skills/implement/SKILL.md | Document-driven phased implementation |
 | qa-guide | @.cursor/skills/qa-guide/SKILL.md | QA test guide generation |
@@ -708,6 +709,7 @@ All code changes are executed directly — no sub-agents.
 
 | Workflow | File | Purpose |
 |----------|------|---------|
+| flow | ${ref}/skills/flow/SKILL.md | PRD → Figma SOT map → questions → plan → build → verify, as linked HTML pages |
 | task-plan | ${ref}/skills/task-plan/SKILL.md | Task planning + document generation |
 | implement | ${ref}/skills/implement/SKILL.md | Document-driven phased implementation |
 | qa-guide | ${ref}/skills/qa-guide/SKILL.md | QA test guide generation |
