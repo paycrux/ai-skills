@@ -50,8 +50,7 @@ KIND = {
 GAP = 14
 NAV = re.compile(r"<!-- flow:nav -->.*?<!-- /flow:nav -->", re.S)
 CONCLUSION = re.compile(r'<section class="conclusion" data-status="(\w+)" data-summary="([^"]*)">(.*?)</section>', re.S)
-FONTS = ("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600"
-         "&family=IBM+Plex+Sans+KR:wght@400;600;700&display=swap")
+FONTS = "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
 
 
 def esc(text):
@@ -153,8 +152,8 @@ def build_screen(root, task):
             off = (f'<h3>화면 밖 상태</h3><p class="note">{intro}</p><table><thead><tr><th>상태</th><th>언제</th>'
                    f"<th>보이는 것</th></tr></thead><tbody>{off_rows}</tbody></table>")
         parts.append(
-            f'<h2>화면 · {screen["title"]}</h2><p class="meta">Figma <code>{esc(screen["figma"])}</code></p>'
-            f'<div class="cols"><div class="shot"><div class="fig" style="width:{width:.0f}px">'
+            f'<h2 class="screen">화면 · {screen["title"]}</h2><p class="meta">Figma <code>{esc(screen["figma"])}</code></p>'
+            f'<div class="cols{" landscape" if width > height or width > 700 else ""}"><div class="shot"><div class="fig" style="width:{width:.0f}px">'
             f'<img src="data/{esc(screen["image"])}" alt="{esc(screen["title"])} Figma 화면" style="width:{width:.0f}px">{"".join(pins)}</div></div>'
             f"<div>{tables}{off}</div></div>")
     chips = "".join(f"<span>{k} {v}</span>" for k, v in counts.items())
@@ -263,7 +262,7 @@ def nav_html(task, steps, current):
         '<button class="navtoggle" id="navtoggle" title="목록 접기/펴기 ([ 키)" aria-label="목록 접기/펴기">☰</button>'
         f'<aside class="nav"><a class="home{" on" if current == "index.html" else ""}" href="index.html">{esc(task["title"])}</a>'
         f'<p class="nav-meta">{esc(meta)}</p><nav class="steps">{links}</nav>'
-        '<div class="legend"><i class="l-done"></i>완료 <i class="l-now"></i>진행 중 <i class="l-ask"></i>질문 · 결정 대기 <i class="l-wait"></i>시작 전</div>'
+        '<div class="legend"><span><i class="l-done"></i>완료</span><span><i class="l-now"></i>진행 중</span><span><i class="l-ask"></i>질문 · 결정 대기</span><span><i class="l-wait"></i>시작 전</span></div>'
         f'<div class="foot"><b>이어받을 때 읽는 것</b><br>{" → ".join(reads) if reads else "index 결론만"}</div></aside>'
         "<!-- /flow:nav -->"
     )
@@ -277,7 +276,7 @@ def build_index(root, task, steps):
     links = "".join(f'<li><a href="{esc(l["url"])}">{esc(l["label"])}</a></li>' for l in task.get("links", []))
     body = (f'<h1>{esc(task["title"])}</h1><p class="meta">{esc(" · ".join(x for x in (task.get("key"), task.get("type")) if x))}</p>'
             + (f'<ul class="links">{links}</ul>' if links else "")
-            + '<p class="note">단계마다 결론만 모은 지도예요. 제목을 누르면 그 단계 문서로 가요.</p>' + cards)
+            + '<p class="note index-note">단계마다 결론만 모은 지도예요. 제목을 누르면 그 단계 문서로 가요.</p>' + cards)
     (root / "index.html").write_text(shell(task, "개요", body))
 
 

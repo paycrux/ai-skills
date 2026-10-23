@@ -41,6 +41,14 @@ and for `hidden="true"` (an element the design hides in this state). A mismatch 
 and rendered text is itself evidence — note it, and if it changes meaning (expiry vs received time),
 make the row `pending`.
 
+## Mobile, tablet, web
+
+A screen is one Figma frame of any size. `build.py` lays a portrait frame beside its tables and a
+landscape frame (wider than tall, or wider than 700px) across the page, pinned above the tables.
+When the same screen has several breakpoints, add each frame as its own entry in `screens`
+(`<screen>-mobile`, `<screen>-web`) and mark only what differs on the later ones — say "same as
+marker N" in `rule` rather than repeating evidence.
+
 ## Pick elements
 
 Top to bottom: values that change, rows or sections shown conditionally, controls that do something.
