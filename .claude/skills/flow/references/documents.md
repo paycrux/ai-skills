@@ -133,8 +133,8 @@ Open only when the person has to look or act: a new or revised round, plan appro
 
 1. Start the server in the background if it is not running: `node <docs>/.flow/server.mjs`
    (it prints the URL; a second start just prints the running one).
-2. macOS: `open -a "<Google Chrome / Arc / Microsoft Edge / Safari>" http://127.0.0.1:<port>/<domain>/<task>#<anchor>`.
-   Linux: `xdg-open …`. Remote sessions and other agents: print the URL.
+2. Open it in the OS default browser — never name a browser: macOS `open http://127.0.0.1:<port>/<domain>/<task>#<anchor>`,
+   Linux `xdg-open …`, Windows `start "" …`. Remote sessions and other agents: print the URL.
 
 Each `open` adds a tab; at other stops tell the person to look at the page they already have.
 
