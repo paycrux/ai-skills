@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
 """Convert a markdown section to Atlassian Document Format (ADF) JSON.
 
-Built for /qa-guide: extracts the `## QA 가이드` section from tasks.md and emits ADF
-suitable for `acli jira workitem edit --description-file`.
+Extracts one `## Heading` section and emits ADF suitable for
+`acli jira workitem edit --description-file`.
+
+HTML input (a `.html` file, or text starting with `<`) — the format `/task-plan` writes
+`tasks.html` in — is first rewritten to markdown, so `--section "## QA 가이드"` matches
+`<h2>QA 가이드</h2>` and a checked `<input type="checkbox">` becomes `[x]`.
 
 Deliberately never emits taskList/taskItem nodes — a `- [ ]` line becomes a plain
 bullet whose text starts with `[ ]`.
 
 Usage:
-    python3 md_to_adf.py <input.md> [-o out.json] [--section "## QA 가이드"]
+    python3 md_to_adf.py <input.md|input.html> [-o out.json] [--section "## QA 가이드"]
     cat doc.md | python3 md_to_adf.py - -o out.json
 """
 
@@ -16,6 +20,7 @@ import argparse
 import json
 import re
 import sys
+from html.parser import HTMLParser
 
 # ── inline marks ────────────────────────────────────────────────────────────
 # Order matters: code is matched first so its contents are never re-parsed.
@@ -91,7 +96,7 @@ def split_table_row(line):
         line = line[1:]
     if line.endswith("|"):
         line = line[:-1]
-    return [c.strip() for c in line.split("|")]
+    return [c.strip().replace("\\|", "|") for c in re.split(r"(?<!\\)\|", line)]
 
 
 def cell(text, header):
@@ -257,9 +262,146 @@ def extract_section(lines, heading):
     return out
 
 
+class HtmlToMarkdown(HTMLParser):
+    SKIP = {"head", "style", "script", "title", "template"}
+    MARKS = {"strong": "**", "b": "**", "em": "*", "i": "*", "del": "~~", "s": "~~"}
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.lines = []
+        self.buf = []
+        self.prefix = None
+        self.blank_after = False
+        self.lists = []
+        self.skip = 0
+        self.pre = None
+        self.hrefs = []
+        self.table = None
+        self.outer = None
+
+    def _flush(self):
+        text = re.sub(r"\s+", " ", "".join(self.buf)).strip()
+        self.buf = []
+        if text:
+            self.lines.append((self.prefix or "") + text)
+            if self.blank_after or self.prefix is None:
+                self.lines.append("")
+        self.prefix = None
+        self.blank_after = False
+
+    def handle_starttag(self, tag, attrs):
+        attrs = dict(attrs)
+        if tag in self.SKIP:
+            self.skip += 1
+            return
+        if self.skip:
+            return
+        if self.pre is not None:
+            return
+        if re.fullmatch(r"h[1-6]", tag):
+            self._flush()
+            self.prefix = "#" * int(tag[1]) + " "
+            self.blank_after = True
+        elif tag in ("p", "div", "section", "header", "main"):
+            self._flush()
+            if tag == "p":
+                self.prefix = ""
+                self.blank_after = True
+        elif tag in ("ul", "ol"):
+            self._flush()
+            self.lists.append(tag)
+        elif tag == "li":
+            self._flush()
+            depth = max(len(self.lists) - 1, 0)
+            marker = "1. " if self.lists and self.lists[-1] == "ol" else "- "
+            self.prefix = "  " * depth + marker
+        elif tag == "input" and attrs.get("type") == "checkbox":
+            self.buf.append("[x] " if "checked" in attrs else "[ ] ")
+        elif tag == "pre":
+            self._flush()
+            self.pre = []
+        elif tag == "code":
+            self.buf.append("`")
+        elif tag in self.MARKS:
+            self.buf.append(self.MARKS[tag])
+        elif tag == "a":
+            self.buf.append("[")
+            self.hrefs.append(attrs.get("href") or "")
+        elif tag == "br":
+            self.buf.append(" ")
+        elif tag == "table":
+            self._flush()
+            self.table = []
+        elif tag == "tr" and self.table is not None:
+            self.table.append([])
+        elif tag in ("td", "th") and self.table is not None:
+            self.outer = self.buf
+            self.buf = []
+
+    def handle_endtag(self, tag):
+        if tag in self.SKIP:
+            self.skip = max(self.skip - 1, 0)
+            return
+        if self.skip:
+            return
+        if self.pre is not None:
+            if tag == "pre":
+                self.lines.extend(["```"] + "".join(self.pre).strip("\n").split("\n") + ["```", ""])
+                self.pre = None
+            return
+        if re.fullmatch(r"h[1-6]", tag) or tag in ("p", "li", "div", "section", "header", "main"):
+            self._flush()
+        elif tag in ("ul", "ol"):
+            self._flush()
+            if self.lists:
+                self.lists.pop()
+            if not self.lists:
+                self.lines.append("")
+        elif tag == "code":
+            self.buf.append("`")
+        elif tag in self.MARKS:
+            self.buf.append(self.MARKS[tag])
+        elif tag == "a":
+            self.buf.append("](%s)" % (self.hrefs.pop() if self.hrefs else ""))
+        elif tag in ("td", "th") and self.table is not None and self.outer is not None:
+            text = re.sub(r"\s+", " ", "".join(self.buf)).strip().replace("|", "\\|")
+            if self.table:
+                self.table[-1].append(text)
+            self.buf = self.outer
+            self.outer = None
+        elif tag == "table" and self.table is not None:
+            rows = [r for r in self.table if r]
+            if rows:
+                self.lines.append("| " + " | ".join(rows[0]) + " |")
+                self.lines.append("|" + "---|" * len(rows[0]))
+                for r in rows[1:]:
+                    self.lines.append("| " + " | ".join(r) + " |")
+                self.lines.append("")
+            self.table = None
+
+    def handle_data(self, data):
+        if self.skip:
+            return
+        if self.pre is not None:
+            self.pre.append(data)
+        else:
+            self.buf.append(data)
+
+    def close(self):
+        super().close()
+        self._flush()
+        return "\n".join(self.lines)
+
+
+def html_to_markdown(raw):
+    parser = HtmlToMarkdown()
+    parser.feed(raw)
+    return parser.close()
+
+
 def main():
-    ap = argparse.ArgumentParser(description="Markdown → Atlassian Document Format (ADF)")
-    ap.add_argument("input", help="markdown file, or - for stdin")
+    ap = argparse.ArgumentParser(description="Markdown or HTML → Atlassian Document Format (ADF)")
+    ap.add_argument("input", help="markdown or HTML file, or - for stdin")
     ap.add_argument("-o", "--output", help="write ADF JSON here (default: stdout)")
     ap.add_argument("--section", help='extract only this heading, e.g. "## QA 가이드"')
     ap.add_argument("--drop-heading", action="store_true",
@@ -267,6 +409,8 @@ def main():
     args = ap.parse_args()
 
     raw = sys.stdin.read() if args.input == "-" else open(args.input, encoding="utf-8").read()
+    if args.input.lower().endswith((".html", ".htm")) or raw.lstrip().startswith("<"):
+        raw = html_to_markdown(raw)
     lines = raw.replace("\r\n", "\n").split("\n")
 
     if args.section:

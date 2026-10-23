@@ -22,9 +22,12 @@ blank cell gets a one-line reason in the conversation. Never write `없음` in a
 Shots live outside the repository and are never committed:
 
 ```bash
-SHOTS="${TMPDIR:-/tmp}/git-pr-shots/$(echo "{HEAD_BRANCH}" | tr '/' '-')"
+SHOTS="/tmp/git-pr-shots/$(echo "{HEAD_BRANCH}" | tr '/' '-')"
 mkdir -p "$SHOTS"
 ```
+
+Use `/tmp` literally, not `$TMPDIR`. On macOS `$TMPDIR` is under `/var/folders/`, and `browse`
+refuses to write screenshots outside `/tmp` or the repository.
 
 File names: `{screen}_{before|after}_{ios|aos|web}[_light|_dark].png`, where `{screen}` is a short
 ASCII slug.
@@ -206,33 +209,56 @@ thumbnail; it is enough for a 200px cell and uploads faster.
 
 ## 7. Upload and publish
 
-`gh attach` needs an existing issue or PR page to upload through, so the PR is created as a draft
-first and published only after the images are in. Reviewers never see an imageless body.
+Images are uploaded through the PR page, so the PR is created as a draft first and published only
+after the images are in. Reviewers never see an imageless body.
+
+The upload runs in a logged-in `playwright-cli` browser session (`gh-attach`), not on the `gh`
+token, because GitHub only issues attachment URLs to a browser session. Use
+`${CLAUDE_SKILL_DIR}/scripts/upload-images.sh`, not the `gh attach` extension — the extension
+(0.7.4) posts the file to the wrong place and never confirms the upload with GitHub, so it fails
+after the upload starts.
 
 1. Create the primary PR with `--draft` and the body file that still holds local paths. Take the
    PR number from the returned URL.
 2. Upload every image referenced in the body, in the order they appear:
 
    ```bash
-   gh attach --issue {PR_NO} --url-only --image <path1> --image <path2> ...
+   REPO="$(gh repo view --json nameWithOwner -q .nameWithOwner)"
+   "${CLAUDE_SKILL_DIR}/scripts/upload-images.sh" "$REPO" {PR_NO} <path1> <path2> ...
    ```
 
-   It prints one URL per line, in argument order.
-3. Replace each local path in `.pr-body.tmp.md` with its URL, then check that no local path is left:
+   It prints one `https://github.com/user-attachments/assets/...` URL per line, in argument order.
+   Exit code `3` means the browser session is not logged in. Tell the user in Korean to run this
+   once and say when they are done, then re-run the upload — the login persists in the session's
+   profile, so this is needed only on the first run or after GitHub signs the session out:
+
+   ```
+   ! playwright-cli --session gh-attach open --persistent --headed https://github.com/login
+   ```
+
+   Close that window with `playwright-cli --session gh-attach close` before re-running.
+3. Check that each URL serves the image. On a private repo it answers only with auth:
+
+   ```bash
+   curl -s -L -o /dev/null -w '%{http_code} %{content_type}\n' -H "Authorization: token $(gh auth token)" <url>
+   ```
+
+   Every line must read `200 image/...`.
+4. Replace each local path in `.pr-body.tmp.md` with its URL, then check that no local path is left:
 
    ```bash
    grep -c "$SHOTS" "{REPO_ROOT}/.pr-body.tmp.md"
    ```
 
    The count must be `0`.
-4. Publish:
+5. Publish:
 
    ```bash
    gh pr edit {PR_NO} --body-file "{REPO_ROOT}/.pr-body.tmp.md"
    gh pr ready {PR_NO}
    ```
 
-5. Create any secondary PR afterwards, not as a draft, from the same finished body file.
+6. Create any secondary PR afterwards, not as a draft, from the same finished body file.
 
 If the upload fails, leave the PR as a draft, report the error in Korean, and call
 `AskUserQuestion`:

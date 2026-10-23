@@ -6,7 +6,12 @@ argument-hint: "<task-folder-name or path to docs/...>"
 
 # /implement — Document-Driven Implementation Workflow
 
-Reads documents produced by `/task-plan` (`tasks.md`, `spec.md`) and executes the plan straight through.
+Reads documents produced by `/task-plan` (`tasks.html`, `spec.html`) and executes the plan straight through.
+
+Older plans are `tasks.md` / `spec.md` with the same sections in markdown. Read whichever the folder
+has, and edit each file in its own format — never convert one. The markup for both formats, and the
+grep recipes below, are in `${CLAUDE_SKILL_DIR}/../_shared/plan-format.md`. The examples in this
+document are HTML; for a legacy plan write the markdown equivalent from that table.
 
 The plan was already agreed with the user when it was written. Do not re-ask for permission to carry it out.
 
@@ -14,7 +19,7 @@ The plan was already agreed with the user when it was written. Do not re-ask for
 
 - `/implement <task-folder-name>` — resolves to `docs/<task-folder-name>/plans/`
 - `/implement <path>` — direct path to a `plans/` directory
-- `/implement` (no args) — auto-detect by grepping `docs/*/plans/tasks.md` for `상태: 진행중`
+- `/implement` (no args) — auto-detect plans whose header says `상태: 진행중` — `grep -rl --include=tasks.html --include=tasks.md '상태: 진행중' docs`
 
 If multiple "진행중" tasks are found, list them and ask the user to pick.
 
@@ -26,32 +31,32 @@ Read both files in parallel:
 
 | File | Purpose |
 |---|---|
-| `tasks.md` | Header (issue, type, status, date), per-phase checklist with reuse/pattern sub-bullets, `## 진행 기록` |
-| `spec.md` | Feature flows, state definitions, edge cases |
+| `tasks.html` | Header (issue, type, status, date), per-phase checklist with reuse/pattern sub-bullets, `진행 기록` |
+| `spec.html` | Feature flows, state definitions, edge cases |
 
-If either file is missing, stop and suggest running `/task-plan`.
+If either file is missing in both formats, stop and suggest running `/task-plan`.
 
 ### 1-2. Check Progress State
 
-From `tasks.md`:
+From `tasks.html`:
 
 ```
 Checked items / total items → progress rate
-Last entry in `## 진행 기록` → determine next Phase to start
+Last entry in `진행 기록` → determine next Phase to start
 ```
 
 If there is interrupted work, say in one line where you are resuming from and continue. Do not ask whether to resume — an unfinished plan means the work is still wanted.
 
-Open items from planning — `tasks.md` `## 확인 필요`, or a `spec.md` `## 결정이 필요한 부분` block left by an earlier run — do not hold up the start. Sort them:
+Open items from planning — `tasks.html` `확인 필요`, or a `spec.html` `결정이 필요한 부분` block left by an earlier run — do not hold up the start. Sort them:
 
-- **Holds up an item** (its `막는 항목:` names one, or the item plainly cannot be built without the answer) → append `— **blocker**: {무엇을 정해야 하는지}` to that checklist item and skip it for now.
+- **Holds up an item** (its `막는 항목:` names one, or the item plainly cannot be built without the answer) → append `— <strong class="blocker">blocker</strong>: {무엇을 정해야 하는지}` to that checklist item and skip it for now.
 - **Holds up nothing** (`구현 영향 없음`) → leave it where it is.
 
 Then start. Blocked items are asked about at the 2-4 stop point, together with anything else that comes up, once every independent part is done — later Phases included. Ask in this session; do not route the question to another session.
 
 ## Step 2: Implementation Loop
 
-Work through the Phases in `tasks.md` in order, **without pausing between them**. Each Phase is implement → verify → record, and then the next Phase starts on its own. The only thing that interrupts the loop is a condition in 2-4.
+Work through the Phases in `tasks.html` in order, **without pausing between them**. Each Phase is implement → verify → record, and then the next Phase starts on its own. The only thing that interrupts the loop is a condition in 2-4.
 
 ### 2-1. Announce the Phase — do not ask permission
 
@@ -61,11 +66,11 @@ Print a short block and start working immediately. It marks progress; it is not 
 ## Phase N: {Phase 제목}
 
 - **대상 파일**: {생성/수정할 파일}
-- **접근**: {tasks.md sub-bullet의 재사용/패턴 + spec.md 엣지 케이스 반영 포인트}
+- **접근**: {tasks.html sub-bullet의 재사용/패턴 + spec.html 엣지 케이스 반영 포인트}
 ```
 
 - Two or three lines. Never end it with `진행할까요?` and never wait for a reply.
-- Inputs: the Phase task line in `tasks.md` (file path, figma node link), its `재사용:` / `패턴:` sub-bullets, and the relevant flows/states/edge cases in `spec.md`. Explore the codebase directly only when those are missing or insufficient.
+- Inputs: the Phase item in `tasks.html` — its bold title and labeled rows (`파일:`, `디자인:`, `재사용:`, `패턴:`, `결정:`; older plans put the file path and figma link on the item line), and the relevant flows/states/edge cases in `spec.html`. Explore the codebase directly only when those are missing or insufficient.
 - If the announcement would say something the plan does not — a different file, a different approach — that is 2-4 territory, not an announcement.
 
 ### 2-2. Implement
@@ -74,7 +79,7 @@ Follow:
 
 - `.claude/rules/react-typescript.md` for frontend code
 - **렌더링 이슈는 구조로 먼저 해결** (key 안정성, 렌더링 주체 격리, 상태 위치, 파생 값). `useMemo`/`useCallback`/`React.memo` 같은 메모이제이션 훅은 **사용자가 명시적으로 요청할 때만** 도입 — 측정 없이 선제적으로 추가 금지
-- Existing patterns identified in `tasks.md` sub-bullets
+- Existing patterns identified in `tasks.html` sub-bullets
 
 ### 2-3. Verify before moving on
 
@@ -82,8 +87,8 @@ A Phase is not done because the code is written. Check it with whatever the proj
 
 - Failure → fix it and re-run. This loop stays inside the Phase; it needs no approval.
 - **Same failure twice with no progress → stop (2-4).** Do not keep patching around it.
-- If the project has no such command, verify by reading the change against `spec.md` — the flows and edge cases it lists.
-- Record the command and its result in `## 진행 기록` only when it actually ran. A verification line for a command that never ran is a false record.
+- If the project has no such command, verify by reading the change against `spec.html` — the flows and edge cases it lists.
+- Record the command and its result in `진행 기록` only when it actually ran. A verification line for a command that never ran is a false record.
 
 ### 2-4. When to stop
 
@@ -98,23 +103,23 @@ Stop the loop only for these. Everything else — file layout, naming, helper ex
 | 되돌리기 어려운 작업 | 마이그레이션, 데이터 삭제, 배포·외부 전송 — 실행 전에 알린다 |
 | 사용자만 할 수 있는 일 | 환경변수·시크릿 값, 로그인, 권한 부여, 디자인 원본 확인 |
 
-Stopping is two steps, in this order: **write it into `spec.md` first, then ask in the conversation.** Chat scrolls away and the next session cannot read it; the design doc is where the question survives long enough to be answered properly.
+Stopping is two steps, in this order: **write it into `spec.html` first, then ask in the conversation.** Chat scrolls away and the next session cannot read it; the design doc is where the question survives long enough to be answered properly.
 
-#### Step 1 — Write it into `spec.md`
+#### Step 1 — Write it into `spec.html`
 
-Append to a `## 결정이 필요한 부분` section (create it if absent), one `###` block per open decision:
+Append to a `결정이 필요한 부분` section before `</main>` (create it if absent), one `<h3>` block per open decision:
 
-```markdown
-## 결정이 필요한 부분
+```html
+<h2>결정이 필요한 부분</h2>
 
-### {정해야 하는 것 한 줄}
-
-- **지금 상태**: {화면·데이터·코드가 지금 어떻게 동작하는지 — 이 기능을 구현하지 않은 사람도 그림이 그려지게}
-- **왜 막히는지**: {이대로 두면 사용자에게 무슨 일이 생기는지}
-- **선택지**
-  - A안: {무엇을 한다} → {사용자가 보게 되는 결과, 감수하는 비용}
-  - B안: {무엇을 한다} → {사용자가 보게 되는 결과, 감수하는 비용}
-- **추천**: {어느 쪽을, 왜}
+<h3>{정해야 하는 것 한 줄}</h3>
+<ul class="decision">
+<li><span class="label">지금 상태:</span> {화면·데이터·코드가 지금 어떻게 동작하는지 — 이 기능을 구현하지 않은 사람도 그림이 그려지게}</li>
+<li><span class="label">왜 막히는지:</span> {이대로 두면 사용자에게 무슨 일이 생기는지}</li>
+<li><span class="opt">A</span>{무엇을 한다} → {사용자가 보게 되는 결과, 감수하는 비용}<span class="rec">추천</span></li>
+<li><span class="opt">B</span>{무엇을 한다} → {사용자가 보게 되는 결과, 감수하는 비용}</li>
+<li><span class="label">추천 이유:</span> {왜 그쪽인지 한 줄}</li>
+</ul>
 ```
 
 How to write it:
@@ -122,11 +127,12 @@ How to write it:
 - The reader is the person deciding, not the person who wrote the code. Describe what they can see — 화면, 문구, 데이터 — not the call stack.
 - Explain any internal term in the same sentence, or leave it out. A block that needs the diff to make sense has failed.
 - Each line is one or two sentences. If 지금 상태 needs a paragraph, the block is describing implementation instead of the decision.
-- Options are compared by their outcome, not by their technique. `A안: 응답을 캐시한다` is not an option; `A안: 목록을 캐시해서 재진입이 즉시 뜨지만, 다른 기기에서 바꾼 내용이 최대 1분 늦게 보인다` is.
+- Options are compared by their outcome, not by their technique. `A` `응답을 캐시한다` is not an option; `A` `목록을 캐시해서 재진입이 즉시 뜨지만, 다른 기기에서 바꾼 내용이 최대 1분 늦게 보인다` is. The `추천` badge goes on one option at most.
+- A plan written from an older template has no `decision` class in its stylesheet. Add the block anyway; it renders as a plain list.
 - Never write a section for something you can decide yourself. This document is for 2-4 conditions only.
 
-> `tasks.md`의 `## 확인 필요` — 계획 단계에서 나온 한 줄짜리 질문.
-> `spec.md`의 `## 결정이 필요한 부분` — 구현 중 실제로 막혀서 배경 설명이 필요한 결정.
+> `tasks.html`의 `확인 필요` — 계획 단계에서 나온 질문. 선택지와 막는 항목만 있는 짧은 블록.
+> `spec.html`의 `결정이 필요한 부분` — 구현 중 실제로 막혀서 배경 설명이 필요한 결정.
 > 같은 항목을 양쪽에 쓰지 않는다.
 
 #### Step 2 — Ask in the conversation
@@ -141,39 +147,40 @@ Then post the short version in chat. It points at the document; it does not repe
 - **선택지**: {A안 — 결과} / {B안 — 결과}  ← 선택지가 있을 때만
 - **추천**: {어느 쪽을 왜}
 - **답을 받으면**: {바로 이어서 할 일}
-- **자세한 배경**: `docs/{task-name}/plans/spec.md` → 결정이 필요한 부분
+- **자세한 배경**: `docs/{task-name}/plans/spec.html` → 결정이 필요한 부분
 ```
 
 Rules for both steps:
 
 - Name the one thing you need. "확인 부탁드립니다" without naming the decision is not an ask.
 - Never ask a bare "이렇게 할까요?" — options and a recommendation come in the same message.
-- **Do not stop the whole run for it.** Finish every part that does not depend on the answer first — later Phases included — then write every blocked decision into `spec.md` and ask once.
-- Mark every `tasks.md` item that waits on the decision with `— **blocker**: {한 줄}`, so anyone reading the checklist — including `/tracker` from another session — sees what is stuck and why.
+- **Do not stop the whole run for it.** Finish every part that does not depend on the answer first — later Phases included — then write every blocked decision into `spec.html` and ask once.
+- Mark every `tasks.html` item that waits on the decision with `— <strong class="blocker">blocker</strong>: {한 줄}`, so anyone reading the checklist — including `/tracker` from another session — sees what is stuck and why.
 
 #### Step 3 — After the answer
 
-Delete the `###` block from `spec.md`. In its place:
+Delete the `<h3>` block and its list from `spec.html`. In its place:
 
-- The decision goes where it belongs in `spec.md` — 화면/기능 흐름, 상태 정의, 엣지 케이스 — as if it had been specified from the start. Keep the one line of 배경 that makes the decision make sense later; drop the options and the recommendation.
-- A `결정:` sub-bullet on the `tasks.md` item the decision changed, beside `재사용:` / `패턴:` — one
+- The decision goes where it belongs in `spec.html` — 화면/기능 흐름, 상태 정의, 엣지 케이스 — as if it had been specified from the start. Keep the one line of 배경 that makes the decision make sense later; drop the options and the recommendation.
+- A `결정:` sub-bullet on the `tasks.html` item the decision changed, beside `재사용:` / `패턴:` — one
   line naming what settled it (사용자 지시, 피그마 기준, 기획서대로). It stays there after the item is
-  checked off. A decision that changed no single item goes as one `결정:` line under `## 진행 기록`
+  checked off. A decision that changed no single item goes as one `결정:` line under `진행 기록`
   instead.
-- Remove the `— **blocker**: …` marker from the items the decision was holding up.
-- When the last block is gone, delete the `## 결정이 필요한 부분` section itself. It never carries answered items.
+- Remove the `— <strong class="blocker">blocker</strong>: …` marker from the items the decision was holding up.
+- When the last block is gone, delete the `결정이 필요한 부분` section itself. It never carries answered items.
 
 ### 2-5. Phase Completion
 
-1. Check off completed items in `tasks.md` (`- [ ]` → `- [x]`)
-2. Append a **short** entry under `## 진행 기록` in `tasks.md`:
-   ```markdown
-   ### {YYYY-MM-DD}
-
-   - Phase N 완료
-   - 검증: {실행한 명령과 결과} <!-- 실제로 실행했을 때만 -->
-   - 결정: {항목 하나에 붙지 않는 판단 + 이유 한 줄} <!-- 있을 때만. 항목 하나를 바꾼 결정은 그 항목의 `결정:` 서브 불릿에 -->
-   - 블로커: {있으면}
+1. Check off completed items in `tasks.html` — add `checked` to the item's checkbox (`<input type="checkbox" disabled>` → `<input type="checkbox" checked disabled>`; legacy `- [ ]` → `- [x]`)
+2. Append a **short** entry under `진행 기록` in `tasks.html`:
+   ```html
+   <h3>{YYYY-MM-DD}</h3>
+   <ul>
+   <li>Phase N 완료</li>
+   <li>검증: {실행한 명령과 결과}</li> <!-- 실제로 실행했을 때만 -->
+   <li>결정: {항목 하나에 붙지 않는 판단 + 이유 한 줄}</li> <!-- 있을 때만. 항목 하나를 바꾼 결정은 그 항목의 결정: 서브 불릿에 -->
+   <li>블로커: {있으면}</li>
+   </ul>
    ```
 3. Start the next Phase.
 
@@ -187,10 +194,10 @@ Delete the `###` block from `spec.md`. In its place:
 
 When all Phases are done:
 
-1. Verify all items in `tasks.md` are checked
-2. Append one closing line under `## 진행 기록` — `- 전체 구현 완료`. Do not re-summarize the Phases; they are already checked off and recorded.
-3. Change `tasks.md` header `상태:` field to `완료`. An item still marked `**blocker**` means the work is not complete — ask instead of closing. A question marked `구현 영향 없음` does not hold it open: keep it under `## 확인 필요` and list it in the completion report. Delete `spec.md`'s `## 결정이 필요한 부분` once it is empty.
-4. **React Native / Expo** (`package.json` depends on `react-native` or `expo`) — `/qa` drives a headless browser and cannot run the app, so do not offer it. Append a `## 기기 확인` checklist to `tasks.md` instead: one line per screen or flow from `spec.md` that a person has to see on a device, phrased as what to do and what should appear. Only what this plan changed. The user checks it off.
+1. Verify all items in `tasks.html` are checked
+2. Append one closing line under `진행 기록` — `<li>전체 구현 완료</li>`. Do not re-summarize the Phases; they are already checked off and recorded.
+3. Change `tasks.html` header `상태:` field to `완료`. An item still marked `blocker` means the work is not complete — ask instead of closing. A question marked `구현 영향 없음` does not hold it open: keep it under `확인 필요` and list it in the completion report. Delete `spec.html`'s `결정이 필요한 부분` once it is empty.
+4. **React Native / Expo** (`package.json` depends on `react-native` or `expo`) — `/qa` drives a headless browser and cannot run the app, so do not offer it. Append a `기기 확인` section to `tasks.html` instead — `<h2>기기 확인</h2>` and a `<ul class="checklist">`, after 진행 기록: one line per screen or flow from `spec.html` that a person has to see on a device, phrased as what to do and what should appear. Only what this plan changed. The user checks it off.
 5. **QA guidance** (web projects) — when the change includes frontend work, offer to continue right here:
 
 ```
@@ -222,20 +229,20 @@ filler (전반적으로, ~등을 개선, 안정성 향상), and what actually is
 
 Full rules: `${CLAUDE_SKILL_DIR}/../../rules/writing.md`.
 
-This applies to conversational output in this flow and to free-text prose appended to `tasks.md`. Structured elements — checklists, headers, file paths, code blocks — keep their normal format.
+This applies to conversational output in this flow and to free-text prose appended to `tasks.html`. Structured elements — checklists, headers, file paths, code blocks — keep their normal format.
 
 ## Rules
 
-- **Do not implement without documents** — `tasks.md` and `spec.md` are required
+- **Do not implement without documents** — `tasks.html` and `spec.html` are required
 - **Run the approved plan straight through** — no per-Phase approval gate; announce the Phase and start
-- **Stop only for the 2-4 conditions** — and when you do, write the background into `spec.md` `## 결정이 필요한 부분` first, then ask in chat with the 확인이 필요합니다 block
-- **An open question holds up only the items that depend on it** — mark them `**blocker**` and keep going on the rest; a `구현 영향 없음` question never blocks the start or the finish
+- **Stop only for the 2-4 conditions** — and when you do, write the background into `spec.html` `결정이 필요한 부분` first, then ask in chat with the 확인이 필요합니다 block
+- **An open question holds up only the items that depend on it** — mark them `blocker` and keep going on the rest; a `구현 영향 없음` question never blocks the start or the finish
 - **An answered decision leaves no question behind** — the spec block becomes spec text, the record becomes one `결정:` line
 - **Verify each Phase before moving on** — and never write a verification line for a command you did not run
-- **`## 진행 기록` carries verification, cross-item decisions, and blockers only** — the checklist already records what was implemented; do not write it twice
-- **A decision about one item lives on that item** — a `결정:` sub-bullet in `tasks.md`, never deleted once the item is checked
-- **Prioritize existing patterns from tasks.md sub-bullets** — introducing a new library or pattern is a 2-4 stop
-- **Update `tasks.md` per Phase** — toggle checkboxes and append to `## 진행 기록` so handoff works even if interrupted
+- **`진행 기록` carries verification, cross-item decisions, and blockers only** — the checklist already records what was implemented; do not write it twice
+- **A decision about one item lives on that item** — a `결정:` sub-bullet in `tasks.html`, never deleted once the item is checked
+- **Prioritize existing patterns from tasks.html sub-bullets** — introducing a new library or pattern is a 2-4 stop
+- **Update `tasks.html` per Phase** — toggle checkboxes and append to `진행 기록` so handoff works even if interrupted
 - **Follow `.claude/rules/react-typescript.md`** for frontend code
 - **렌더링 이슈는 구조 우선 — 메모이제이션 훅(`useMemo`/`useCallback`/`React.memo`)은 사용자 명시 요청 시에만 도입**
 - 산출물과 사용자 소통은 한국어로
