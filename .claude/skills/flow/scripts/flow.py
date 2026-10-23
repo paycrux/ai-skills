@@ -183,7 +183,7 @@ def cmd_task(args):
     if path.exists():
         sys.exit(f"이미 있는 작업이에요: {path}")
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9-]*", args.id):
-        sys.exit("작업 ID는 지라 키(COMP-452)나 짧은 영어 이름(bug-bottom-inset)으로")
+        sys.exit("작업 ID는 지라 키(APP-452)나 짧은 영어 이름(bug-bottom-inset)으로")
     stages = {k: stage_skeleton(k) for k in parse_stages(args.stages)}
     task = {"id": args.id, "title": args.title, "type": args.type,
             "branch": args.branch or git(root, "branch", "--show-current"), "links": [], "stages": stages}
@@ -479,7 +479,7 @@ def check_domain(d, index, problems):
 def check_ref(raw, domain, task, index, problems, where):
     dom, t, item = parse_ref(raw, domain, task)
     if t is None and item and not re.fullmatch(r"[SX]\d+", item):
-        problems.append(f"{where}: [[{raw}]] — 작업 밖에서는 작업 ID를 붙여요 (예: [[COMP-1#{item}]])")
+        problems.append(f"{where}: [[{raw}]] — 작업 밖에서는 작업 ID를 붙여요 (예: [[APP-1#{item}]])")
     elif not index.exists(dom, t, item):
         problems.append(f"{where}: [[{raw}]]가 가리키는 것이 없어요")
 

@@ -188,7 +188,7 @@ Chat messages at a stop are two or three lines plus what the user should do; the
 
 - **One domain, one folder** — find before creating; a task on an existing screen goes into that domain's `tasks/`
 - **Conclusions and decisions are sentences a person can read.** Never a dotted chain of keywords
-- **Reference by ID, never by path** — `[[S5]]`, `[[R2-Q1]]`, `[[COMP-451#P2]]`, `[[login/S3]]`; IDs are never renumbered or reused
+- **Reference by ID, never by path** — `[[S5]]`, `[[R2-Q1]]`, `[[APP-451#P2]]`, `[[login/S3]]`; IDs are never renumbered or reused
 - **Read the brief, not the file** — `flow.py brief`, plus `--stage <key>` for the stage at hand
 - **A `"by": "user"` mark is handled, then cleared** — `changes` lists them, `clear` removes them; `check` fails while any remain
 - **A revised answer is re-applied everywhere its `appliedTo` lists** before anything else continues

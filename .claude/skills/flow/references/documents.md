@@ -37,8 +37,8 @@ page · reading for tokens · legacy documents
 
 ```json
 {
-  "id": "COMP-452", "title": "선물내역 · 받은 선물 목록", "type": "기능 개발",
-  "branch": "feat/COMP-452", "links": [{"label": "기획서 2.3", "url": "…"}],
+  "id": "APP-452", "title": "선물내역 · 받은 선물 목록", "type": "기능 개발",
+  "branch": "feat/APP-452", "links": [{"label": "기획서 2.3", "url": "…"}],
   "stages": {
     "plan":   {"status": "done", "summary": "…", "conclusion": ["…"], "blocks": [
                 {"type": "quote", "title": "기획서 발췌", "items": [{"text": "…", "source": "2.3"}]},
@@ -88,12 +88,12 @@ map shows, under each row, which task items cite it.
 | `R2-Q1`, `R2` | question, round | the current task |
 | `P2`, `P2-1` | Phase, item | the current task |
 | `V1`, `B1`, `D1` | verify item, bug, closing item | the current task |
-| `COMP-451#R2-Q1` | an item in another task | same domain |
-| `COMP-451` | a task | same domain |
-| `login/S3`, `login/COMP-9#P1` | anything in another domain | — |
+| `APP-451#R2-Q1` | an item in another task | same domain |
+| `APP-451` | a task | same domain |
+| `login/S3`, `login/APP-9#P1` | anything in another domain | — |
 
 - IDs are assigned once and never renumbered or reused. A new row takes the next free number.
-- Inside `screens.json` there is no current task: cite task items with the task ID (`[[COMP-451#R1-Q2]]`).
+- Inside `screens.json` there is no current task: cite task items with the task ID (`[[APP-451#R1-Q2]]`).
 - `flow.py check` fails on a reference that points nowhere.
 
 ## The viewer and saving

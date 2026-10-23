@@ -4,8 +4,8 @@ The screen stage answers one question per element on a screen: **where does this
 The map belongs to the domain — `<docs>/<domain>/screens.json` — and stays current across tasks: a
 task adds or changes rows and cites them (`[[S5]]`) in its `screen` conclusion and plan items.
 Server field as-is, app-side transform, an action, or not decided yet. Undecided rows become
-questions in stage 03. The method comes from the `sot-map` skill in `compose_mobile_order`
-(박윤국); this skill is now its source.
+questions in stage 03. The method comes from an earlier in-house `sot-map` skill; this skill
+is now its source.
 
 Contents: when to build · given a Figma section · gather · pick elements · classify · off-screen states · screens.json ·
 check · non-screen tasks
@@ -115,7 +115,7 @@ exist in another frame, features cut from scope. These rows become the 05 verifi
     "markers": [
       {"id": "S8", "section": "<figma section>", "node": "<node id>", "side": "left", "kind": "format",
        "title": "<element>", "field": "<code>items[].receivedAt</code>",
-       "rule": "<condition → result>", "note": "<evidence: file:line, Figma, [[COMP-452#R1-Q2]]>"}
+       "rule": "<condition → result>", "note": "<evidence: file:line, Figma, [[APP-452#R1-Q2]]>"}
     ],
     "offscreen": [{"id": "X1", "state": "<state>", "when": "<when>", "shows": "<what shows>"}],
     "offscreenIntro": "<optional one line>"
@@ -128,7 +128,7 @@ exist in another frame, features cut from scope. These rows become the 05 verifi
   every existing reference valid. The pin shows the number.
 - `field`, `rule`, `note` accept inline HTML (`<code>`). Write `rule` and `note` as sentences a
   reader can follow without the code — the decision rules in `SKILL.md` apply.
-- A decided `pending` row changes `kind`, and its `note` cites the decision: `… ([[COMP-452#R1-Q2]])`.
+- A decided `pending` row changes `kind`, and its `note` cites the decision: `… ([[APP-452#R1-Q2]])`.
 - The task's `screen` stage conclusion names the rows it added or changed. The viewer lists under
   each row which task items cite it — that is the history of the row.
 

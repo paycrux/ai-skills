@@ -66,7 +66,7 @@ When the user says they saved:
    - **new answer** → write `decision` as sentences a person can read: what was decided, why, and
      what it costs. Never a dotted list of keywords (`A · B · C`) — that reads only to whoever wrote
      it. Then apply it where it belongs and record that in `appliedTo`:
-     a SOT row → change `kind`, rewrite `rule`/`note` and cite the question (`[[COMP-452#R1-Q2]]`);
+     a SOT row → change `kind`, rewrite `rule`/`note` and cite the question (`[[APP-452#R1-Q2]]`);
      a plan item → a `결정` row on that item, remove its `blocker` row;
      behavior with no row → a `flows` row in `screens.json`.
    - **더 설명해줘** → re-ask in the next round with what was missing (usually a sketch of the
