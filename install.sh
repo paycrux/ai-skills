@@ -571,7 +571,7 @@ All code changes are executed directly — no sub-agents.
 
 | Workflow | File | Purpose |
 |----------|------|---------|
-| flow | @.cursor/skills/flow/SKILL.md | PRD → Figma SOT map → questions → plan → build → verify, as linked HTML pages |
+| flow | @.cursor/skills/flow/SKILL.md | PRD → Figma SOT map → questions → plan → build → verify, as JSON docs per domain shown by a local viewer (npm run flow) |
 | task-plan | @.cursor/skills/task-plan/SKILL.md | Task planning + document generation |
 | implement | @.cursor/skills/implement/SKILL.md | Document-driven phased implementation |
 | qa-guide | @.cursor/skills/qa-guide/SKILL.md | QA test guide generation |
@@ -709,7 +709,7 @@ All code changes are executed directly — no sub-agents.
 
 | Workflow | File | Purpose |
 |----------|------|---------|
-| flow | ${ref}/skills/flow/SKILL.md | PRD → Figma SOT map → questions → plan → build → verify, as linked HTML pages |
+| flow | ${ref}/skills/flow/SKILL.md | PRD → Figma SOT map → questions → plan → build → verify, as JSON docs per domain shown by a local viewer (npm run flow) |
 | task-plan | ${ref}/skills/task-plan/SKILL.md | Task planning + document generation |
 | implement | ${ref}/skills/implement/SKILL.md | Document-driven phased implementation |
 | qa-guide | ${ref}/skills/qa-guide/SKILL.md | QA test guide generation |
