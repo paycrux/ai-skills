@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{작업 제목} - 명세</title>
+<style>
+:root {
+  --bg: #ffffff; --fg: #1d2125; --muted: #5e6670; --line: #e2e5e9;
+  --accent: #2f5fa8; --code-bg: #f2f4f6; --warn: #b42318; --done: #8a929b;
+  --tag-bg: #eef3fb; --rec-bg: #e7f4ec; --rec-fg: #1f6b3a;
+  --sans: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", "Noto Sans KR", system-ui, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #15181b; --fg: #e6e8eb; --muted: #9aa3ad; --line: #2c3238;
+    --accent: #7fa7e6; --code-bg: #1e2328; --warn: #f2817a; --done: #6c747d;
+    --tag-bg: #1d2633; --rec-bg: #17291f; --rec-fg: #7fd19b;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.65 var(--sans); }
+main { max-width: 52rem; margin: 0 auto; padding: 2.5rem max(16px, env(safe-area-inset-right, 0px)) 4rem max(16px, env(safe-area-inset-left, 0px)); }
+h1 { font-size: 1.6rem; line-height: 1.3; margin: 0 0 0.75rem; text-wrap: balance; }
+h2 { font-size: 1.15rem; margin: 2.75rem 0 0.75rem; padding-bottom: 0.35rem; border-bottom: 1px solid var(--line); }
+h3 { font-size: 0.95rem; color: var(--muted); margin: 1.5rem 0 0.4rem; font-variant-numeric: tabular-nums; }
+p { margin: 0.5rem 0; max-width: 42rem; }
+ul { margin: 0.4rem 0; padding-left: 1.25rem; }
+li { margin: 0.2rem 0; }
+ul.meta { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 0.25rem 1.25rem; color: var(--muted); font-size: 0.9rem; }
+ul.meta li { margin: 0; }
+ul.checklist, ul.questions { list-style: none; padding-left: 0; }
+ul.checklist > li, ul.questions > li { position: relative; margin: 0; padding: 0.6rem 0; border-bottom: 1px solid var(--line); }
+ul.checklist > li { padding-left: 1.9rem; }
+ul.checklist > li:last-child, ul.questions > li:last-child { border-bottom: 0; }
+ul.checklist > li > input { position: absolute; left: 0; top: 0.95rem; width: 1rem; height: 1rem; margin: 0; accent-color: var(--accent); }
+ul.checklist > li > ul, ul.questions > li > ul { margin: 0.35rem 0 0; padding-left: 0; list-style: none; color: var(--muted); font-size: 0.92rem; }
+ul.checklist > li > ul > li, ul.questions > li > ul > li { margin: 0.15rem 0; }
+ul.checklist > li:has(> input:checked) { color: var(--done); }
+ul.decision { list-style: none; padding-left: 0; }
+ul.decision > li { margin: 0.3rem 0; }
+.label { display: inline-block; min-width: 3.6rem; color: var(--fg); font-weight: 600; font-size: 0.85rem; }
+.qid { color: var(--muted); font-weight: 600; margin-right: 0.35rem; font-variant-numeric: tabular-nums; }
+.opt { display: inline-block; min-width: 1.4rem; font-weight: 650; color: var(--accent); }
+.rec { display: inline-block; margin-left: 0.3rem; padding: 0 0.4rem; border-radius: 4px; background: var(--rec-bg); color: var(--rec-fg); font-size: 0.78rem; font-weight: 600; }
+.blocks { display: inline-block; margin-top: 0.15rem; padding: 0.05rem 0.45rem; border-radius: 4px; background: var(--tag-bg); color: var(--fg); font-size: 0.85rem; }
+strong { font-weight: 650; }
+.blocker { color: var(--warn); }
+code { font: 0.86em var(--mono); background: var(--code-bg); padding: 0.1em 0.35em; border-radius: 4px; overflow-wrap: anywhere; }
+pre { background: var(--code-bg); padding: 0.75rem 1rem; border-radius: 6px; overflow-x: auto; }
+pre code { padding: 0; background: none; }
+a { color: var(--accent); }
+a:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; font-size: 0.93rem; width: 100%; min-width: 24rem; }
+th, td { text-align: left; vertical-align: top; padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--line); }
+th { color: var(--muted); font-weight: 600; white-space: nowrap; }
+td:first-child { width: 38%; }
+</style>
+</head>
+<body>
+<main>
+<h1>{작업 제목} - 명세</h1>
+
+<h2>화면/기능 흐름</h2>
+<!-- 흐름(화면·기능) 하나마다 h3 + 표 하나. 한 행에 조건 하나, 결과 하나.
+     "A → B / C → D"처럼 여러 흐름을 한 줄에 이어 쓰지 않는다 — 행을 나눈다. -->
+
+<h3>{흐름 이름}</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>언제</th><th>결과</th></tr></thead>
+<tbody>
+<tr><td>{상태/조건 + 트리거}</td><td>{사용자가 보거나 시스템이 하는 일}</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>상태 정의</h2>
+<div class="table-wrap">
+<table>
+<thead><tr><th>상태</th><th>설명</th></tr></thead>
+<tbody>
+<tr><td>{상태명}</td><td>{어떤 상황인지}</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>엣지 케이스</h2>
+<div class="table-wrap">
+<table>
+<thead><tr><th>상황</th><th>처리</th></tr></thead>
+<tbody>
+<tr><td>{케이스}</td><td>{처리 방식}</td></tr>
+</tbody>
+</table>
+</div>
+
+<!-- 구현 중 사람이 정해줘야 할 게 생기면 /implement가 아래 형태로 이 문서에 추가한다.
+     답을 받으면 해당 블록은 지우고, 결정된 내용을 위 흐름/상태/엣지 케이스 안에 녹인다.
+     항목이 다 없어지면 섹션 자체를 삭제.
+
+<h2>결정이 필요한 부분</h2>
+
+<h3>{정해야 하는 것 한 줄}</h3>
+<ul class="decision">
+<li><span class="label">지금 상태:</span> {화면·데이터·코드가 지금 어떻게 동작하는지}</li>
+<li><span class="label">왜 막히는지:</span> {이대로 두면 사용자에게 무슨 일이 생기는지}</li>
+<li><span class="opt">A</span>{무엇을 한다} → {사용자가 보게 되는 결과, 감수하는 비용}<span class="rec">추천</span></li>
+<li><span class="opt">B</span>{무엇을 한다} → {사용자가 보게 되는 결과, 감수하는 비용}</li>
+<li><span class="label">추천 이유:</span> {왜 그쪽인지 한 줄}</li>
+</ul>
+-->
+</main>
+</body>
+</html>

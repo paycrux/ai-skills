@@ -21,7 +21,7 @@ task-plan 문서를 기반으로 browse 헤드리스 브라우저를 사용해 �
 
 - `/qa <task-folder-name>` — `docs/<task-folder-name>/plans/` 기준
 - `/qa <url>` — URL 직접 지정
-- `/qa` (인자 없음) — `docs/*/plans/tasks.md`에서 헤더 `상태: 진행중`인 task 자동 탐지. 여러 건이면 사용자에게 선택 요청
+- `/qa` (인자 없음) — `docs/*/plans/tasks.html`(예전 계획은 `tasks.md`)에서 헤더 `상태: 진행중`인 task 자동 탐지. 여러 건이면 사용자에게 선택 요청
 
 ## Step 1: Browse 설정
 
@@ -53,17 +53,17 @@ fi
 
 | 파일 | 용도 |
 |------|------|
-| `tasks.md` | 헤더(이슈·작업 종류·상태), 개요, Phase별 체크리스트, `## 진행 기록` |
-| `spec.md` | 기능 흐름, 상태 정의, 엣지 케이스 |
+| `tasks.html` | 헤더(이슈·작업 종류·상태), 개요, Phase별 체크리스트, `진행 기록` |
+| `spec.html` | 기능 흐름, 상태 정의, 엣지 케이스 |
 
-`/task-plan`이 만드는 문서는 이 둘뿐이다. 다른 파일을 찾지 말 것.
+`/task-plan`이 만드는 문서는 이 둘뿐이다. 다른 파일을 찾지 말 것. 예전 계획은 같은 섹션을 담은 `tasks.md` / `spec.md`이니 폴더에 있는 쪽을 읽고, 고칠 때도 그 파일의 형식을 그대로 따른다. 두 형식의 마크업은 `${CLAUDE_SKILL_DIR}/../_shared/plan-format.md`.
 
 ### 2-2. 테스트 대상 파악
 
 task-plan 문서가 있는 경우:
-1. `spec.md`의 `## 화면/기능 흐름`과 `## 상태 정의` → 테스트 시나리오로 변환
-2. `spec.md`의 `## 엣지 케이스` → 추가 검증 항목
-3. `tasks.md`에서 체크된 Phase 항목의 파일 경로 → 영향받는 화면/라우트 파악
+1. `spec.html`의 `화면/기능 흐름`과 `상태 정의` → 테스트 시나리오로 변환
+2. `spec.html`의 `엣지 케이스` → 추가 검증 항목
+3. `tasks.html`에서 체크된 Phase 항목의 파일 경로 → 영향받는 화면/라우트 파악
 
 task-plan 문서가 없는 경우 (URL만 주어진 경우):
 1. git diff로 변경 파일 분석
@@ -97,7 +97,7 @@ Read 도구로 스크린샷을 사용자에게 보여준다.
 
 ### 3-2. 시나리오별 테스트
 
-spec.md (또는 변경 범위)에서 도출한 각 시나리오에 대해:
+spec.html (또는 변경 범위)에서 도출한 각 시나리오에 대해:
 
 1. **페이지 이동** — `$B goto <page-url>`
 2. **스냅샷** — `$B snapshot -i -a -o /tmp/qa-{page}.png`
@@ -107,7 +107,7 @@ spec.md (또는 변경 범위)에서 도출한 각 시나리오에 대해:
 6. **반응형** — 필요 시 `$B responsive /tmp/qa-{page}`
 
 **테스트 우선순위:**
-- 핵심 기능 (spec.md의 주요 플로우) > 엣지 케이스 > 시각적 검증
+- 핵심 기능 (spec.html의 주요 플로우) > 엣지 케이스 > 시각적 검증
 
 ### 3-3. 이슈 기록
 
@@ -130,7 +130,7 @@ spec.md (또는 변경 범위)에서 도출한 각 시나리오에 대해:
 
 **날짜:** {YYYY-MM-DD}
 **대상 URL:** {url}
-**테스트 범위:** {spec.md 기반 / diff 기반 / 전체 탐색}
+**테스트 범위:** {spec.html 기반 / diff 기반 / 전체 탐색}
 
 ## 요약
 
@@ -189,7 +189,7 @@ QA 검증이 완료되었습니다.
 
 1. qa-report.md의 이슈 목록을 기반으로 **수정 작업용 tasks 구성**
 2. `/implement` 스킬을 호출하여 수정 실행:
-   - task-plan이 있는 경우: qa-report.md의 이슈를 tasks.md에 "QA Fix Phase"로 추가 후 `/implement` 실행
+   - task-plan이 있는 경우: qa-report.md의 이슈를 tasks.html에 `<h2>QA Fix Phase</h2>` + 체크리스트로 추가 후 `/implement` 실행
    - task-plan이 없는 경우: 직접 수정 실행
 
 3. 수정 완료 후 해당 이슈에 대해 재검증:
@@ -203,15 +203,16 @@ QA 검증이 완료되었습니다.
 
 ## Task-plan 연동
 
-QA 리포트 작성 완료 후, 관련 task-plan 폴더가 존재하면 `docs/<task-name>/plans/tasks.md`의 `## 진행 기록`에 한 줄만 append한다. 별도 `progress.md`는 없다.
+QA 리포트 작성 완료 후, 관련 task-plan 폴더가 존재하면 `docs/<task-name>/plans/tasks.html`의 `진행 기록`에 한 줄만 append한다. 별도 `progress.md`는 없다.
 
-```markdown
-### {YYYY-MM-DD}
-
-- QA: Critical {N} / High {N} / Medium {N} / Low {N} — `plans/qa-report.md`
+```html
+<h3>{YYYY-MM-DD}</h3>
+<ul>
+<li>QA: Critical {N} / High {N} / Medium {N} / Low {N} — <code>plans/qa-report.md</code></li>
+</ul>
 ```
 
-건수가 모두 0이면 `- QA: 이슈 없음 — plans/qa-report.md` 한 줄.
+건수가 모두 0이면 `<li>QA: 이슈 없음 — <code>plans/qa-report.md</code></li>` 한 줄. 예전 `tasks.md`라면 같은 내용을 markdown으로 쓴다.
 
 ## 규칙
 

@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.0] - 2026-10-23
+
+### Added
+
+- `flow` 스킬 추가 — 기획서와 Figma 링크를 받아 화면 하나를 PR까지 끌고 가는 흐름. 결과는 `docs/<작업명>/`의 HTML 페이지 묶음(`index` + 단계 6개)이고, 브라우저로 웹페이지처럼 넘겨 봄
+  - 단계: 01 기획 → 02 화면 · SOT 맵 → 03 질문 → 04 구현 계획 · 구현 → 05 검증 → 06 완료. 사람이 멈추는 곳은 질문 답, 계획 승인, 막힌 항목, 완료 확인 네 군데
+  - 모든 페이지 맨 위에 `결론` 블록. 다음 단계는 앞 단계의 결론만 읽어서, 이어받는 세션이 문서 전체를 다시 읽지 않음. 왼쪽 단계 목록과 개요 페이지는 이 결론에서 `build.py`가 만듦 — 진행도를 손으로 맞추지 않음
+  - 02 SOT 맵: 앱 저장소에서 쓰던 `sot-map` 스킬의 방법론을 가져옴. Figma 화면 요소마다 값의 출처를 Data · Computed · Action · 확인 필요 · 범위 제외로 나누고 화면 밖 상태까지 적음. 마커 위치는 Figma 구조 정보로 계산하고(컴포넌트 안쪽은 `merge-xml`로 합침), 글자는 스크린샷 기준 — 레이어 이름과 화면 글자가 다른 경우가 있음
+  - spec 문서는 없음. 화면 동작은 02, 결정은 03이 맡음
+  - 03 질문: 페이지에서 바로 답하고, 결정된 뒤에도 고칠 수 있음. 고친 답은 Claude가 다시 반영할 때까지 주황으로 표시되고 `check`가 실패함. 결정은 키워드 나열이 아니라 사람이 읽는 문장으로
+  - 저장은 서버 없이: 크롬 계열 브라우저에서 `폴더 연결`(File System Access API)로 `data/inbox.json`에 쓰고, `build.py apply`가 문서에 반영. 페이지를 iframe으로 묶지 않는 이유는 파일로 연 페이지의 iframe에서는 폴더 선택이 막히기 때문
+  - 버그 리포트는 05에 쌓이고, 고치는 일은 04에 `B1 수정` 항목으로
+  - 디자인: 레이아웃 · 그리드 · 타이포 · 본문 배치는 바젤 스타일(12단 그리드, 제목은 왼쪽 3단 · 본문은 오른쪽 9단, Pretendard). 바탕과 글자는 흑백이고 라이트/다크는 시스템 설정을 따름. 선은 최소로 — 결론 블록 위 한 줄과 표 머리글 아래 한 줄만, 나머지 구획은 여백과 푸른 회색 면. 색은 번호에만: 단계 번호와 결론 점은 초록 완료 · 파랑 진행 중 · 주황 질문·결정 대기, SOT 마커는 빨강 · 확인 필요 주황 · 범위 제외 회색. 번호와 배지는 둥글게
+  - SOT 맵은 모바일 · 태블릿 · 웹 프레임을 모두 다룸. 세로 프레임은 표 옆에, 가로 프레임은 페이지 폭으로 표 위에 고정. 한 화면의 여러 브레이크포인트는 `screens`에 따로 넣음
+
+### Changed
+
+- 설치본(`~/.claude/skills`)에서 직접 고쳐져 저장소에 없던 HTML 계획 형식을 가져옴: `task-plan`의 `tasks.html`/`spec.html` 템플릿, `_shared/plan-format.md`, `implement`·`qa`·`tracker`·`git-pr`의 HTML 계획 읽기, `md_to_adf.py`의 HTML 입력, `git-pr/scripts/upload-images.sh`
+- `task-plan`은 그대로 둠. 새 작업은 `/flow`, 진행 중이던 계획은 기존 흐름으로
+
 ## [0.12.0] - 2026-09-17
 
 ### Added
@@ -32,10 +52,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - 지라: 하위 이슈 설명에 `## 기획 리뷰`, 완료 시 댓글(구현 요약·미결·커밋), 상태는 워크플로를 한 단계씩 밟아 `개발 완료`까지(COMP: `계획 → 개발예정 → 개발진행중`). 이슈 생성은 목록 승인 후
   - 완료 판정은 보고가 아니라 파일(`tasks.md` 체크, `git log`). 막힌 질문은 작업 중인 탭에서 묻고 tracker는 중계하지 않음
   - RN 앱은 `/qa` 대신 `## 기기 확인` 체크리스트. orca 설치 훅 부산물(`package-lock.json`)은 사용자가 말하기 전엔 커밋하지 않음
-  - 설계 근거는 COMP-342~346·364 실사용 기록: 메타 플랜이 한 워크트리에만 있어 다른 워크트리가 못 봄, 커밋이 없어 앞 범위 코드를 뒤 범위가 못 씀, 같은 탈퇴 모달·문구 상수를 두 범위가 따로 만듦, orca가 실행 위치의 워크트리를 부모로 자동 등록, tracker가 같은 탭인데도 `/implement`를 사용자에게 입력하라고 넘김
+  - 설계 근거는 스토리 여섯 건의 실사용 기록: 메타 플랜이 한 워크트리에만 있어 다른 워크트리가 못 봄, 커밋이 없어 앞 범위 코드를 뒤 범위가 못 씀, 같은 탈퇴 모달·문구 상수를 두 범위가 따로 만듦, orca가 실행 위치의 워크트리를 부모로 자동 등록, tracker가 같은 탭인데도 `/implement`를 사용자에게 입력하라고 넘김
 
 - `git-pr`: `구현 화면` 스크린샷 촬영 — UI가 바뀐 PR이면 찍을지 묻고, 찍으면 표를 채워서 PR을 올림. `--shots both|after|none`으로 질문 생략
-  - 모바일: `scripts/shot-mobile.sh`로 iOS 시뮬레이터·Android 기기에서 딥링크로 화면을 열어 캡처. After는 라이트/다크 두 벌. compose_mobile_order의 `renew-shot.sh`에서 촬영 부분만 가져오고, 박혀 있던 scheme·번들 ID는 `.git/git-pr-shot.env`로 뺌
+  - 모바일: `scripts/shot-mobile.sh`로 iOS 시뮬레이터·Android 기기에서 딥링크로 화면을 열어 캡처. After는 라이트/다크 두 벌. 앱 저장소의 `renew-shot.sh`에서 촬영 부분만 가져오고, 박혀 있던 scheme·번들 ID는 `.git/git-pr-shot.env`로 뺌
   - 웹: `/browse`로 캡처. 프로젝트에 다크 모드가 있을 때만 다크 칸 추가
   - Before는 따로 물어봄. base 브랜치로 잠깐 `git switch --detach` 했다가 돌아옴. 작업 트리가 더럽거나, 네이티브 코드·의존성이 바뀐 브랜치면 Before를 건너뜀
   - 찍은 칸은 전부 채우고 실패한 칸만 비움. 찍은 이미지는 전부 Read로 열어 스플래시·에러 화면이 아닌지 확인

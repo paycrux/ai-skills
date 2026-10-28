@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{작업 제목}</title>
+<style>
+:root {
+  --bg: #ffffff; --fg: #1d2125; --muted: #5e6670; --line: #e2e5e9;
+  --accent: #2f5fa8; --code-bg: #f2f4f6; --warn: #b42318; --done: #8a929b;
+  --tag-bg: #eef3fb; --rec-bg: #e7f4ec; --rec-fg: #1f6b3a;
+  --sans: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", "Noto Sans KR", system-ui, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #15181b; --fg: #e6e8eb; --muted: #9aa3ad; --line: #2c3238;
+    --accent: #7fa7e6; --code-bg: #1e2328; --warn: #f2817a; --done: #6c747d;
+    --tag-bg: #1d2633; --rec-bg: #17291f; --rec-fg: #7fd19b;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.65 var(--sans); }
+main { max-width: 52rem; margin: 0 auto; padding: 2.5rem max(16px, env(safe-area-inset-right, 0px)) 4rem max(16px, env(safe-area-inset-left, 0px)); }
+h1 { font-size: 1.6rem; line-height: 1.3; margin: 0 0 0.75rem; text-wrap: balance; }
+h2 { font-size: 1.15rem; margin: 2.75rem 0 0.75rem; padding-bottom: 0.35rem; border-bottom: 1px solid var(--line); }
+h3 { font-size: 0.95rem; color: var(--muted); margin: 1.5rem 0 0.4rem; font-variant-numeric: tabular-nums; }
+p { margin: 0.5rem 0; max-width: 42rem; }
+ul { margin: 0.4rem 0; padding-left: 1.25rem; }
+li { margin: 0.2rem 0; }
+ul.meta { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 0.25rem 1.25rem; color: var(--muted); font-size: 0.9rem; }
+ul.meta li { margin: 0; }
+ul.checklist, ul.questions { list-style: none; padding-left: 0; }
+ul.checklist > li, ul.questions > li { position: relative; margin: 0; padding: 0.6rem 0; border-bottom: 1px solid var(--line); }
+ul.checklist > li { padding-left: 1.9rem; }
+ul.checklist > li:last-child, ul.questions > li:last-child { border-bottom: 0; }
+ul.checklist > li > input { position: absolute; left: 0; top: 0.95rem; width: 1rem; height: 1rem; margin: 0; accent-color: var(--accent); }
+ul.checklist > li > ul, ul.questions > li > ul { margin: 0.35rem 0 0; padding-left: 0; list-style: none; color: var(--muted); font-size: 0.92rem; }
+ul.checklist > li > ul > li, ul.questions > li > ul > li { margin: 0.15rem 0; }
+ul.checklist > li:has(> input:checked) { color: var(--done); }
+ul.decision { list-style: none; padding-left: 0; }
+ul.decision > li { margin: 0.3rem 0; }
+.label { display: inline-block; min-width: 3.6rem; color: var(--fg); font-weight: 600; font-size: 0.85rem; }
+.qid { color: var(--muted); font-weight: 600; margin-right: 0.35rem; font-variant-numeric: tabular-nums; }
+.opt { display: inline-block; min-width: 1.4rem; font-weight: 650; color: var(--accent); }
+.rec { display: inline-block; margin-left: 0.3rem; padding: 0 0.4rem; border-radius: 4px; background: var(--rec-bg); color: var(--rec-fg); font-size: 0.78rem; font-weight: 600; }
+.blocks { display: inline-block; margin-top: 0.15rem; padding: 0.05rem 0.45rem; border-radius: 4px; background: var(--tag-bg); color: var(--fg); font-size: 0.85rem; }
+strong { font-weight: 650; }
+.blocker { color: var(--warn); }
+code { font: 0.86em var(--mono); background: var(--code-bg); padding: 0.1em 0.35em; border-radius: 4px; overflow-wrap: anywhere; }
+pre { background: var(--code-bg); padding: 0.75rem 1rem; border-radius: 6px; overflow-x: auto; }
+pre code { padding: 0; background: none; }
+a { color: var(--accent); }
+a:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; font-size: 0.93rem; width: 100%; min-width: 24rem; }
+th, td { text-align: left; vertical-align: top; padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--line); }
+th { color: var(--muted); font-weight: 600; white-space: nowrap; }
+td:first-child { width: 38%; }
+</style>
+</head>
+<body>
+<main>
+<h1>{작업 제목}</h1>
+<ul class="meta">
+<li>이슈: {JIRA 이슈 번호 또는 "없음"}</li>
+<li>작업 종류: 버그 수정 | 기능 개발 | 기능 수정</li>
+<li>상태: 대기 | 진행중 | 완료</li>
+<li>생성일: {YYYY-MM-DD}</li>
+<li>참조: <a href="{원본 plans 상대경로}">{원본 plans 경로}</a></li> <!-- 기능 수정일 때만, 그 외 줄 통째 삭제 -->
+<li>메타 플랜: {메타 플랜 절대경로} — {이슈 키}</li> <!-- /tracker가 넘긴 작업일 때만, 그 외 줄 통째 삭제 -->
+</ul>
+
+<h2>개요</h2>
+<!-- 문단 하나에 한 가지만. 코드를 안 읽은 사람이 "지금"만 읽고도 무엇이 문제인지 알 수 있게 쓴다. -->
+<p><strong>지금:</strong> {사용자나 코드가 지금 어떻게 동작하는지 한두 문장}</p>
+<p><strong>목표:</strong> {끝나면 무엇이 달라지는지 한 문장}</p>
+<p><strong>포함:</strong> {이번에 하는 것 — 가운뎃점(·)으로 나열}</p>
+<p><strong>제외:</strong> {하지 않는 것}</p> <!-- 없으면 줄 삭제 -->
+
+<h2>확인 필요</h2>
+<!-- 계획만으로 결정 못 하는 질문. 체크박스를 달지 않는다 — 답을 받으면 질문을 통째로 지우고 결정만 남긴다.
+     구현을 막는 질문을 위에, 범위만 정하면 되는 질문을 아래에. 한쪽이 비면 그 h3 삭제.
+     질문이 다 없어지면 이 섹션 자체를 삭제. 번호(Q1…)는 지운 뒤에도 다시 매기지 않는다. -->
+
+<h3>구현을 막는 질문</h3>
+<ul class="questions">
+<li><span class="qid">Q1</span><strong>{정해야 하는 것 — 짧게}</strong> — {왜 정해야 하는지 배경 한 줄} <!-- 배경이 필요 없으면 " — …" 삭제 -->
+<ul>
+<li><span class="opt">A</span>{선택지 — 하면 무엇이 되는지}<span class="rec">추천</span></li> <!-- 추천은 많아야 하나, 근거가 없으면 붙이지 않는다 -->
+<li><span class="opt">B</span>{선택지}</li>
+<li><span class="blocks">막는 항목: Phase {N} {항목}</span></li>
+</ul>
+</li>
+</ul>
+
+<h3>범위만 정하면 되는 질문</h3>
+<ul class="questions">
+<li><span class="qid">Q2</span><strong>{정해야 하는 것}</strong>
+<ul>
+<li><span class="opt">A</span>{선택지}</li>
+<li><span class="opt">B</span>{선택지}</li>
+<li><span class="blocks">구현 영향 없음</span></li> <!-- 답에 따라 항목이 늘면 "구현 영향 없음 (A면 Phase N 항목 추가)" -->
+</ul>
+</li>
+</ul>
+
+<h2>Phase 1: {단계명}</h2>
+<!-- 항목 제목(굵게)은 "무엇을 만드는가" 한 줄. 파일·이유·패턴은 제목에 넣지 않고 아래 라벨 줄로 뺀다.
+     라벨 줄 하나에 사실 하나. 순서: 시점·값 같은 작업 고유 라벨 → 파일 → 디자인 → 재사용 → 패턴 → 결정. -->
+<ul class="checklist">
+<li><input type="checkbox" disabled> <strong>{만드는 것}</strong>
+<ul>
+<li><span class="label">파일:</span> <code>{파일 경로}</code></li>
+<li><span class="label">디자인:</span> <a href="{figma link}">node {X}</a></li> <!-- figma 노드 있을 때만 -->
+<li><span class="label">재사용:</span> <code>{기존 컴포넌트 경로}</code> — {무엇을 가져다 쓰는지}</li> <!-- 탐색 결과, 없으면 줄 삭제 -->
+<li><span class="label">패턴:</span> {따를 기존 라이브러리/패턴과 그 예시 파일}</li> <!-- 탐색 결과, 없으면 줄 삭제 -->
+<li><span class="label">결정:</span> {이 항목을 이렇게 만들기로 한 판단 — 무엇이 정했는지까지}</li> <!-- 예: 간격은 피그마 기준(사용자 지시). 체크한 뒤에도 지우지 않는다. 없으면 줄 삭제 -->
+</ul>
+</li>
+<li><input type="checkbox" disabled> <strong>검증:</strong> <code>{실행할 명령}</code> — {무엇이 보이면 통과인지}</li>
+</ul>
+
+<h2>Phase 2: {단계명}</h2>
+<ul class="checklist">
+<li><input type="checkbox" disabled> <strong>{만드는 것}</strong>
+<ul>
+<li><span class="label">파일:</span> <code>{파일 경로}</code></li>
+</ul>
+</li>
+<li><input type="checkbox" disabled> <strong>검증:</strong> <code>{실행할 명령}</code></li>
+</ul>
+
+<h2>진행 기록</h2>
+<!-- 체크리스트에 이미 있는 내용은 다시 쓰지 않는다.
+     남기는 것: 실행한 검증, 계획과 달라진 부분, 블로커, 그리고 항목 하나에 붙지 않는 결정.
+     항목 하나를 바꾼 결정은 여기가 아니라 그 항목의 결정: 라벨 줄에 쓴다. -->
+
+<h3>{YYYY-MM-DD}</h3>
+<ul>
+<li>Phase N 완료</li>
+<li>결정: {무엇을 어떻게 하기로 했는지 — 이유 한 줄}</li>
+<li>블로커: {있으면}</li>
+</ul>
+</main>
+</body>
+</html>

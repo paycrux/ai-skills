@@ -1,13 +1,13 @@
 ---
 name: task-plan
-description: "Lightweight task planning. Writes tasks.md + spec.md under docs/{name}/plans/ from a description. Use when the user runs /task-plan or wants structured planning before implementation."
+description: "Lightweight task planning. Writes tasks.html + spec.html under docs/{name}/plans/ from a description. Use when the user runs /task-plan or wants structured planning before implementation."
 argument-hint: <task description or Jira issue number>
 allowed-tools: Read, Grep, Glob, Write, Edit, Bash
 ---
 
 # /task-plan
 
-Write `docs/{task-name}/plans/tasks.md` + `spec.md` from the user input, then hand off to
+Write `docs/{task-name}/plans/tasks.html` + `spec.html` from the user input, then hand off to
 `/implement`.
 
 The plan is what `/implement` executes without asking again. So the bar is not "a document
@@ -31,7 +31,8 @@ Extract:
 - **task type** — `버그 수정` | `기능 개발` | `기능 수정`
 
 If the input references an existing feature (`기능 수정`), find the original `docs/*/plans/` folder
-and record it as a `참조:` header link. Never modify a file in the original folder.
+and record it as a `참조:` header link — to its `tasks.html`, or `tasks.md` for an older plan. Never
+modify a file in the original folder.
 
 If the input names a `/tracker` meta-plan (an absolute path) and an issue in it, record both as the
 `메타 플랜:` header line, and use that issue's blocks in the meta-plan as the spec source — 기획 발췌,
@@ -53,10 +54,10 @@ that the implementer does not have to re-discover them:
 How: grep the domain keywords from the input, open the candidate files, read enough to name the
 pattern. Read the actual file — a filename is not evidence that it does what its name suggests.
 
-**Stop when** every Phase item can carry a `재사용:` or `패턴:` sub-bullet, or when you have
+**Stop when** every Phase item can carry a `재사용:` or `패턴:` row, or when you have
 confirmed there is nothing to reuse. Do not keep exploring past that.
 
-**Record findings inline** as sub-bullets under the Phase item that will use them. Never write a
+**Record findings inline** as labeled rows (`재사용:`, `패턴:`) under the Phase item that will use them. Never write a
 separate research document — a finding the implementer has to go looking for is a finding that
 gets ignored.
 
@@ -77,20 +78,40 @@ Sizing:
 - Fewer than 2 Phases means the task probably did not need a plan (back to Step 0).
 - Dependencies point one direction only. If Phase 2 needs something from Phase 4, the order is wrong.
 
-Each item names its file in backticks, and a figma node link inline when there is one. If one node
-maps to several sub-areas, split it into separate items.
+Each item is a bold title naming what gets built, with its file on a `파일:` row and its figma
+node on a `디자인:` row when there is one. If one node maps to several sub-areas, split it into
+separate items. End each Phase with a `검증:` item that names the command or screen that proves it.
 
 ## Step 4: Write the two documents
 
-Use the templates in `${CLAUDE_SKILL_DIR}/templates/`. They divide as follows, and the same content
-never goes in both:
+Copy `${CLAUDE_SKILL_DIR}/templates/tasks.template.html` and `spec.template.html` whole — the
+`<style>` block included — and fill them in. Markup follows
+`${CLAUDE_SKILL_DIR}/../_shared/plan-format.md`: one header field, checklist item or record line per
+source line, so `/implement`, `/qa`, `/tracker` and `/git-pr` can grep the same markers they grep in
+older markdown plans. Delete the template's guidance comments once a section is filled. A new plan is
+always HTML.
+
+The point of HTML is that a person reads it in a browser, so follow plan-format.md's **Writing for a
+reader** rules. The ones a plan breaks most often:
+
+- An item title says what gets built and nothing else. File, timing, reason and pattern each get a
+  labeled row (`<span class="label">파일:</span>`), one fact per row.
+- 개요 is four short labeled paragraphs — `지금:` / `목표:` / `포함:` / `제외:` — not one paragraph
+  holding all four.
+- In `spec.html`, each flow is an `<h3>` with a `언제` / `결과` table, one condition per row. Never
+  chain several flows on one line with `/`.
+
+Before handing the plan back, open both files in a browser (or read them as rendered text) and check
+that each item can be understood from its title and rows alone, without reading the next item.
+
+The two documents divide as follows, and the same content never goes in both:
 
 | 문서 | 담는 것 | 담지 않는 것 |
 |---|---|---|
-| `tasks.md` | 무엇을 어떤 순서로 만드는가 — Phase, 파일 경로, 재사용·패턴, 진행 기록 | 동작 명세 |
-| `spec.md` | 무엇이 맞는 동작인가 — 화면/기능 흐름, 상태 정의, 엣지 케이스 | 구현 순서, 파일 목록 |
+| `tasks.html` | 무엇을 어떤 순서로 만드는가 — Phase, 파일 경로, 재사용·패턴, 진행 기록 | 동작 명세 |
+| `spec.html` | 무엇이 맞는 동작인가 — 화면/기능 흐름, 상태 정의, 엣지 케이스 | 구현 순서, 파일 목록 |
 
-`spec.md` is the one `/implement` consults when the code raises a question the checklist cannot
+`spec.html` is the one `/implement` consults when the code raises a question the checklist cannot
 answer. Write the flows and edge cases concretely enough to settle an argument — `로딩 중에는
 버튼 비활성` is a spec, `로딩 처리` is not.
 
@@ -103,7 +124,7 @@ Report in this shape, then stop and wait:
 ```
 계획을 작성했습니다.
 
-- 문서: `docs/{name}/plans/tasks.md`, `spec.md`
+- 문서: `docs/{name}/plans/tasks.html`, `spec.html` (브라우저로 열어서 볼 수 있습니다)
 - Phase {N}개: {Phase 1 제목} → {Phase 2 제목} → ...
 - 확인 필요: {N}건    ← 있을 때만
 
@@ -115,24 +136,32 @@ start it from this skill.
 
 ## Open questions
 
-Anything the plan cannot decide on its own goes in a `## 확인 필요` section in `tasks.md` — one line
-per question, phrased so the answer is a choice, not an essay. End each line with what it holds up —
-`막는 항목: Phase 2 로그인 버튼` — or `구현 영향 없음`. `/implement` reads this to start everything
-that does not wait on the answer.
+Anything the plan cannot decide on its own goes in the `확인 필요` section of `tasks.html`, as a
+question block from the template:
 
-Once a question is answered, **delete the question line and keep only the decision.** Never leave
+- **Title** — the decision, short (`transaction_id로 무엇을 쓰나`), numbered `Q1`, `Q2`, … in order.
+  The background that makes it a question goes after an em dash, one line.
+- **Options** — one row each (`A`, `B`, `C`), phrased as outcomes so the answer is a choice, not an
+  essay. Put `추천` on one option when there is a reason to prefer it, and on none otherwise.
+- **What it holds up** — `막는 항목: Phase 2 로그인 버튼`, or `구현 영향 없음`. `/implement` reads
+  this to start everything that does not wait on the answer.
+- Questions that hold up an item go under `구현을 막는 질문`; questions that only set scope go under
+  `범위만 정하면 되는 질문`. Drop a heading whose group is empty.
+- Questions have no checkbox. Do not renumber when one is deleted — the user may answer by number.
+
+Once a question is answered, **delete the question block and keep only the decision.** Never leave
 the request and its answer side by side; a reader opening the doc later needs the conclusion, not
 the negotiation that produced it.
 
 - The decision goes where the work it changed is:
-  - **one item is built differently** → a `결정:` sub-bullet on that item, beside `재사용:` / `패턴:`
-  - **the behavior changes** → `spec.md`, written as if it had been specified from the start
-  - **neither** → one line under `## 진행 기록`
-- A `결정:` sub-bullet stays after the item is checked off, and names what settled it — 사용자 지시,
+  - **one item is built differently** → a `결정:` row on that item, beside `재사용:` / `패턴:`
+  - **the behavior changes** → `spec.html`, written as if it had been specified from the start
+  - **neither** → one line under `진행 기록`
+- A `결정:` row stays after the item is checked off, and names what settled it — 사용자 지시,
   피그마 기준, 기획서대로. It is the only place a later reader can find out why the item looks the way
   it does; deleting it puts them back where the question started.
 - Record the decision only, in one line. No restating the options, no "사용자 확인 완료" markers.
-- When the last question is answered, delete the `## 확인 필요` section itself.
+- When the last question is answered, delete the `확인 필요` section itself — headings and lists.
 
 ## Communication Style
 
@@ -142,18 +171,18 @@ filler (전반적으로, ~등을 개선, 안정성 향상), and what actually is
 
 Full rules: `${CLAUDE_SKILL_DIR}/../../rules/writing.md`.
 
-This applies to conversational output in this flow and to free-text prose inside `tasks.md`/`spec.md`. Structured elements — headers, checklists, tables, file paths, figma links — keep their normal format.
+This applies to conversational output in this flow and to free-text prose inside `tasks.html`/`spec.html`. Structured elements — headers, checklists, tables, file paths, figma links — keep their normal format.
 
 ## Rules
 
 - **A Phase must be verifiable when done** — otherwise merge or split it
-- **Explore before writing, and inline what you found** — a Phase item with no `재사용:`/`패턴:` line means either nothing exists to reuse, or the exploration was skipped
-- **Never write the same thing in both documents** — order in `tasks.md`, behavior in `spec.md`
-- **Never invent user-facing text** — 안내·동의·에러 문구가 없으면 `## 확인 필요`에 올린다
-- **A decision that shaped one item stays on that item** — `결정:` sub-bullet, kept after the check
+- **Explore before writing, and inline what you found** — a Phase item with no `재사용:`/`패턴:` row means either nothing exists to reuse, or the exploration was skipped
+- **Never write the same thing in both documents** — order in `tasks.html`, behavior in `spec.html`
+- **Never invent user-facing text** — 안내·동의·에러 문구가 없으면 `확인 필요`에 올린다
+- **A decision that shaped one item stays on that item** — `결정:` row, kept after the check
 - **Do not start `/implement`** — suggest it and stop
 - **Do not modify the original `plans/`** when the task type is `기능 수정`
 - **Portable by default** — plain conversation for every question and report. If the host offers a
   structured question tool it may be used, but the flow must work without one
-- Task type is a header field on `tasks.md`; there is no type-branching elsewhere
+- Task type is a header field on `tasks.html`; there is no type-branching elsewhere
 - Output documents are written in Korean

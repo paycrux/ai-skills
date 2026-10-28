@@ -318,7 +318,7 @@ Fallback checklist — one pass over the diff, reporting only what you can point
 - 사용자 입력이 검증 없이 쿼리·명령·렌더링까지 흘러가는 경로
 - 이 저장소의 기존 패턴을 두고 새 방식을 도입한 곳
 - 남은 디버그 로그, 죽은 코드, 커밋된 임시 파일이나 시크릿
-- `spec.md`의 엣지 케이스 중 구현에 반영되지 않은 것
+- `spec.html`(예전 계획은 `spec.md`)의 엣지 케이스 중 구현에 반영되지 않은 것
 
 **What to do with the result:**
 
@@ -460,6 +460,6 @@ Summarize the completed work in Korean:
 - Fill every `구현 화면` cell a capture produced; leave a cell blank only when its capture failed, and report why
 - Never publish a PR whose body still holds a local image path — keep it as a draft until the upload succeeds
 - Always return to `HEAD_BRANCH` after a Before capture, even when the capture failed
-- Never claim a test was run or a scenario was verified unless `tasks.md` records it
+- Never claim a test was run or a scenario was verified unless the plan's `tasks.html` (or legacy `tasks.md`) records it
 - If `gh` is not installed, stop and tell the user in Korean
 - All user-facing messages and questions must be in Korean

@@ -8,7 +8,7 @@ argument-hint: "[notion url] [jira story links] [figma links] — or nothing, to
 
 A feature that spans several Jira stories is several branches at once. Git keeps them apart until
 they merge, but every worktree is a folder on the same disk: any session can read any worktree's
-`tasks.md` and `git log` by absolute path. The tracker is built on that.
+`tasks.html` (older plans: `tasks.md`) and `git log` by absolute path. The tracker is built on that.
 
 The tracker keeps the meta-plan, the Jira issues, the branches and worktrees — and it **drives**
 the work. When an issue's next step is a skill, the tracker runs it: itself, when the issue lives in
@@ -56,7 +56,7 @@ from a session's reply.
 - Running `/task-plan` and `/implement` for issues in this meta-plan, or telling their owners to
 - Committing an issue's work as soon as implementation finishes
 - `git push --force-with-lease` on a branch in this meta-plan's 작업 트리, after a rebase
-- Jira: create issues once the list is approved; comment on them; move them toward `개발진행중` / `개발 완료`
+- Jira: create issues once the list is approved; comment on them; move them toward the in-progress / done statuses named in the meta-plan's `지라 전환:` header
 
 Never: commit, push, or force-push to the root; touch a branch not in the 작업 트리; edit a story's
 description (backend, 기획, and design share the story).
@@ -98,11 +98,13 @@ back silently.
 
 For every 작업 트리 row:
 
-- **Plan** — the `docs/*/plans/tasks.md` whose `> 이슈:` header is this row's key. A branch carries
+- **Plan** — the `docs/*/plans/tasks.html` (or legacy `tasks.md`) whose `이슈:` header field is this
+  row's key — `grep -E '^> 이슈:|<li>이슈:'`; markup for both formats is in
+  `${CLAUDE_SKILL_DIR}/../_shared/plan-format.md`. A branch carries
   every plan from its base, so match by key. A sub-issue branch that is not checked out right now is
   read with `git -C <wt> show feat/<KEY>:<path>`.
-- **Progress** — checked / total under the `## Phase` headings; every `**blocker**` line; the
-  `## 기기 확인` checklist, if present.
+- **Progress** — checked / total under the `Phase` headings; every line carrying a `blocker` marker;
+  the `기기 확인` checklist, if present.
 - **Commits** — `git -C <wt> log --oneline <기준 커밋>..feat/<KEY>`; uncommitted changes with
   `git -C <wt> status --porcelain` when the branch is checked out.
 - **PR** — `gh pr list --head <branch> --state all --json number,state,baseRefName`.
@@ -114,19 +116,19 @@ For every 작업 트리 row:
 | 관측 | 상태 |
 |---|---|
 | 브랜치 없음 | 대기 |
-| `tasks.md` 있음, 체크 0 | 계획 |
+| `tasks.html` 있음, 체크 0 | 계획 |
 | 체크 1개 이상, 남은 항목 있음 | 구현 |
-| Phase 전부 체크 + 커밋 있음 + `## 기기 확인` 남음 | 확인 |
-| `## 기기 확인` 전부 체크 (웹: `qa-report.md`에 미해결 버그 없음) | 완료 |
+| Phase 전부 체크 + 커밋 있음 + `기기 확인` 남음 | 확인 |
+| `기기 확인` 전부 체크 (웹: `qa-report.md`에 미해결 버그 없음) | 완료 |
 | PR 열림 / 병합됨 | PR / 병합 |
 
 **Files win.** Correct the meta-plan when it disagrees with the files and carry on. When the
 disagreement has no explanation you can verify — a branch gone, work unaccounted for — stop and
 report instead of guessing.
 
-**Jira follows the files.** Behind what the files say — an issue still `개발예정` while items are
-checked — walk it forward (**F**) and put one line in the report: `COMP-408 지라를 개발진행중으로
-맞춤`. Ahead of the files — someone moved it to `개발 완료` while items are unchecked — do not move
+**Jira follows the files.** Behind what the files say — an issue still `계획` while items are
+checked — walk it forward (**F**) and put one line in the report: `ABC-408 지라를 작업 중으로
+맞춤`. Ahead of the files — someone moved it to the done status while items are unchecked — do not move
 it back; report the difference and let the user decide. Either way the 지라 column of the report
 carries what Jira actually said this run, not what the tracker last wrote.
 
@@ -142,7 +144,7 @@ and do what its state calls for:
 | 계획, 승인됨 | `/implement <slug>` | owner |
 | 구현, 멈춰 있고 답을 기다리는 blocker 없음 | `/implement <slug>` 재개 | owner |
 | Phase 전부 체크, 커밋 안 됨 | 커밋 | owner |
-| 확인 | 사용자가 `## 기기 확인` 체크 | 사람 |
+| 확인 | 사용자가 `기기 확인` 체크 | 사람 |
 | 완료 | **F** | tracker |
 | PR 열림 | 커밋이 끝났으면 다음 하위 이슈로 — 표의 첫 줄부터 | tracker |
 
@@ -169,8 +171,8 @@ a blocker question, 기기 확인, a PR to open, or one of **When the tracker st
 
 | 이슈 | 상태 | 지라 | 커밋 | blocker | 다음 |
 | --- | --- | --- | --- | --- | --- |
-| COMP-408 [프론트] 서비스 문의 | 구현 12/40 | 개발진행중 | 2 | 1 — Android 13+ 사진 권한 | COMP-364 탭에서 답변 대기 |
-| COMP-415 [프론트] 공지사항 | 대기 | 계획 | 0 | - | COMP-408 PR 뒤 자동 시작 |
+| ABC-408 [프론트] {화면·기능} | 구현 12/40 | 작업 중 | 2 | 1 — {blocker 한 줄} | ABC-364 탭에서 답변 대기 |
+| ABC-415 [프론트] {화면·기능} | 대기 | 계획 | 0 | - | ABC-408 PR 뒤 자동 시작 |
 
 방금 한 것: {tracker·owner가 실행한 것} / 사용자가 할 것: {탭 이름·체크할 목록·명령까지}
 ```
@@ -300,7 +302,7 @@ git -C "<wt>" branch --unset-upstream 2>/dev/null
   branch is a statement about branches, and says nothing about where the worktree sits: worktrees
   stay one per story, top-level. In this document 부모 refers to a Jira issue only; a worktree's is
   always called 상위 워크트리.
-- orca has no branch-name option and prefixes the GitHub login (`AeiYo/COMP-364`); the rename gives
+- orca has no branch-name option and prefixes the GitHub login (`<login>/ABC-364`); the rename gives
   `feat/<STORY>`. `orca worktree list` can keep showing the old name for a while — `git worktree
   list` is the source of truth.
 - A branch cut from `origin/<root>` tracks the root; unset it so a bare `git push` can never go
@@ -333,11 +335,15 @@ record it in the `워크트리:` header.
 - The row's `세션` column names a session that is still in the host's session list → that one.
 - A session already runs there (the host's session list shows its working directory) → that one.
 - Otherwise start one, by the rung Step 1 probed:
-  1. `orca terminal create --worktree "path:<wt>" --title "<STORY>" --command "claude" --json`, then
+  1. `orca terminal create --worktree "path:<wt>" --title "<STORY>" --command "claude --dangerously-skip-permissions" --json`, then
      `orca terminal wait --terminal <handle> --for tui-idle --timeout-ms 120000`; find the new
      session in the host's session list and message it.
-  2. Ask the user to open one (`cd <wt> && claude`), then message it.
+  2. Ask the user to open one (`cd <wt> && claude --dangerously-skip-permissions`), then message it.
   3. Print `cd <wt>` and the instruction text for the user to paste.
+
+Every owner starts with `--dangerously-skip-permissions`, the same mode as the tracker. Without the
+flag the session falls back to `defaultMode` in `~/.claude/settings.json` (`auto`), and the host
+holds every message between sessions whose permission modes differ until the user approves it.
 
 Write the session's name into the row's `세션` column as soon as it exists, and clear it when that
 session is gone from the list. Re-deriving the worktree-to-session match from working directories on
@@ -345,7 +351,7 @@ every run is what makes two runs of the same command behave differently.
 
 ## E. Shared work
 
-**스토리 공용** — triggered by a `**blocker**: 스토리 공용 — …` line or a `[공용 필요]` message. In the
+**스토리 공용** — triggered by a `blocker: 스토리 공용 — …` marker or a `[공용 필요]` message. In the
 story worktree: commit the current issue, switch to `feat/<STORY>`, build it, commit, switch back,
 `git merge feat/<STORY>` — merge is fine below the root, the squash into the root hides it.
 
@@ -369,19 +375,23 @@ the stories as above.
 
 When a row reaches `완료`:
 
-1. Move the issue to `개발 완료`. Workflows refuse jumps — COMP goes `계획 → 개발예정 → 개발진행중 →
-   개발 완료`, and `acli jira workitem transition --status` only takes a status reachable from the
-   current one. Walk the path one step at a time (`--key <KEY> --status "<next>" --yes`), and record
-   the path in the `지라 전환:` header the first time you learn it. The same applies to `개발진행중`
-   when a row first reaches `구현`.
+1. Move the issue to the done status in the `지라 전환:` header. Workflows change and refuse jumps,
+   so read the transitions before moving: the Atlassian MCP `getTransitionsForJiraIssue` with
+   `includeUnavailableTransitions: true` (`acli` cannot list them). `acli jira workitem transition
+   --status` only takes a status reachable from the current one — walk one step at a time
+   (`--key <KEY> --status "<next>" --yes`). A transition name can carry a precondition the files do
+   not show: a `[DEV] 개발 완료` transition may be reached by "개발계 배포 완료", so it waits for the PR to be
+   merged and deployed, not for 기기 확인. Record the path, transition names included, in the header
+   the first time you learn it, and re-read it when a step is refused. The same applies to the
+   in-progress status (e.g. `작업 중`) when a row first reaches `구현`.
 2. Comment from `${CLAUDE_SKILL_DIR}/templates/done-comment.template.md`:
    `acli jira workitem comment create --key <KEY> --body-file /tmp/tracker-<KEY>-done.txt`
 3. Move its `구현 영향 없음` questions into the meta-plan's `## 남은 질문`.
 4. Point the user at the PR — `/git-pr` cannot be called from a skill:
 
    ```
-   COMP-408 완료 — 브랜치 `feat/COMP-408`
-   PR: COMP-364 탭에서 `/git-pr --base feat/COMP-364`
+   ABC-408 완료 — 브랜치 `feat/ABC-408`
+   PR: ABC-364 탭에서 `/git-pr --base feat/ABC-364`
    ```
 
 5. Go on to the next sub-issue of the story (Step 3).
@@ -400,7 +410,7 @@ running implementation costs more than it saves. The one moment a change is wort
 story's sub-issues are all merged and before its PR opens. Ask there, once:
 
 ```
-COMP-364 하위 이슈 {N}건 완료 — 기획서가 그동안 바뀌었는지 확인할까요?
+ABC-364 하위 이슈 {N}건 완료 — 기획서가 그동안 바뀌었는지 확인할까요?
 ```
 
 Only on a yes:
@@ -419,7 +429,7 @@ already maps 기획 sections to stories, so the diff can be read as "which issue
 
 | 바뀐 섹션 | 스토리 | 이슈 | 무엇이 |
 | --- | --- | --- | --- |
-| {섹션 제목} | 스토리 2 | COMP-408 | {추가·삭제·문구 변경 한 줄} |
+| {섹션 제목} | 스토리 2 | ABC-408 | {추가·삭제·문구 변경 한 줄} |
 
 PR을 열기 전에 반영할지 결정해 주세요.
 ```
@@ -433,7 +443,7 @@ story's next commit.
 ## RN apps
 
 `/qa` drives a headless browser and cannot run a React Native app; `/implement` writes a
-`## 기기 확인` checklist instead, and the user checks it. At most two worktrees can run on simulators
+`기기 확인` checklist instead, and the user checks it. At most two worktrees can run on simulators
 at once — Metro ports and bundle IDs give two lanes.
 
 ## Known hazards
@@ -469,9 +479,9 @@ at once — Metro ports and bundle IDs give two lanes.
 - **Jira is read every run, not only written** — the files decide, Jira is walked forward to match, and the move goes in the report
 - **The 기획서 is re-read only when the user says so** — offered once, after a story's sub-issues are merged
 - **The meta-plan is versioned on the story branch** — never in `.git/info/exclude`
-- **State comes from files** — checkboxes, `**blocker**` lines, `git log`, `gh pr list`; a reply is a hint to go look
+- **State comes from files** — checkboxes, `blocker` markers, `git log`, `gh pr list`; a reply is a hint to go look
 - **`## 기록` carries only what the 작업 트리 표 and `git log` cannot** — a rebase that moved 기준 커밋, a cherry-pick, a 치명적 판단, a scope change. A status transition is never written down; the 상태 column already moved
-- **Judgment is never deleted** — a decision that shaped one item lives as a `결정:` sub-bullet on that item in the owner's `tasks.md` and stays after the item is checked; only decisions spanning issues reach the meta-plan
+- **Judgment is never deleted** — a decision that shaped one item lives as a `결정:` sub-bullet on that item in the owner's `tasks.html` and stays after the item is checked; only decisions spanning issues reach the meta-plan
 - **The root is untouchable** — branch from `origin/<root>`, no upstream to it, no commit/push/force-push; take it in with rebase, land on it with squash
 - **PRs go where the branch came from** — sub-issue → story, story / 공용 / 버그 → root
 - **Blocker questions are asked where the work happens** — the tracker shows them, never relays them

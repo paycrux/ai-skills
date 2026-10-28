@@ -188,6 +188,45 @@ curl -fsSL https://raw.githubusercontent.com/paycrux/ai-skills/main/install.sh |
 
 슬래시 커맨드(`/skill-name`)로 호출하는 워크플로우입니다.
 
+### /flow
+
+기획서와 Figma 링크를 받아 화면 하나를 PR까지 끌고 가는 흐름입니다. 문서는 화면 묶음(도메인)마다 폴더 하나에 JSON으로 쌓이고, `flow.py build`가 서로 링크된 HTML 페이지로 만듭니다. 서버 없이 파일을 더블클릭해서 열고, 파일 그대로 공유할 수 있습니다.
+
+```
+01 기획 → 02 화면 · SOT 맵 → 03 질문 → 04 구현 계획 · 구현 → 05 검증 → 06 완료
+```
+
+```
+docs/
+├ index.html             모든 도메인과 진행 중인 작업 (생성)
+├ gift/                  도메인 = Figma 최상위 섹션 하나
+│ ├ domain.json          이름, Figma 노드, 소스 경로 (새 작업이 어느 도메인인지 찾는 기준)
+│ ├ screens.json         SOT 맵 — 화면 요소마다 값이 어느 서버 필드에서 오는지
+│ ├ tasks/APP-452.json   작업 하나 = 파일 하나 (01~06 단계)
+│ ├ images/
+│ ├ index.html           작업 목록 + SOT 맵 (생성)
+│ └ APP-452/             index.html + 01-plan.html … 06-done.html (생성)
+└ (그 밖의 문서)         레거시 — 첫 페이지에 목록만
+```
+
+- **도메인당 폴더 하나**: 같은 화면의 후속 · 버그 · 문구 수정은 새 폴더를 만들지 않고 그 도메인의 `tasks/`에 파일만 추가합니다. 작업마다 파일이 따로라 여러 브랜치에서 동시에 작업해도 합칠 때 충돌하지 않습니다.
+- **페이지**: 단계마다 HTML 파일이 하나씩이고, 왼쪽 목록에서 단계 사이를 오갑니다. 스타일과 스크립트가 파일 안에 들어 있어서 설치할 것이 없습니다. 페이지는 JSON에서 생성되므로 손으로 고치지 않습니다.
+- **참조**: `[[S5]]`(SOT 행) · `[[R2-Q1]]`(질문) · `[[APP-451#P2]]`(다른 작업) · `[[login/S3]]`(다른 도메인)처럼 ID로 가리킵니다. 마우스를 올리면 내용이 보이고, 누르면 그 페이지의 그 자리로 이동합니다.
+- **페이지에서 답하기**: 질문에 답하고 체크하면 그 브라우저의 `localStorage`에 자동으로 저장됩니다. 채팅에 "답 썼어"라고 하면 Claude가 `flow.py pull`로 브라우저 저장 파일을 직접 읽어 JSON에 반영하고, 확정된 내용을 다시 HTML로 만듭니다.
+  - Chrome 계열(Chrome · Aside · Arc · Dia · Edge · Brave)만 직접 읽을 수 있습니다. Safari · Firefox에서는 페이지에 안내가 뜨고, '답 복사'를 누른 뒤 "복사했어"라고 하면 Claude가 클립보드를 읽습니다. 복사한 텍스트는 슬랙에 그대로 붙여도 읽기 좋은 형식입니다.
+- **이전 버전 문서**: 서버를 쓰던 버전(`docs/.flow/`)과 작업 폴더 버전(`docs/<작업>/data/`)의 문서는 이 버전으로 `/flow`를 처음 실행할 때 `flow.py migrate`로 전부 옮깁니다. 서버 버전 파일은 지울 목록과 새로 여는 경로를 먼저 보여 주고, 사용자가 동의한 뒤 `--apply`로 지웁니다.
+- **Claude가 읽는 양**: 이어받을 때는 `flow.py brief`(단계 상태 · 결론 · 결정)만 읽습니다. 예시 작업 기준 약 2KB.
+- `scripts/flow.py`: `find`(도메인 찾기) · `domain` · `task` · `add`(단계 추가) · `build`(HTML 생성) · `pull`(답 가져오기) · `brief` · `changes`(사람이 바꾼 것) · `clear` · `check`(형식 · 참조 · HTML 최신 여부 검사) · `migrate` · `merge-xml`(Figma 컴포넌트 안쪽 좌표 합치기)
+- SOT 맵 방법론은 앱 저장소에서 쓰던 `sot-map` 스킬에서 가져왔습니다.
+
+```bash
+/flow <기획서 링크> <Figma 링크> <지라 키>
+/flow <작업 ID>               # 이어서 진행
+open docs/index.html          # 문서 보기
+```
+
+기존 `/task-plan`은 그대로 쓸 수 있습니다(`tasks.html`·`spec.html` 계획). 그 문서들은 첫 페이지에 레거시로 나열됩니다.
+
 ### /task-plan
 
 **작업 계획 수립 + 문서 생성 (경량화 버전)**
