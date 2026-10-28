@@ -113,11 +113,15 @@
   const FIELDS = ["choice", "note", "followUp", "copy"];
   const sameAnswer = (a, b) => FIELDS.every((k) => (a[k] || "") === (b[k] || ""));
 
+  let saveFailed = false;
   const save = () => {
     st.updatedAt = Date.now();
     const empty = !Object.keys(st.answers).length && !Object.keys(st.checks).length;
     if (empty) store.del(KEY);
-    else if (!store.set(KEY, JSON.stringify(st))) toast("이 브라우저에 저장하지 못했어요 · '답 복사'를 써 주세요");
+    else if (!store.set(KEY, JSON.stringify(st))) {
+      saveFailed = true;
+      toast("이 브라우저에 저장하지 못했어요 · '답 복사'를 써 주세요");
+    }
     paint();
   };
 
@@ -232,11 +236,15 @@
     const n = Object.keys(st.answers).length + Object.keys(st.checks).length;
     savebar.hidden = !hasForms && !n;
     if (savebar.hidden) return;
-    const how = chromium ? "채팅에 '답 썼어'라고 알려 주세요" : "'답 복사'를 누른 뒤 채팅에 '복사했어'라고 알려 주세요";
+    const viaCopy = !chromium || saveFailed;
+    const how = viaCopy ? "'답 복사'를 누른 뒤 채팅에 '복사했어'라고 알려 주세요" : "채팅에 '답 썼어'라고 알려 주세요";
+    const copyBtn = viaCopy ? "<button data-copy>답 복사</button>" : "";
+    const head = saveFailed ? "이 브라우저에 저장하지 못했어요" : `이 브라우저에 저장됨 · ${n}건 · ${fmt(st.updatedAt)}`;
     savebar.innerHTML = n
-      ? `<span>이 브라우저에 저장됨 · ${n}건 · ${fmt(st.updatedAt)}<br>${how}</span><button class="ghost" data-undo>되돌리기</button><button data-copy>답 복사</button>`
-      : `<span>답을 고르면 이 브라우저에 자동으로 저장돼요</span><button data-copy>답 복사</button>`;
-    $("[data-copy]", savebar).onclick = copy;
+      ? `<span>${head}<br>${how}</span><button class="ghost" data-undo>되돌리기</button>${copyBtn}`
+      : `<span>답을 고르면 이 브라우저에 자동으로 저장돼요</span>${copyBtn}`;
+    const copyEl = $("[data-copy]", savebar);
+    if (copyEl) copyEl.onclick = copy;
     const undo = $("[data-undo]", savebar);
     if (undo) undo.onclick = () => {
       if (!confirm("이 브라우저에 저장된 답과 체크를 지우고 페이지에 쓰인 내용으로 되돌릴까요?")) return;

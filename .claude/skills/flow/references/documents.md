@@ -130,7 +130,7 @@ What the person can do in a page, and how it reaches the JSON:
 | tick a checklist item | localStorage | `done`, `"by": "user"` on the item |
 
 - The key is `flow:<absolute path of the task's page folder>/` — one per task and worktree, shared by
-  that task's six pages. The save bar shows how many entries wait, with 답 복사 and 되돌리기.
+  that task's six pages. The save bar shows how many entries wait and 되돌리기; 답 복사 appears only where `pull` cannot read the browser (Safari, Firefox) or when saving to the browser failed.
 - `flow.py pull <docs>` reads the localStorage files of the Chromium browsers on this machine —
   Chrome, Aside, Arc, Dia, Edge, Brave, Vivaldi, Atlas — only keys starting `flow:` under this `docs/`,
   newest copy per task. A browser writes them to disk a few seconds after typing; when nothing is
