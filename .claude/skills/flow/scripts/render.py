@@ -352,10 +352,20 @@ def link_list(links):
 
 # ---------------------------------------------------------------- nav
 
-def nav_task(ctx, d, t, current):
-    site = ctx.site
-    dom = site.domains[d]
-    task = dom["tasks"][t]
+def domain_state(dom):
+    states = [task_state(t) for t in dom["tasks"].values()]
+    active = len([x for x in states if x != "done"])
+    if "ask" in states:
+        return "ask"
+    if "now" in states:
+        return "now"
+    if states and active == 0:
+        return "done"
+    return "now" if "done" in states else "wait"
+
+
+def nav_steps(ctx, d, t, current):
+    task = ctx.site.domains[d]["tasks"][t]
     steps = []
     for n, (k, title, fname) in enumerate(STAGES, 1):
         s = stage_state(task, k)
@@ -363,39 +373,48 @@ def nav_task(ctx, d, t, current):
             steps.append(f'<span class="step skip" data-n="{n}"><b>{esc(title)}</b><span>건너뜀</span></span>')
             continue
         on = " on" if current == k else ""
-        steps.append(f'<a class="step {s["status"]}{on}" data-n="{n}" href="{fname}" title="{esc(plain_refs(s["summary"]))}">'
-                     f'<b>{esc(title)}</b><span>{esc(plain_refs(s["summary"]))}</span></a>')
-    meta = " · ".join(x for x in (t, task.get("type", ""), task.get("branch", "")) if x)
-    foot = "".join(f'<a href="{esc(l.get("url", ""))}" target="_blank" rel="noopener">{esc(l.get("label", ""))}</a>' for l in task.get("links", []))
-    return (f'<div class="crumb"><a href="{ctx.href(site.root)}">전체 문서</a> · <a href="{ctx.href(site.domain_page(d))}">{esc(dom["info"].get("title", d))}</a></div>'
-            f'<a class="home" href="index.html">{esc(task.get("title", t))}</a><p class="nav-meta">{esc(meta)}</p>'
-            f'<nav class="steps">{"".join(steps)}</nav>{LEGEND}{f"<div class=foot>{foot}</div>" if foot else ""}')
+        summary = esc(plain_refs(s["summary"]))
+        steps.append(f'<a class="step {s["status"]}{on}" data-n="{n}" href="{ctx.href(ctx.site.task_page(d, t, k))}" title="{summary}">'
+                     f'<b>{esc(title)}</b><span>{summary}</span></a>')
+    return f'<nav class="steps">{"".join(steps)}</nav>'
 
 
-def nav_domain(ctx, d):
+def nav_tree(ctx, d=None, t=None, current=None):
     site = ctx.site
-    dom = site.domains[d]
-    rows = [f'<a class="step dot done on" href="index.html"><b>화면 · SOT 맵</b><span>{len(dom["screens"].get("screens", []))}개 화면</span></a>',
-            '<div class="nav-group">작업</div>']
-    for t, task in dom["tasks"].items():
-        rows.append(f'<a class="step dot {task_state(task)}" href="{ctx.href(site.task_page(d, t))}"><b>{esc(task.get("title") or t)}</b><span>{esc(t)}</span></a>')
-    return (f'<div class="crumb"><a href="{ctx.href(site.root)}">전체 문서</a></div>'
-            f'<a class="home" href="index.html">{esc(dom["info"].get("title", d))}</a><p class="nav-meta">도메인 {esc(d)}</p>'
-            f'<nav class="steps">{"".join(rows)}</nav>{LEGEND}')
-
-
-def nav_root(ctx):
-    site = ctx.site
-    rows = ['<div class="nav-group">도메인</div>']
-    for d, dom in site.domains.items():
-        states = [task_state(t) for t in dom["tasks"].values()]
-        asks = states.count("ask")
-        active = len([s for s in states if s != "done"])
-        cls = ("ask" if asks else "now" if "now" in states else "done" if states and active == 0
-               else "now" if "done" in states else "wait")
-        rows.append(f'<a class="step dot {cls}" href="{ctx.href(site.domain_page(d))}"><b>{esc(dom["info"].get("title", d))}</b>'
-                    f'<span>{f"질문 {asks} · " if asks else ""}작업 {len(states)}</span></a>')
-    return f'<a class="home" href="{site.root}">{esc(site.repo)}</a><p class="nav-meta">flow 문서</p><nav class="steps">{"".join(rows)}</nav>{LEGEND}'
+    here = ctx.path
+    doms = []
+    for dd, dom in site.domains.items():
+        mine = dd == d
+        page = site.domain_page(dd)
+        asks = [x for x in dom["tasks"].values() if task_state(x) == "ask"]
+        cnt = f'<span class="cnt ask">질문 {len(asks)}</span>' if asks else f'<span class="cnt">{len(dom["tasks"]) or ""}</span>'
+        rows = [f'<a class="tn done{" on" if here == page else ""}" href="{ctx.href(page)}">화면 · SOT 맵</a>']
+        active, finished = [], []
+        for tt, task in dom["tasks"].items():
+            state = task_state(task)
+            on = " on" if mine and tt == t and current is None else ""
+            open_ = " open" if mine and tt == t else ""
+            row = (f'<a class="tn {state}{on}{open_}" href="{ctx.href(site.task_page(dd, tt))}" title="{esc(tt)}">'
+                   f'{esc(task.get("title") or tt)}</a>')
+            if mine and tt == t:
+                row += nav_steps(ctx, dd, tt, current)
+            (finished if state == "done" else active).append((tt, row))
+        rows += [r for _, r in active]
+        if finished:
+            fopen = " open" if mine and any(tt == t for tt, _ in finished) else ""
+            rows.append(f'<details class="done-tasks"{fopen}><summary>끝난 작업 {len(finished)}</summary>'
+                        + "".join(r for _, r in finished) + "</details>")
+        doms.append(f'<details class="dom {domain_state(dom)}"{" open" if mine else ""}><summary>'
+                    f'<a href="{ctx.href(page)}">{esc(dom["info"].get("title", dd))}</a>{cnt}</summary>'
+                    f'<div class="dom-body">{"".join(rows)}</div></details>')
+    foot = ""
+    if d and t:
+        links = site.domains[d]["tasks"][t].get("links", [])
+        foot = "".join(f'<a href="{esc(l.get("url", ""))}" target="_blank" rel="noopener">{esc(l.get("label", ""))}</a>' for l in links)
+    return (f'<a class="home" href="{ctx.href(site.root)}">{esc(site.repo)}</a><p class="nav-meta">flow 문서</p>'
+            f'<a class="tn root{" on" if here == site.root else ""}" href="{ctx.href(site.root)}">전체 문서</a>'
+            f'<div class="nav-group">도메인</div>{"".join(doms) or "<p class=note>아직 없어요</p>"}'
+            f'{LEGEND}{f"<div class=foot>{foot}</div>" if foot else ""}')
 
 
 # ---------------------------------------------------------------- pages
@@ -436,7 +455,7 @@ def root_page(site):
                + "".join(f'<li><a href="{esc(ctx.href(p))}">{esc(p)}</a></li>' for p in legacy) + "</ul>")
     body = (f'<div class="head"><h1>{esc(site.repo)}</h1><p class="meta">도메인 {len(site.domains)} · 그 밖의 문서 {len(legacy)}</p></div>'
             f'<div class="cards">{"".join(rows) or "<p class=note>아직 flow 도메인이 없어요.</p>"}</div>{leg}')
-    return shell(ctx, f"{site.repo} · flow", nav_root(ctx), body)
+    return shell(ctx, f"{site.repo} · flow", nav_tree(ctx), body)
 
 
 def used_by(ctx, d):
@@ -534,7 +553,7 @@ def domain_page(site, d):
     empty = '<p class="note">아직 없어요.</p>'
     body = (f'<div class="head"><h1>{esc(info.get("title", d))}</h1><p class="meta">도메인 <code>{esc(d)}</code>{figma}</p></div>'
             f'{link_list(info.get("links"))}<h2>작업</h2><div class="cards">{tasks or empty}</div>{sot}')
-    return shell(ctx, f"{info.get('title', d)} · flow", nav_domain(ctx, d), body, wide=True)
+    return shell(ctx, f"{info.get('title', d)} · flow", nav_tree(ctx, d), body, wide=True)
 
 
 def answers_data(site, d, t):
@@ -578,7 +597,7 @@ def task_index(site, d, t):
     note = f'<p class="note">건너뛴 단계: {esc(", ".join(skipped))}. 필요해지면 그때 만들어요.</p>' if skipped else ""
     body = (f'<div class="head"><h1>{esc(task.get("title", t))}</h1><p class="meta">{meta}</p></div>{link_list(task.get("links"))}'
             f'{"".join(cards)}{note}')
-    return shell(ctx, f"{t} {task.get('title', '')} · flow", nav_task(ctx, d, t, None), body)
+    return shell(ctx, f"{t} {task.get('title', '')} · flow", nav_tree(ctx, d, t), body)
 
 
 def grill_conclusion(stage, s):
@@ -672,7 +691,7 @@ def stage_page(site, d, t, key, n):
             body += screen_refs(ctx, task)
     head = (f'<div class="head"><h1><span class="n {s["status"]}">{n}</span>{esc(STAGE_TITLE[key])}</h1>'
             f'<p class="meta">{esc(task.get("title", t))} · {esc(t)} · {esc(plain_refs(s["summary"]))}</p></div>')
-    return shell(ctx, f"{n} {STAGE_TITLE[key]} · {task.get('title', t)}", nav_task(ctx, d, t, key), head + body,
+    return shell(ctx, f"{n} {STAGE_TITLE[key]} · {task.get('title', t)}", nav_tree(ctx, d, t, key), head + body,
                  answers=answers_data(site, d, t))
 
 

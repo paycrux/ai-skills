@@ -118,8 +118,9 @@ path, so the whole `docs/` folder works from disk, from a zip, or from another c
 | `docs/<domain>/<task>/index.html` | every stage's conclusion on one page |
 | `docs/<domain>/<task>/0N-<stage>.html` | one stage; `#P2-1`, `#R1-Q2`, `#S5` jump to an item |
 
-The left nav on a task's pages lists its six stages (skipped ones dashed), the domain and the root
-above them; `[` folds it. A reference preview is built into each page, so hovering works from disk.
+The left nav is one tree on every page: 전체 문서, then each domain (only the current one open) with
+its SOT map and open tasks, finished tasks folded under 끝난 작업. The current task expands to its six
+stages (skipped ones dashed); depth is shown by indentation, not a breadcrumb. `[` folds it. A reference preview is built into each page, so hovering works from disk.
 
 What the person can do in a page, and how it reaches the JSON:
 
