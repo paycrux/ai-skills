@@ -1,10 +1,10 @@
 # Questions — stage 03
 
 Stage 03 is both the question record and the place the user answers. Rounds live in the task's
-`stages.grill.rounds`; the viewer renders them with an answer form under each question.
+`stages.grill.rounds`; `03-grill.html` renders them with an answer form under each question.
 
 Contents: where questions come from · writing a round · the rounds JSON · receiving answers ·
-revisions · when the page cannot save
+revisions · when answers cannot come from the page
 
 ## Where questions come from
 
@@ -32,6 +32,49 @@ Each question, for a reader who has not seen the code:
   Omit for yes/no — the page shows 추천대로 / 다르게. The page always adds 더 설명해줘.
 - `recommended` — the option value the page outlines in red; defaults to `"yes"`.
 
+## Draw the cases first
+
+A question about states — failure branches, error codes, what a screen shows per status — is
+answered by looking, not by reading. Put a `cases` table above the rounds (`stages.grill.blocks`):
+one row per situation the user can end up in, with what moves, where they land, and the UI they
+see drawn in the app's own pieces. The person reads the whole set of cases once, sees which rows are
+still open (amber), and answers below; every answer turns the row's status chip and preview live.
+
+- One `cases` block per moment (① right after payment, ② when the detail opens, ③ when cancel is
+  pressed). `title` + `sub` label the moment on the left; `lead` is one or two sentences of
+  background; `subtitle` splits a moment into two tables.
+- Every row gets an `id` (`C1-2`) so questions and plans cite it (`[[C1-2]]`).
+- The UI cell draws, never describes: `mocks` with a `modal`, `toast`, `banner` (in-screen alert
+  with rows), or a Figma `shot` saved in the domain's `images/`. Copy goes in verbatim, `\n` for
+  line breaks. Mark Figma captures with `"figma": true`; a reference capture that is not the answer
+  takes `"dim": true`.
+- A row waiting on a question carries `"ask": "R2-Q1"` and a status chip `{"q": "R2-Q1", "label":
+  "위치 답 대기"}`; settled parts are `{"state": "done", "label": "문구 정리됨"}`; a row the server
+  dropped is `"gone": true`.
+- Close with a `text` block, `"style": "bridge"`, saying how the moments connect.
+- The app's colors come from the domain's `mockTheme` (`{"primary": "#…", "alert": "#…"}`), so the
+  drawn modal looks like the app's modal.
+
+Each question then states its case in `context` rows instead of a long `body`:
+`[["케이스", "② 상세 · … [[C2-1]]"], ["지금 앱", "…"], ["디자인", "…"], ["enum", "<code>…</code>"]]`.
+When the answer is copy, add `copy` (a text field) and `preview` — a mock per answer, keyed `copy`
+(drawn with the typed text in place of `{copy}`) or an option value. The preview shows beside the
+question and inside the case row while the person types.
+
+```json
+{"type": "cases", "id": "C2", "title": "② 발급 실패한 선물의 상세", "sub": "보낸 선물에서 그 결제를 열 때",
+ "lead": "…", "columns": ["상황", "상세 화면", "하단 버튼", "상태"],
+ "rows": [{"id": "C2-2", "ask": "R2-Q3",
+   "cells": [{"text": "전체 발급 실패,<br>전액 환불 성공", "note": "…", "enum": ["issueFailStatus: FULL_REFUNDED"]},
+             {"ui": "디자인 없음 · 참고: 취소된 선물", "figma": true, "mocks": [{"shot": {"src": "images/x.png", "alt": "…", "dim": true}}]},
+             "없음"],
+   "status": [{"q": "R2-Q3", "label": "기획 답 대기"}]}]}
+```
+
+Other mock shapes: `{"toast": "선물 발송이 완료되었어요."}`,
+`{"modal": {"title": "…", "body": "…", "primary": "고객센터 연결", "assistive": "닫기"}}`,
+`{"banner": {"body": "{copy}", "sub": "…", "rows": [["취소일시", "2026.11.18 13:12"]]}}`.
+
 ## The rounds JSON
 
 ```json
@@ -42,9 +85,12 @@ Each question, for a reader who has not seen the code:
       "id": "Q1", "title": "<short question>",
       "said": "<trigger, quoted>", "body": "<background → problem → choice>",
       "recommendation": "<what and why>",
+      "context": [["케이스", "<the case row, [[C2-1]]>"], ["지금 앱", "<what the code does>"]],
       "options": [{"value": "a", "label": "<what the user notices>"}],
       "recommended": "a",
-      "answer": {"choice": "a", "note": "", "followUp": ""},
+      "copy": {"label": "<what to type>", "placeholder": "<example>"},
+      "preview": {"copy": {"banner": {"body": "{copy}"}}, "a": {"toast": "<copy>"}},
+      "answer": {"choice": "a", "copy": "", "note": "", "followUp": ""},
       "decision": "<full sentences: what was decided and why>",
       "appliedTo": "<every place it changed: [[S8]], [[P2-2]]>"
     }]
@@ -58,10 +104,13 @@ Round IDs are `R<n>`, question IDs `Q<n>`; together they are cited as `[[R1-Q2]]
 
 ## Receiving answers
 
-When the user says they saved:
+When the user says they answered ("답 썼어") or copied ("복사했어"):
 
-1. `python3 ${CLAUDE_SKILL_DIR}/scripts/flow.py changes <docs>/<domain>` — lists every answer, tick
-   and edit the person made, with what each needs. `git diff` on the named file shows the exact change.
+1. `python3 ${CLAUDE_SKILL_DIR}/scripts/flow.py pull <docs>` — or `pull <docs> --clipboard` after
+   "복사했어". It writes what the page kept into the task as `"by": "user"` marks and prints them.
+   Nothing found → the browser had not written it to disk yet (pull again after ten seconds) or the
+   page was opened in Safari (ask for 답 복사).
+   Then `flow.py changes <docs>/<domain>` lists every answer and tick with what each needs.
 2. For each line:
    - **new answer** → write `decision` as sentences a person can read: what was decided, why, and
      what it costs. Never a dotted list of keywords (`A · B · C`) — that reads only to whoever wrote
@@ -78,7 +127,7 @@ When the user says they saved:
    - **a tick or an edited text** → read it and carry it on (a ticked verify item the person saw
      themselves stays ticked).
 3. `flow.py clear <file> --id R1-Q2 --id P3-2 …` for what you handled (no `--id` clears all), then
-   `flow.py check`. Report in two lines.
+   `flow.py build` and `flow.py check`. Report in two lines.
 
 ## Revisions after a decision
 
@@ -87,9 +136,9 @@ Decided rounds stay editable in the page. A changed answer on a question that al
 everywhere `appliedTo` lists (and anything new), then `clear`. `check` fails while any `"by": "user"`
 remains — the old decision must never silently stand.
 
-## When the page cannot save
+## When answers cannot come from the page
 
-The page saves through the local server. When the server cannot run (no Node) or the host cannot
-open a browser, ask the same questions in chat, write the user's answers into `answer` yourself
-(quote them, no `by`), and continue from step 2. When the server stopped mid-session, the page's
-복사 button gives the edited JSON to paste into chat.
+When the host cannot open a browser, or the person prefers chat, ask the same questions in chat,
+write the answers into `answer` yourself (quote them, no `by`), and continue from step 2. When
+`pull` finds nothing twice and the clipboard holds no flow answer either, ask the person to paste
+the 답 복사 text into chat and read it the same way.

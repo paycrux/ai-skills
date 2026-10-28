@@ -65,7 +65,7 @@ make the row `pending`.
 
 ## Mobile, tablet, web
 
-A screen is one Figma frame of any size. The viewer lays a portrait frame beside its tables and a
+A screen is one Figma frame of any size. The domain page lays a portrait frame beside its tables and a
 landscape frame (wider than tall, or wider than 700px) across the page, pinned above the tables.
 When the same screen has several breakpoints, add each frame as its own entry in `screens`
 (`<screen>-mobile`, `<screen>-web`) and mark only what differs on the later ones — say "모바일 [[S2]]와
@@ -129,17 +129,18 @@ exist in another frame, features cut from scope. These rows become the 05 verifi
 - `field`, `rule`, `note` accept inline HTML (`<code>`). Write `rule` and `note` as sentences a
   reader can follow without the code — the decision rules in `SKILL.md` apply.
 - A decided `pending` row changes `kind`, and its `note` cites the decision: `… ([[APP-452#R1-Q2]])`.
-- The task's `screen` stage conclusion names the rows it added or changed. The viewer lists under
+- The task's `screen` stage conclusion names the rows it added or changed. The domain page lists under
   each row which task items cite it — that is the history of the row.
 
 ## Check
 
 ```bash
+python3 ${CLAUDE_SKILL_DIR}/scripts/flow.py build <docs>
 python3 ${CLAUDE_SKILL_DIR}/scripts/flow.py check <docs>/<domain>
 ```
 
 A node ID missing from the merged XML is reported with its ID — expand that instance and merge
-again. Open the domain page and hover each row: the pin must sit beside the element it describes,
+again. Open the domain page (`<docs>/<domain>/index.html`) and hover each row: the pin must sit beside the element it describes,
 not on a neighbor. Move it with `side`, or with `x`/`y` as a last resort.
 
 ## Component domains

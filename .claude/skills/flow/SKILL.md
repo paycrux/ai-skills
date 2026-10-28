@@ -1,15 +1,17 @@
 ---
 name: flow
-description: "Run a frontend task from PRD to PR as JSON documents under docs/<domain>/ that a local viewer (npm run flow) shows as linked pages — Figma SOT map per domain, question rounds answered in the page, plan, build, verify. Use when the user runs /flow or hands over PRD + Figma links for a screen."
+description: "Run a frontend task from PRD to PR as JSON documents under docs/<domain>/, rendered to linked static HTML pages that open from disk with no server — Figma SOT map per domain, question rounds answered in the page, plan, build, verify. Use when the user runs /flow or hands over PRD + Figma links for a screen."
 argument-hint: "<PRD link or text> [figma links] [Jira key] — or a task ID to resume"
 ---
 
 # /flow
 
 Documents live per **domain** — one folder per Figma top-level section (선물하기, 계정 설정, 주문서) —
-and every task on that domain is one JSON file inside it. A small local server shows the whole
-`docs/` tree as linked pages; the person answers and checks things there and saves straight into
-the JSON. Claude reads and edits the JSON.
+and every task on that domain is one JSON file inside it. `flow.py build` renders the JSON into
+plain HTML pages that link to each other and open straight from disk — no server, nothing to
+install, shareable as files. The person answers and ticks in the page; the page keeps that in the
+browser's localStorage, and `flow.py pull` reads it back into the JSON. Claude reads and edits the
+JSON, then rebuilds — the HTML is always the finished version Claude wrote.
 
 ```
 01 기획 → 02 화면 · SOT 맵 → 03 질문 ⇄ (02 · 04 · 05) → 04 구현 계획 · 구현 → 05 검증 → 06 완료
@@ -20,20 +22,42 @@ confirming completion. Everywhere else, keep going.
 
 Read before starting:
 
-- `${CLAUDE_SKILL_DIR}/references/documents.md` — layout, JSON shapes, references, the viewer, saving
+- `${CLAUDE_SKILL_DIR}/references/documents.md` — layout, JSON shapes, references, the pages, answers, earlier versions
 - `${CLAUDE_SKILL_DIR}/references/sot-map.md` — stage 02, when the task has a screen
 - `${CLAUDE_SKILL_DIR}/references/questions.md` — stage 03, every time a round opens or answers arrive
 
 `flow.py` below means `python3 ${CLAUDE_SKILL_DIR}/scripts/flow.py`. `<docs>` is the repository's
-`docs/` folder.
+`docs/` folder. Write the full command each time — `F="python3 …"; $F build` fails in zsh, which
+does not split a variable into words.
 
-## Step 0: New or resume, and how big
+## Step 0: Earlier versions, new or resume, and how big
 
-- `<docs>/.flow/` missing → `flow.py install <docs>` (copies the server and viewer, adds
-  `"flow": "node docs/.flow/server.mjs"` to `package.json`; tell the user it is a shared-repo change).
-- The argument names an existing task → **resume**: `flow.py brief <task.json>`, then
-  `flow.py changes <docs>/<domain>` if it reports changes, and continue at the first stage that is
-  `ask` or `now`. Do not read the whole JSON.
+**Migrate first.** The first time this version runs in a repository, every document an earlier
+`/flow` wrote is moved to the current layout before anything else — never work alongside them:
+
+```bash
+flow.py migrate <docs>
+```
+
+It deletes nothing on its own. It lists the local-server leftovers (`docs/.flow/`, the `"flow"`
+script in `package.json`, the port file), marks which are committed to git, and prints where the same
+documents now open without a server (`docs/index.html`, `docs/<domain>/index.html`). Show the user
+that list and the new paths — the localhost viewer they were using disappears — and run
+`flow.py migrate <docs> --apply` only after they agree. It also lists every v1 task folder (`docs/<task>/` with `data/task.json`) with the domain its
+Figma node points to. Move each one, then read what it printed — the details are in
+`references/documents.md` § Earlier versions:
+
+```bash
+flow.py find <docs> --node <node id>            # pick the domain
+flow.py migrate <docs> --v1 <docs>/<old-task> --domain <id> [--title "<새 도메인 이름>"]
+```
+
+Tell the user in one or two lines what moved; a removed `package.json` script is a shared-repo change.
+
+- The argument names an existing task → **resume**: `flow.py pull <docs>` (answers left in the
+  pages since last time), `flow.py brief <task.json>`, then `flow.py changes <docs>/<domain>` if
+  either reports something, and continue at the first stage that is `ask` or `now`. Do not read the
+  whole JSON.
 - Otherwise → **new**. Find the domain first — never create a folder for a screen that already has one:
 
 ```bash
@@ -69,6 +93,9 @@ flow.py add <docs>/<domain>/tasks/<id>.json grill        # later, when a questio
 
 Add PRD / Figma / Jira URLs to the task's `links` as `{"label", "url"}`.
 
+**After every JSON edit, `flow.py build <docs>`** — the pages are generated, never edited by hand,
+and `check` fails while one is out of date.
+
 ## Step 1: 01 기획 — when `plan` exists
 
 **Read the PRD.**
@@ -103,21 +130,28 @@ Follow `references/sot-map.md`. The SOT map belongs to the domain (`screens.json
 Fetch the Figma screenshot and metadata now — this is the stage the design scan belongs to; detailed
 spacing and token values are still read at implementation time.
 
-- Edit `screens.json`, run `flow.py check`, open the domain page and check every pin sits on its element.
+- Edit `screens.json`, `flow.py build`, `flow.py check`, open the domain page (`<docs>/<domain>/index.html`)
+  and check every pin sits on its element.
 - Each `pending` row becomes a question. Status `ask` while any remain, `done` when none do.
 
 ## Step 3: 03 질문 — whenever a question comes up
 
-`flow.py add <task.json> grill` first if the stage does not exist. Follow `references/questions.md`:
-write the round into `stages.grill.rounds`, open the task page at `#R<n>`, and stop:
+`flow.py add <task.json> grill` first if the stage does not exist. When the questions are about
+states or failure branches, draw them first: `cases` tables above the rounds, each row's UI drawn as
+the app's own modal · toast · banner or a Figma capture, and each question pointing at its row
+(`references/questions.md` § Draw the cases first). Follow `references/questions.md`:
+write the round into `stages.grill.rounds`, `flow.py build`, open `<docs>/<domain>/<task>/03-grill.html#R<n>`,
+and stop:
 
 ```
 화면과 데이터 흐름을 정리했어요. 확인이 필요한 3건을 질문으로 올렸어요.
-열린 페이지에서 답하고 저장한 뒤 "저장했어"라고 알려 주세요.
+열린 페이지에서 답을 고르면 브라우저에 자동으로 저장돼요. 다 쓰면 "답 썼어"라고 알려 주세요.
+(Safari에서 열었다면 '답 복사'를 누른 뒤 "복사했어"라고 알려 주세요.)
 ```
 
-On "저장했어": `flow.py changes <docs>/<domain>`, handle every printed line — write decisions as full
-sentences, apply them to 02 / 04, record `appliedTo` — then `flow.py clear <file> --id R1-Q2 …`.
+On "답 썼어": `flow.py pull <docs>`; on "복사했어": `flow.py pull <docs> --clipboard`. Then
+`flow.py changes <docs>/<domain>`, handle every printed line — write decisions as full sentences,
+apply them to 02 / 04, record `appliedTo` — `flow.py clear <file> --id R1-Q2 …`, `flow.py build`.
 Loop until no round is open. A decided answer the user changes later arrives the same way and must
 be re-applied, never ignored.
 
@@ -133,7 +167,7 @@ cite). For a `tasks`-only task, the conclusion carries the scope in one or two s
   `재사용` / `패턴` from a real look at the codebase. Do not restate behavior the SOT map already
   holds; cite the row.
 - Explore only enough to fill `재사용` / `패턴` for every item, or to confirm nothing exists.
-- Status `ask`, open the task page at `#tasks`, and stop for approval:
+- Status `ask`, `flow.py build`, open `<docs>/<domain>/<task>/04-tasks.html`, and stop for approval:
 
 ```
 계획을 세웠어요. Phase 3개예요: 데이터 → 화면 → 화면 밖 상태.
@@ -158,7 +192,8 @@ Without it, verification is the Phases' `검증:` items. Otherwise fill `stages.
 off-screen state (`V3`: `[[X3]] …`), plus the screens' main states.
 
 - Check each on the real screen — headless browser for web (`/browse`), simulator or device for
-  apps. Mark done only what you actually saw.
+  apps. Mark done only what you actually saw. To capture a flow page itself headless, serve `<docs>`
+  with `python3 -m http.server` and load it over `http://` — a `file://` load renders blank.
 - A defect → a `B<n>` item in the 버그 checklist (증상 · 재현 · 원인 as rows), a `B<n> 수정` item in
   `tasks`, fix, re-check. Three failed attempts on one bug → stop and ask.
 - Finish with the project's deterministic commands (typecheck, lint, tests); only exit codes count.
@@ -172,7 +207,7 @@ With `done`, work its checklist; without it, do the same steps and record them i
   short SHAs.
 - List every remaining `calc` row and server or PRD request.
 - `flow.py check <docs>/<domain>` must pass. Then suggest `/git-pr`; never open the PR from this
-  skill. The PR body links the task and copies its conclusions — reviewers read the PR without the viewer.
+  skill. The PR body links the task and copies its conclusions — reviewers read the PR without opening the pages.
 
 ## Communication Style
 
@@ -190,6 +225,9 @@ Chat messages at a stop are two or three lines plus what the user should do; the
 - **Conclusions and decisions are sentences a person can read.** Never a dotted chain of keywords
 - **Reference by ID, never by path** — `[[S5]]`, `[[R2-Q1]]`, `[[APP-451#P2]]`, `[[login/S3]]`; IDs are never renumbered or reused
 - **Read the brief, not the file** — `flow.py brief`, plus `--stage <key>` for the stage at hand
+- **Earlier versions are migrated before any work** — `flow.py migrate <docs>`; `check` fails while any remain
+- **The pages are generated** — edit the JSON, then `flow.py build`; never edit an HTML page by hand
+- **Answers come from the page through `pull`** — never ask the user to paste an answer the page already holds
 - **A `"by": "user"` mark is handled, then cleared** — `changes` lists them, `clear` removes them; `check` fails while any remain
 - **A revised answer is re-applied everywhere its `appliedTo` lists** before anything else continues
 - **Never invent user-facing text** — no copy in PRD or Figma means a question, with a `blocker`
@@ -197,7 +235,7 @@ Chat messages at a stop are two or three lines plus what the user should do; the
 - **Never write legacy documents** — anything under `docs/` outside a domain folder is read only
 - **`flow.py check` passes before reporting a stage done**
 - **Create a stage only when the task needs it** — `add` it at the moment the need appears, never "just in case"
-- **Open the browser only at a stop**, on the server URL; elsewhere print the URL
-- **Portable by default** — when the host cannot run Node or open a browser, ask the same questions
-  in chat and record the answers in the JSON yourself
+- **Open a page only at a stop** — `open <file>` in the OS default browser; elsewhere print the path
+- **Portable by default** — when the host cannot open a browser or read its storage, ask the same
+  questions in chat and record the answers in the JSON yourself
 - Document text is Korean; this file and the references are English

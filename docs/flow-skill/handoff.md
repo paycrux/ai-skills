@@ -2,6 +2,8 @@
 
 > 다음 세션은 이 문서부터 읽고 시작한다. 브랜치 `feat/flow-skill`, 저장소 `~/projects/ai-skills`.
 
+> **2026-10-28: 로컬 서버를 없애고 정적 HTML + `localStorage` 추출로 바꿨다 — [`redesign.md`](redesign.md) 0절.** 아래 3 · 4 · 8절의 `runtime/`, `server.mjs`, `npm run flow`, `install` 설명은 그 이전 상태다.
+
 ## 1. 목표
 
 ai-skills 1.0.0 메이저 업데이트. 두 가지를 하나로 묶는다.

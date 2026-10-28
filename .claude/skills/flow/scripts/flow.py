@@ -1,66 +1,46 @@
-"""Set up and check /flow documents.
+"""Set up, render and check /flow documents.
 
-    python3 flow.py install <docs>                          copy the server + viewer to <docs>/.flow, add "flow" to package.json
     python3 flow.py find <docs> [--node ID] [--name TEXT] [--path PATH]
     python3 flow.py domain <docs> <domain-id> --title "..." [--kind screens|components] [--figma "..."] [--node ID]... [--path PATH]...
     python3 flow.py task <docs>/<domain> <task-id> --title "..." [--type "..."] [--stages plan,screen,tasks]
     python3 flow.py add <docs>/<domain>/tasks/<task>.json <stage>...
+    python3 flow.py build <docs>                            write every HTML page from the JSON
+    python3 flow.py pull <docs> [--clipboard]               answers the person typed in the pages → JSON ("by": "user")
     python3 flow.py brief <docs>/<domain>/tasks/<task>.json [--stage KEY]   what Claude reads to resume
-    python3 flow.py changes <docs | docs/domain>          what the person changed in the viewer ("by": "user")
-    python3 flow.py clear <file.json> [--id ID]...          drop "by": "user" once handled
+    python3 flow.py changes <docs | docs/domain>            what the person changed ("by": "user")
+    python3 flow.py clear <file.json> [--id ID]...            drop "by": "user" once handled
     python3 flow.py check <docs | docs/domain>
+    python3 flow.py migrate <docs> [--apply] [--v1 <old-task-dir> --domain ID [--title "..."] [--keep]]
     python3 flow.py merge-xml <base.xml> <expanded.xml>... -o <out.xml>
 
 Layout:
 
-    <docs>/.flow/            server.mjs + viewer/ (copied by install; never edit there)
+    <docs>/index.html            every domain (generated)
     <docs>/<domain>/
-      domain.json            title, figma, nodes, paths, links
-      screens.json           SOT map of the domain's screens (markers S1…, off-screen states X1…)
-      tasks/<task-id>.json   one per task: stages plan · screen · grill · tasks · verify · done
-      images/                Figma screenshots and structure XML
+      domain.json                title, figma, nodes, paths, links
+      screens.json               SOT map of the domain's screens (markers S1…, off-screen states X1…)
+      tasks/<task-id>.json       one per task: stages plan · screen · grill · tasks · verify · done
+      images/                    Figma screenshots and structure XML
+      index.html                 domain page: tasks + SOT map (generated)
+      <task-id>/                 index.html + 01-plan.html … 06-done.html (generated)
 
-Everything else under <docs> is legacy: listed by the viewer, never written.
+Everything else under <docs> is legacy: listed on the root page, never written.
 Standard library only, Python 3.9+.
 """
 import argparse
 import json
 import re
-import shutil
-import subprocess
 import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-SKILL = Path(__file__).resolve().parent.parent
-RUNTIME = SKILL / "runtime"
-STAGES = ["plan", "screen", "grill", "tasks", "verify", "done"]
-STATUSES = ("done", "now", "ask", "wait")
-KINDS = {"screens": ("server", "format", "calc", "action", "pending", "out"),
-         "components": ("prop", "slot", "state", "token", "pending", "out")}
-ITEM_ID = re.compile(r"^(S\d+|X\d+|R\d+(-Q\d+)?|P\d+(-[A-Za-z0-9]+)?|[BVD]\d+)$")
-REF = re.compile(r"\[\[([^\]\s]+)\]\]")
-SCRIPT = "node docs/.flow/server.mjs"
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-
-def read_json(path, default=None):
-    path = Path(path)
-    if not path.exists():
-        if default is not None:
-            return default
-        sys.exit(f"없는 파일: {path}")
-    return json.loads(path.read_text())
-
-
-def write_json(path, data):
-    Path(path).write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n")
-
-
-def git(cwd, *args):
-    try:
-        return subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True, check=True).stdout.strip()
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return ""
+import browser  # noqa: E402
+import migrate  # noqa: E402
+import render  # noqa: E402
+from model import (ITEM_ID, KINDS, RESERVED_TASK_IDS, STAGE_KEYS, STATUSES, frame_boxes, git, parse_ref,  # noqa: E402
+                   plain, read_json, scope, task_files, task_items, walk_refs, write_json)
 
 
 def stage_skeleton(key):
@@ -87,55 +67,18 @@ def stage_skeleton(key):
 
 def parse_stages(text):
     keys = [k.strip() for k in text.split(",") if k.strip()]
-    bad = [k for k in keys if k not in STAGES]
+    bad = [k for k in keys if k not in STAGE_KEYS]
     if bad:
-        sys.exit(f"없는 단계: {', '.join(bad)} — {' · '.join(STAGES)} 중에서")
+        sys.exit(f"없는 단계: {', '.join(bad)} — {' · '.join(STAGE_KEYS)} 중에서")
     return keys
 
 
-def domains_of(docs):
-    return sorted(p for p in Path(docs).iterdir() if p.is_dir() and (p / "domain.json").exists())
+def docs_of(target):
+    docs, _ = scope(target)
+    return docs
 
 
-def scope(target):
-    """A docs folder or one domain folder → (docs root, [domain dirs])."""
-    t = Path(target)
-    if (t / "domain.json").exists():
-        return t.parent, [t]
-    if not t.is_dir():
-        sys.exit(f"없는 폴더: {t}")
-    return t, domains_of(t)
-
-
-# ---------------------------------------------------------------- install / domain / task
-
-def cmd_install(args):
-    docs = Path(args.docs).resolve()
-    docs.mkdir(parents=True, exist_ok=True)
-    dest = docs / ".flow"
-    if dest.exists():
-        shutil.rmtree(dest)
-    shutil.copytree(RUNTIME, dest, ignore=shutil.ignore_patterns(".DS_Store"))
-    print(f"서버 · 뷰어를 복사했어요: {dest}")
-    top = Path(git(docs, "rev-parse", "--show-toplevel") or docs.parent)
-    rel = docs.relative_to(top) if docs.is_relative_to(top) else None
-    script = f"node {rel.as_posix()}/.flow/server.mjs" if rel else f"node {dest}/server.mjs"
-    pkg = top / "package.json"
-    if not pkg.exists():
-        print(f"package.json이 없어요. 실행은: {script}")
-        return
-    data = json.loads(pkg.read_text())
-    scripts = data.setdefault("scripts", {})
-    if scripts.get("flow") == script:
-        print("package.json에 flow 스크립트가 이미 있어요")
-    elif "flow" in scripts:
-        print(f"package.json의 flow 스크립트가 다른 명령이라 그대로 뒀어요: {scripts['flow']} — 실행은: {script}")
-    else:
-        scripts["flow"] = script
-        indent = 2 if '\n  "' in pkg.read_text() else 4
-        pkg.write_text(json.dumps(data, ensure_ascii=False, indent=indent) + "\n")
-        print(f'package.json에 "flow": "{script}"를 넣었어요 — 공유 저장소 변경이니 팀에 한 번 알려 주세요')
-
+# ---------------------------------------------------------------- domain / task
 
 def cmd_find(args):
     _, doms = scope(args.docs)
@@ -182,8 +125,8 @@ def cmd_task(args):
     path = root / "tasks" / f"{args.id}.json"
     if path.exists():
         sys.exit(f"이미 있는 작업이에요: {path}")
-    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9-]*", args.id):
-        sys.exit("작업 ID는 지라 키(APP-452)나 짧은 영어 이름(bug-bottom-inset)으로")
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9-]*", args.id) or args.id.lower() in RESERVED_TASK_IDS:
+        sys.exit("작업 ID는 지라 키(APP-452)나 짧은 영어 이름(bug-bottom-inset)으로 — tasks · images · index는 쓸 수 없어요")
     stages = {k: stage_skeleton(k) for k in parse_stages(args.stages)}
     task = {"id": args.id, "title": args.title, "type": args.type,
             "branch": args.branch or git(root, "branch", "--show-current"), "links": [], "stages": stages}
@@ -199,16 +142,62 @@ def cmd_add(args):
         if k not in task["stages"]:
             task["stages"][k] = stage_skeleton(k)
             made.append(k)
-    task["stages"] = {k: task["stages"][k] for k in STAGES if k in task["stages"]}
+    task["stages"] = {k: task["stages"][k] for k in STAGE_KEYS if k in task["stages"]}
     write_json(args.task, task)
     print(f"추가했어요: {', '.join(made) if made else '이미 다 있어요'}")
 
 
+# ---------------------------------------------------------------- build / pull
+
+def cmd_build(args):
+    docs = docs_of(args.target)
+    server, v1 = migrate.detect(docs)
+    site, total, written, removed = render.build(docs)
+    print(f"HTML {total}쪽 — 새로 쓴 것 {written}" + (f", 지운 것 {len(removed)}" if removed else ""))
+    print(f"열기: {(site.docs / site.root).resolve()}")
+    if server or v1:
+        print("이전 버전 문서가 남아 있어요 — flow.py migrate " + str(docs))
+
+
+def cmd_pull(args):
+    docs = docs_of(args.target)
+    pulled = []
+    if args.clipboard:
+        parsed = browser.parse_copied(browser.read_clipboard())
+        if not parsed:
+            sys.exit("클립보드에 flow 답이 없어요 — 페이지에서 '답 복사'를 한 번 더 눌러 주세요")
+        d, t, state = parsed
+        pulled.append((d, t, state, "클립보드"))
+    else:
+        for tag, (state, label) in sorted(browser.browser_answers(docs).items()):
+            d, t = tag.split("/", 1)
+            pulled.append((d, t, state, label))
+    if not pulled:
+        print("브라우저에 저장된 답이 없어요.\n"
+              "- 방금 입력했다면 10초쯤 뒤에 다시 해요 (브라우저가 디스크에 쓰는 데 몇 초 걸려요)\n"
+              "- Safari · Firefox에서 입력했다면 페이지의 '답 복사'를 누르게 하고 flow.py pull --clipboard")
+        return
+    any_change = False
+    for d, t, state, label in pulled:
+        path = docs / d / "tasks" / f"{t}.json"
+        if not path.exists():
+            print(f"{d}/{t}: 작업 파일이 없어서 건너뜀 ({label})")
+            continue
+        task = read_json(path)
+        if int(state.get("updatedAt") or 0) <= int(task.get("pulledAt") or 0):
+            print(f"{d}/{t}: 이미 반영한 답이에요 ({label})")
+            continue
+        lines = browser.merge(task, state)
+        write_json(path, task)
+        print(f"{d}/{t} ← {label}" + ("" if lines else " · 바뀐 것 없음"))
+        for line in lines:
+            print(f"- {line}")
+        any_change = any_change or bool(lines)
+    if any_change:
+        print(f"\n다음: flow.py changes {docs} → 처리 → clear → build")
+
+
 # ---------------------------------------------------------------- brief
-
-def plain(text):
-    return re.sub(r"<[^>]+>", "", str(text))
-
 
 def stage_line(key, st):
     if key == "grill":
@@ -224,10 +213,10 @@ def cmd_brief(args):
     t = read_json(args.task)
     stages = t.get("stages", {})
     print(f"{t['id']} {t['title']} · {t.get('type', '')} · {t.get('branch', '')}")
-    for k in STAGES:
+    for k in STAGE_KEYS:
         if k in stages:
             print("  " + stage_line(k, stages[k]))
-    keys = [args.stage] if args.stage else [k for k in STAGES if k in stages]
+    keys = [args.stage] if args.stage else [k for k in STAGE_KEYS if k in stages]
     for k in keys:
         st = stages.get(k)
         if not st:
@@ -285,8 +274,10 @@ def describe(trail, node):
         lines = []
         if node.get("choice") == "unsure":
             lines.append(f"{tag}: '더 설명해줘' — 빠진 설명을 붙여 다음 라운드에서 다시 물어요")
+        elif not node.get("choice") and not node.get("note") and not node.get("copy"):
+            lines.append(f"{tag}: 사람이 답을 지움 — 결정을 되돌릴지 물어요")
         else:
-            note = f" · 메모 \"{node['note']}\"" if node.get("note") else ""
+            note = (f" · 문구 \"{node['copy']}\"" if node.get("copy") else "") + (f" · 메모 \"{node['note']}\"" if node.get("note") else "")
             lines.append(f"{tag}: 답 '{node.get('choice')}'{note} — 결정 문장을 쓰거나 고치고 반영한 곳(appliedTo)에 옮겨요")
         if node.get("followUp"):
             lines.append(f"{tag}: 되물음 \"{node['followUp']}\" — 답해야 해요")
@@ -302,7 +293,7 @@ def cmd_changes(args):
     docs, doms = scope(args.target)
     found = 0
     for d in doms:
-        for f in [d / "domain.json", d / "screens.json", *sorted((d / "tasks").glob("*.json"))]:
+        for f in [d / "domain.json", d / "screens.json", *task_files(d)]:
             if not f.exists():
                 continue
             marks = list(user_marks(read_json(f)))
@@ -316,14 +307,13 @@ def cmd_changes(args):
     if not found:
         print("사람이 바꾼 것이 없어요")
     else:
-        print("\n바뀐 내용 전체: git diff -- " + " ".join(str(d) for d in doms) + "\n처리한 뒤: flow.py clear <파일> [--id …]")
+        print("\n처리한 뒤: flow.py clear <파일> [--id …] → flow.py build " + str(docs))
 
 
 def cmd_clear(args):
     data = read_json(args.file)
     ids = set(args.id or [])
-    marks = list(user_marks(data))
-    for trail, node in marks:
+    for trail, node in list(user_marks(data)):
         names = {node.get("id"), question_tag(trail) if "choice" in node else None, trail[-1] if trail else None}
         if not ids or names & ids:
             del node["by"]
@@ -333,53 +323,6 @@ def cmd_clear(args):
 
 
 # ---------------------------------------------------------------- check
-
-def frame_boxes(path):
-    root = ET.fromstring(Path(path).read_text())
-    boxes = {}
-
-    def walk(node, ox, oy, top):
-        x = ox + (0 if top else float(node.get("x", 0)))
-        y = oy + (0 if top else float(node.get("y", 0)))
-        boxes[node.get("id")] = (x, y, float(node.get("width", 0)), float(node.get("height", 0)))
-        for child in node:
-            walk(child, x, y, False)
-
-    walk(root, 0, 0, True)
-    return boxes
-
-
-def walk_refs(node, owner, visit):
-    if isinstance(node, str):
-        for m in REF.finditer(node):
-            visit(m.group(1), owner)
-    elif isinstance(node, list):
-        for x in node:
-            walk_refs(x, owner, visit)
-    elif isinstance(node, dict):
-        here = owner
-        if isinstance(node.get("id"), str) and ITEM_ID.match(node["id"]):
-            here = node["id"]
-        elif isinstance(node.get("id"), str) and re.fullmatch(r"Q\d+", node["id"]) and re.fullmatch(r"R\d+", owner or ""):
-            here = f"{owner}-{node['id']}"
-        for k, v in node.items():
-            if k != "id":
-                walk_refs(v, here, visit)
-
-
-def parse_ref(raw, domain, task):
-    item = raw
-    if "/" in raw:
-        domain, item = raw.split("/", 1)
-    if "#" in item:
-        t, item = item.split("#", 1)
-        return domain, t, item
-    if not ITEM_ID.match(item):
-        return domain, item, None
-    if re.fullmatch(r"[SX]\d+", item):
-        return domain, None, item
-    return domain, task, item
-
 
 class Index:
     def __init__(self, docs):
@@ -396,14 +339,9 @@ class Index:
                 for s in read_json(d / "screens.json", {}).get("screens", []):
                     sot_ids |= {m.get("id") for m in s.get("markers", [])} | {o.get("id") for o in s.get("offscreen", [])}
                 tasks = {}
-                for f in (d / "tasks").glob("*.json"):
+                for f in task_files(d):
                     t = read_json(f)
-                    ids = set()
-                    collect_ids(t.get("stages", {}), ids)
-                    for r in ((t.get("stages") or {}).get("grill") or {}).get("rounds", []):
-                        ids.add(r["id"])
-                        ids |= {f"{r['id']}-{q['id']}" for q in r.get("questions", [])}
-                    tasks[t["id"]] = ids
+                    tasks[t["id"]] = set(task_items(t))
                 self.cache[name] = (sot_ids, tasks)
         return self.cache[name]
 
@@ -417,17 +355,6 @@ class Index:
         if task not in tasks:
             return False
         return item is None or item in tasks[task]
-
-
-def collect_ids(node, out):
-    if isinstance(node, dict):
-        if isinstance(node.get("id"), str):
-            out.add(node["id"])
-        for v in node.values():
-            collect_ids(v, out)
-    elif isinstance(node, list):
-        for v in node:
-            collect_ids(v, out)
 
 
 def check_domain(d, index, problems):
@@ -448,7 +375,7 @@ def check_domain(d, index, problems):
         boxes = {}
         meta = d / s.get("metadata", "")
         if s.get("metadata") and meta.exists():
-            boxes = frame_boxes(meta)
+            boxes = frame_boxes(meta)[2]
         elif s.get("metadata"):
             problems.append(f"{name}/screens.json 화면 {s.get('id')}: 구조 파일이 없어요 ({s['metadata']})")
         if s.get("image") and not (d / s["image"]).exists():
@@ -462,9 +389,9 @@ def check_domain(d, index, problems):
             seen.add(mid)
             if m.get("kind") not in kinds:
                 problems.append(f"{name}/screens.json {mid}: 이 도메인의 kind는 {'/'.join(kinds)} 중 하나")
-            if "node" in m and boxes and m["node"] not in boxes:
+            if m.get("node") and boxes and m["node"] not in boxes:
                 problems.append(f"{name}/screens.json {mid}: 구조 파일에 없는 노드 {m['node']} — merge-xml로 컴포넌트 안쪽을 합쳤는지 확인")
-            if "node" not in m and not ("x" in m and "y" in m):
+            if not m.get("node") and not ("x" in m and "y" in m):
                 problems.append(f"{name}/screens.json {mid}: node 또는 x · y가 있어야 해요")
         for o in s.get("offscreen", []):
             oid = o.get("id", "")
@@ -472,7 +399,7 @@ def check_domain(d, index, problems):
                 problems.append(f"{name}/screens.json: 화면 밖 상태 ID {oid or o.get('state')}가 X + 번호가 아니거나 겹쳐요")
             seen.add(oid)
     walk_refs(sot, None, lambda raw, owner: check_ref(raw, name, None, index, problems, f"{name}/screens.json"))
-    for f in sorted((d / "tasks").glob("*.json")):
+    for f in task_files(d):
         check_task(f, name, index, problems)
 
 
@@ -489,13 +416,15 @@ def check_task(f, domain, index, problems):
     t = read_json(f)
     if t.get("id") != f.stem:
         problems.append(f"{rel}: id({t.get('id')})가 파일 이름과 달라요")
+    if str(t.get("id", "")).lower() in RESERVED_TASK_IDS:
+        problems.append(f"{rel}: 작업 ID로 tasks · images · index는 쓸 수 없어요")
     if not t.get("title"):
         problems.append(f"{rel}: title이 없어요")
     stages = t.get("stages") or {}
     if not stages:
         problems.append(f"{rel}: 단계가 하나도 없어요 — flow.py add로 만들어요")
     for k, st in stages.items():
-        if k not in STAGES:
+        if k not in STAGE_KEYS:
             problems.append(f"{rel}: 없는 단계 {k}")
             continue
         if k == "grill":
@@ -547,16 +476,58 @@ def cmd_check(args):
     docs, doms = scope(args.target)
     index = Index(docs)
     problems = []
-    if not (docs / ".flow/server.mjs").exists():
-        problems.append(f"{docs}/.flow가 없어요 — flow.py install {docs}")
+    server, v1 = migrate.detect(docs)
+    if server or v1:
+        problems.append(f"이전 버전 flow 문서가 있어요 ({', '.join(p.name for p in server + v1)}) — flow.py migrate {docs}")
     for d in doms:
         check_domain(d, index, problems)
+    problems += [f"HTML: {s} — flow.py build {docs}" for s in render.stale(docs)]
     if problems:
         print(f"문제 {len(problems)}건")
         for p in problems:
             print(f"- {p}")
         sys.exit(1)
     print(f"문제 없음 — 도메인 {len(doms)}")
+
+
+# ---------------------------------------------------------------- migrate
+
+def cmd_migrate(args):
+    docs = Path(args.docs)
+    if args.v1:
+        if not args.domain:
+            sys.exit("--v1에는 --domain이 필요해요 — flow.py find로 맞는 도메인을 먼저 찾아요")
+        for line in migrate.convert_v1(docs, args.v1, args.domain, args.title, args.keep):
+            print(line)
+        render.build(docs)
+        print(f"HTML을 다시 만들었어요 — 다음: flow.py check {docs}")
+        return
+    server, v1 = migrate.detect(docs)
+    if not server and not v1:
+        print("옮길 이전 버전 문서가 없어요")
+        return
+    if server and not args.apply:
+        print("이전 로컬 서버 방식의 파일이에요. 아직 지우지 않았어요:")
+        for line in migrate.plan_server(docs):
+            print(line)
+        root = render.Site(docs).root
+        print(f"같은 문서는 서버 없이 {docs / root} 와 {docs}/<도메인>/index.html 에서 열려요")
+        print(f"사용자에게 위 목록과 새 경로를 알리고 확인받은 뒤: flow.py migrate {docs} --apply")
+    elif server:
+        for line in migrate.clean_server(docs):
+            print(line)
+    for d in v1:
+        sot = read_json(d / "data" / "sot.json", {})
+        nodes = [s.get("figma", "").split()[0] for s in sot.get("screens", []) if s.get("figma")]
+        hint = ""
+        for n in nodes:
+            for dom in sorted(p for p in docs.iterdir() if (p / "domain.json").exists()):
+                if n in json.dumps(read_json(dom / "screens.json", {}), ensure_ascii=False) or n in read_json(dom / "domain.json").get("nodes", []):
+                    hint = f" — 노드 {n}가 도메인 {dom.name}에 있어요"
+        title = read_json(d / "data" / "task.json").get("title", d.name)
+        print(f"v1 작업 폴더: {d.name} ({title}){hint}\n  옮기기: flow.py migrate {docs} --v1 {d} --domain <도메인 ID> [--title \"<새 도메인 이름>\"]")
+    site, total, written, removed = render.build(docs)
+    print(f"HTML {total}쪽을 다시 만들었어요")
 
 
 # ---------------------------------------------------------------- merge-xml
@@ -585,9 +556,6 @@ def cmd_merge_xml(args):
 def main():
     ap = argparse.ArgumentParser(description="flow documents tool")
     sub = ap.add_subparsers(dest="cmd", required=True)
-    p = sub.add_parser("install")
-    p.add_argument("docs")
-    p.set_defaults(fn=cmd_install)
     p = sub.add_parser("find")
     p.add_argument("docs")
     p.add_argument("--node")
@@ -609,15 +577,22 @@ def main():
     p.add_argument("--title", required=True)
     p.add_argument("--type", default="기능 개발")
     p.add_argument("--branch")
-    p.add_argument("--stages", default="tasks", help="comma-separated: " + ",".join(STAGES))
+    p.add_argument("--stages", default="tasks", help="comma-separated: " + ",".join(STAGE_KEYS))
     p.set_defaults(fn=cmd_task)
     p = sub.add_parser("add")
     p.add_argument("task")
     p.add_argument("stages", nargs="+")
     p.set_defaults(fn=cmd_add)
+    p = sub.add_parser("build")
+    p.add_argument("target")
+    p.set_defaults(fn=cmd_build)
+    p = sub.add_parser("pull")
+    p.add_argument("target")
+    p.add_argument("--clipboard", action="store_true")
+    p.set_defaults(fn=cmd_pull)
     p = sub.add_parser("brief")
     p.add_argument("task")
-    p.add_argument("--stage", choices=STAGES)
+    p.add_argument("--stage", choices=STAGE_KEYS)
     p.set_defaults(fn=cmd_brief)
     for name, fn in (("changes", cmd_changes), ("check", cmd_check)):
         p = sub.add_parser(name)
@@ -627,6 +602,14 @@ def main():
     p.add_argument("file")
     p.add_argument("--id", action="append")
     p.set_defaults(fn=cmd_clear)
+    p = sub.add_parser("migrate")
+    p.add_argument("docs")
+    p.add_argument("--v1")
+    p.add_argument("--domain")
+    p.add_argument("--title")
+    p.add_argument("--keep", action="store_true")
+    p.add_argument("--apply", action="store_true")
+    p.set_defaults(fn=cmd_migrate)
     p = sub.add_parser("merge-xml")
     p.add_argument("base")
     p.add_argument("expanded", nargs="+")
