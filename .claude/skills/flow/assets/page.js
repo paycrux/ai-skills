@@ -76,6 +76,17 @@
     hot(p.dataset.i, false);
   }));
 
+  // ------------------------------------------------------------ export menu
+
+  $$("[data-share]").forEach((b) => b.addEventListener("click", async () => {
+    const ok = await copyPlain((data.share || {})[b.dataset.share] || "");
+    toast(ok ? "복사했어요 · 슬랙 본문이나 지라 댓글에 붙여 넣으면 돼요" : "복사하지 못했어요");
+  }));
+  document.addEventListener("click", (e) => {
+    const menu = $("details.export[open]");
+    if (menu && !menu.contains(e.target)) menu.open = false;
+  });
+
   // ------------------------------------------------------------ jump to #id
 
   const reveal = (el) => {
@@ -289,7 +300,11 @@
   }
 
   async function copy() {
-    const text = copyText();
+    const ok = await copyPlain(copyText());
+    toast(ok ? "복사했어요 · 슬랙에 붙이거나 채팅에 '복사했어'라고 알려 주세요" : "복사하지 못했어요");
+  }
+
+  async function copyPlain(text) {
     let ok = false;
     try {
       await navigator.clipboard.writeText(text);
@@ -302,7 +317,7 @@
       ok = document.execCommand("copy");
       ta.remove();
     }
-    toast(ok ? "복사했어요 · 슬랙에 붙이거나 채팅에 '복사했어'라고 알려 주세요" : "복사하지 못했어요");
+    return ok;
   }
 
   if (hasForms && !chromium && store.get("flow-banner-off") !== "1") {

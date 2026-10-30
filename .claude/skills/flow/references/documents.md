@@ -13,10 +13,11 @@ page · reading for tokens · legacy documents · earlier versions
   │ ├ screens.json             the domain's SOT map — see sot-map.md
   │ ├ tasks/<task-id>.json     one per task; the ID is the Jira key or a short English slug
   │ ├ images/                  Figma screenshots and structure XML
+  │ ├ diagrams/                Archify flow diagrams: <task>-<slug>.json (candidate) + .html
   │ ├ prd.md                   PRD snapshot when one was fetched
   │ ├ index.html               the domain's tasks and SOT map                       (generated)
   │ └ <task-id>/               index.html (every stage's conclusion) + 01-plan.html … 06-done.html (generated)
-  │   └ share/                 plan.html · backend.md … copies for people outside the flow (flow.py export)
+  │   └ share/                 plan.html · plan.md · backend.html · backend.md — copies to send outside (generated)
   └ <anything else>            legacy — listed on the root page, never written
 ```
 
@@ -78,7 +79,9 @@ page · reading for tokens · legacy documents · earlier versions
   question page and the task cover alike, and shows nothing once every round is closed.
 - Block types: `text` (`html`, `"style": "bridge"` for a tinted connecting note), `quote` (`items`),
   `table` (`columns`, `rows`), `checklist` (`id`, `title`, `items`), `cases` (`id`, `columns`,
-  `rows` with drawn UI — see `questions.md` § Draw the cases first). Any block takes `sub` for a
+  `rows` with drawn UI — see `questions.md` § Draw the cases first), `diagram` (`src` — an Archify
+  page under the domain's `diagrams/`, `height` in px; shown in place, `check` fails when the file
+  is missing — see SKILL.md § Step 1). Any block takes `sub` for a
   small line under its title. The `grill` stage may carry `blocks` too; they render above the rounds.
 - Anything that compares or classifies — PRD vs Figma, frame kinds, before vs after — is a `table`,
   never a `text` block of `라벨: …<br>` lines. The first column is the row's name; `“…”` in a cell
@@ -122,6 +125,7 @@ path, so the whole `docs/` folder works from disk, from a zip, or from another c
 | `docs/index.html` | every domain with its open tasks; legacy files at the bottom |
 | `docs/<domain>/index.html` | the domain's tasks and SOT map (pins ⇄ rows, which task items cite each row) |
 | `docs/<domain>/<task>/index.html` | every stage's conclusion on one page |
+| `docs/<domain>/<task>/share/*` | copies to send outside, one per audience and format — opened from the 내보내기 menu on the task's pages; images are inlined, not linked |
 | `docs/<domain>/<task>/0N-<stage>.html` | one stage; `#P2-1`, `#R1-Q2`, `#S5` jump to an item |
 
 The left nav is one tree on every page: 전체 문서, then each domain (only the current one open) with

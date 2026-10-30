@@ -8,12 +8,32 @@ import re
 from pathlib import Path
 
 from model import DEFAULT_OPTIONS, REF, parse_ref, plain, read_json
-from render import (FONTS, Ctx, Site, asset, cases, copy_marks, esc, heading, mock_theme, mocks_html, needs_answer,
-                    question_homes)
+from render import (FONTS, Ctx, Site, asset, blocks, cases, copy_marks, esc, heading, mock_theme, mocks_html,
+                    needs_answer, question_homes)
 
 AUDIENCES = {"plan": "기획 · 디자인", "backend": "백엔드"}
 ASK = {"plan": ("확인 요청", "확인할 것", "질문"), "backend": ("요청", "요청할 것", "요청")}
 TECH_KEYS = {"enum", "서버", "백엔드", "코드", "api", "앱 코드", "스키마"}
+
+
+def headline(site, d, task, who, n):
+    title, count_word, word = ASK[who]
+    stamp = site.domains[d].get("mtimes", {}).get(task["id"])
+    day = datetime.date.fromtimestamp(stamp) if stamp else datetime.date.today()
+    when = f"{day.month}/{day.day} 기준"
+    if n:
+        return f"{AUDIENCES[who]} {title} · {when} · {count_word} {n}건", f"답은 이 파일을 받은 스레드에 “{word} 번호”와 함께 남겨 주세요."
+    lead = "질문은 모두 정해졌어요. 아래 표가 확정된 내용이에요." if who == "plan" else "지금 요청할 것은 없어요. 아래는 이미 정한 내용이에요."
+    return f"{AUDIENCES[who]} 공유 · 확정본 · {when}", lead
+
+
+def diagrams(task):
+    plan = (task.get("stages") or {}).get("plan") or {}
+    return [b for b in plan.get("blocks", []) if b.get("type") == "diagram"]
+
+
+def wanted(task):
+    return "grill" in (task.get("stages") or {}) or bool(diagrams(task))
 
 
 def audiences(q):
@@ -48,6 +68,10 @@ class ShareCtx(Ctx):
 
     def rich(self, text):
         return REF.sub(lambda m: f'<span class="ref-name">‘{esc(self.label(m.group(1)))}’</span>', str(text if text is not None else ""))
+
+    def frame(self, target):
+        path = self.site.docs / target
+        return f'srcdoc="{esc(path.read_text())}"' if path.is_file() else ""
 
     def href(self, target):
         path = self.site.docs / target.split("#")[0]
@@ -144,9 +168,10 @@ def to_html(site, d, task, who):
         if done:
             lis = "".join(f'<li><b>{ctx.rich(q.get("title", ""))}</b><div>{ctx.rich(q["decision"])}</div></li>' for r, q in done)
             parts.append(f'<h2>이미 정한 것</h2><ul class="sq-done">{lis}</ul>')
-    today = datetime.date.today()
-    meta = f'{AUDIENCES[who]} {title} · {today.month}/{today.day} · {count_word} {len(items)}건'
-    how = f'<p class="note">답은 이 파일을 받은 스레드에 “{word} 번호”와 함께 남겨 주세요.</p>' if items else ""
+    if diagrams(task):
+        parts.insert(0, blocks(ctx, {"blocks": diagrams(task)}))
+    meta, lead = headline(site, d, task, who, len(items))
+    how = f'<p class="note">{esc(lead)}</p>'
     body = (f'<div class="head"><h1>{esc(task.get("title", task["id"]))}</h1><p class="meta">{esc(meta)}</p>{how}</div>'
             f'{"".join(parts) or "<p class=note>지금은 보낼 것이 없어요.</p>"}')
     return ("<!doctype html>\n<html lang=\"ko\"><head><meta charset=\"utf-8\">"
@@ -192,11 +217,10 @@ def to_md(site, d, task, who):
     numbers = {f"{r['id']}-{q['id']}": f"{word} {i}" for i, (r, q) in enumerate(items, 1)}
     ctx = ShareCtx(site, d, task["id"], numbers)
     cards = {f"{r['id']}-{q['id']}": q_md(ctx, i, q, who, word) for i, (r, q) in enumerate(items, 1)}
-    today = datetime.date.today()
-    out = [f"# {task.get('title', task['id'])}", "",
-           f"{AUDIENCES[who]} {title} · {today.month}/{today.day} · {count_word} {len(items)}건"]
-    if items:
-        out += ["", f"답은 이 스레드에 “{word} 번호”와 함께 남겨 주세요."]
+    meta, lead = headline(site, d, task, who, len(items))
+    out = [f"# {task.get('title', task['id'])}", "", meta, "", lead.replace("이 파일을 받은 ", "이 ")]
+    for b in diagrams(task):
+        out += ["", f"## {b.get('title') or '흐름도'}", ""] + ([md_text(ctx, b["sub"]), ""] if b.get("sub") else []) + ["그림은 HTML 공유본에서 볼 수 있어요."]
     if who == "plan":
         homes = question_homes(stage)
         used = set()
@@ -228,13 +252,30 @@ def to_md(site, d, task, who):
     return "\n".join(out).rstrip() + "\n", len(items)
 
 
+def share_path(t, who, fmt):
+    return f"{t}/share/{who}.{'html' if fmt == 'html' else 'md'}"
+
+
+def pages(site, d, t):
+    """→ {path relative to docs: text} for every shared copy of a task, plus the menu's numbers."""
+    task = site.domains[d]["tasks"][t]
+    out, info = {}, {}
+    for who in AUDIENCES:
+        page, n = to_html(site, d, task, who)
+        text, _ = to_md(site, d, task, who)
+        out[f"{d}/{share_path(t, who, 'html')}"] = page
+        out[f"{d}/{share_path(t, who, 'md')}"] = text
+        info[who] = {"n": n, "md": text}
+    return out, info
+
+
 def export(task_file, who, fmt, out=None):
     task_file = Path(task_file).resolve()
     domain_dir = task_file.parent.parent
     site = Site(domain_dir.parent)
     task = site.domains[domain_dir.name]["tasks"][read_json(task_file)["id"]]
     text, n = (to_html if fmt == "html" else to_md)(site, domain_dir.name, task, who)
-    path = Path(out) if out else domain_dir / task["id"] / "share" / f"{who}.{'html' if fmt == 'html' else 'md'}"
+    path = Path(out) if out else domain_dir / share_path(task["id"], who, fmt)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text)
     return path, n, text

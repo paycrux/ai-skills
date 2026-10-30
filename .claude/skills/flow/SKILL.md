@@ -79,6 +79,9 @@ Then create the task with only the stages it needs; add more the moment a need a
 | A change that does not touch what a screen gets from the server — style, copy, logic, a bug | `tasks` | |
 | A screen that draws server data is built or changes what it shows | `plan,screen,tasks` | |
 
+Whatever the row, add `plan` when a PRD (기획서) section covers the task — a failure branch, a policy,
+copy — even with no screen. Never leave 01 skipped while the PRD holds rules the task follows.
+
 ```bash
 flow.py task <docs>/<domain> <JIRA-KEY or short-slug> --title "<한국어 제목>" --type "<기능 개발|기능 수정|버그 수정>" --stages tasks
 flow.py add <docs>/<domain>/tasks/<id>.json grill        # later, when a question needs an answer
@@ -87,7 +90,8 @@ flow.py add <docs>/<domain>/tasks/<id>.json grill        # later, when a questio
 | When | Add |
 |---|---|
 | A question needs the user's answer | `grill` |
-| The work turns out to change what a screen shows from server data | `screen` (and `plan` if a PRD is involved) |
+| The work turns out to change what a screen shows from server data | `screen` |
+| A PRD section turns out to cover the task | `plan` |
 | The result has to be checked on a real screen, state by state | `verify` |
 | Requests to the server or PRD remain to hand over at the end | `done` |
 
@@ -122,6 +126,24 @@ verbatim, with their section number; user-facing copy (snackbar, modal, inline e
 — 02 and 04 cite it from here. Conclusion: what gets built, what does not, which scope questions are
 open. Status `done` when none are open, `ask` otherwise. One Figma section bundling several
 independent features for several Jira stories belongs to `/tracker`; say so before going further.
+
+**Draw the server ↔ app flow** when the task depends on what the server does — an API call, a
+payment or issue step, a callback, an error code that picks the screen. Use the `archify` skill and
+follow its own instructions, with these fixed choices:
+
+- Type `sequence` for calls back and forth (app → server → external → back, with the failure
+  branches as alternatives); `workflow` when it is a process with decision points rather than calls.
+- Participants are the ones the reader knows: 사용자, 앱, 결제창 (WebView), 우리 서버, external
+  services by name. Labels in Korean; endpoints, error codes and fields as code.
+- Source is the PRD and the code you actually read (backend repository when it is available). Mark
+  a step nobody confirmed as such instead of guessing it.
+- Files go in the domain: candidate `<docs>/<domain>/diagrams/<task>-<slug>.json`, output
+  `<docs>/<domain>/diagrams/<task>-<slug>.html`; pass `--out-dir <docs>/<domain>/diagrams/.receipts`
+  to `finalize`. Only a passing `finalize` counts.
+- Add a block to `stages.plan.blocks`, after the quotes:
+  `{"type": "diagram", "title": "서버 · 앱 흐름", "sub": "<what it covers>", "src": "diagrams/<task>-<slug>.html", "height": 600}`.
+  The 01 page shows it in place, and the shared copies carry it inside the file.
+- When a later answer changes the flow, edit the candidate, rerun `finalize`, rebuild.
 
 ## Step 2: 02 화면 · SOT 맵 — when `screen` exists
 
@@ -213,22 +235,25 @@ With `done`, work its checklist; without it, do the same steps and record them i
 
 ## Sharing outside the flow
 
-When the user wants to send questions to 기획 · 디자인 or 백엔드 ("공유", "보내", "내보내기"), the
-pages are the wrong thing to send: they mix both audiences, show internal IDs, and an answer typed
-in them stays in the reader's own browser. Export a copy for one audience instead.
+The pages are the wrong thing to send to 기획 · 디자인 or 백엔드: they mix both audiences, show
+internal IDs, and an answer typed in them stays in the reader's own browser. So `flow.py build`
+also writes, for every task with a `grill` stage, one copy per audience into
+`<docs>/<domain>/<task>/share/` — `plan.html` · `plan.md` · `backend.html` · `backend.md` — and
+every page of that task carries a 내보내기 menu at the top right. The person picks who and which
+format there: HTML 파일 (drawn case tables, images inside, one file to attach) or 텍스트 복사
+(Markdown on the clipboard for a Slack message or Jira comment).
 
-1. Ask who it is for and which format, unless the user already said — two choices, one question
-   each: 기획 · 디자인 / 백엔드, and HTML 파일 (drawn case tables, images inside, one file to attach)
-   / 텍스트 (Markdown for a Slack message or Jira comment, images dropped). Never pick for them.
-2. Make sure every open question that audience must answer has `to` set (`references/questions.md`).
-3. `flow.py export <task.json> --to plan|backend --format html|md` — add `--copy` for text to put it
-   on the clipboard. It writes `<docs>/<domain>/<task>/share/<to>.<ext>` and prints the path.
-   - 기획 · 디자인: each cases table with the questions it holds right below it, code-only cells
-     (`enum`) and context rows (`enum`, `서버`, `코드`, `API`, `스키마`) left out.
-   - 백엔드: the requests with their code evidence, then what is already decided.
-   - IDs show as names (‘일부 발급 실패, 실패분 환불 성공’, 질문 2); nothing to answer in the file.
-4. Answers come back in the thread. When the user pastes them, record them as chat answers
-   (`references/questions.md` § When answers cannot come from the page) and continue from there.
+- 기획 · 디자인: each cases table with the questions it holds right below it; code-only cells
+  (`enum`) and context rows (`enum`, `서버`, `코드`, `API`, `스키마`) left out.
+- 백엔드: the requests with their code evidence, then what is already decided.
+- IDs show as names (‘일부 발급 실패, 실패분 환불 성공’, 질문 2); nothing to answer in the file.
+  With no open question for that audience the copy is titled 확정본 instead of a request.
+- Keep `to` set on every question someone outside must settle (`references/questions.md`) — it
+  decides which copy a question lands in.
+- When the user asks in chat instead, point them to the menu, or run
+  `flow.py export <task.json> --to plan|backend --format html|md [-o FILE] [--copy]`.
+- Answers come back in the thread. When the user pastes them, record them as chat answers
+  (`references/questions.md` § When answers cannot come from the page) and continue from there.
 
 ## Communication Style
 
@@ -250,7 +275,7 @@ Chat messages at a stop are two or three lines plus what the user should do; the
 - **Earlier versions are migrated before any work** — `flow.py migrate <docs>`; `check` fails while any remain
 - **The pages are generated** — edit the JSON, then `flow.py build`; never edit an HTML page by hand
 - **Answers come from the page through `pull`** — never ask the user to paste an answer the page already holds
-- **Share an export, never the pages** — `flow.py export` per audience; the user picks the format
+- **Share an export, never the pages** — the 내보내기 menu on each task page; the person picks audience and format
 - **A `"by": "user"` mark is handled, then cleared** — `changes` lists them, `clear` removes them; `check` fails while any remain
 - **A revised answer is re-applied everywhere its `appliedTo` lists** before anything else continues
 - **Never invent user-facing text** — no copy in PRD or Figma means a question, with a `blocker`

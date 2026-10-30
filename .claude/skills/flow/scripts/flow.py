@@ -22,9 +22,10 @@ Layout:
       screens.json               SOT map of the domain's screens (markers S1…, off-screen states X1…)
       tasks/<task-id>.json       one per task: stages plan · screen · grill · tasks · verify · done
       images/                    Figma screenshots and structure XML
+      diagrams/                  Archify flow diagrams (<task>-<slug>.json + .html), shown by "diagram" blocks
       index.html                 domain page: tasks + SOT map (generated)
       <task-id>/                 index.html + 01-plan.html … 06-done.html (generated)
-        share/                   plan.html, backend.md … copies for people outside the flow (export)
+        share/                   plan.html · plan.md · backend.html · backend.md, copies to send outside (generated)
 
 Everything else under <docs> is legacy: listed on the root page, never written.
 Standard library only, Python 3.9+.
@@ -433,7 +434,7 @@ def check_task(f, domain, index, problems):
     if t.get("id") != f.stem:
         problems.append(f"{rel}: id({t.get('id')})가 파일 이름과 달라요")
     if str(t.get("id", "")).lower() in RESERVED_TASK_IDS:
-        problems.append(f"{rel}: 작업 ID로 tasks · images · index는 쓸 수 없어요")
+        problems.append(f"{rel}: 작업 ID로 tasks · images · diagrams · index는 쓸 수 없어요")
     if not t.get("title"):
         problems.append(f"{rel}: title이 없어요")
     stages = t.get("stages") or {}
@@ -459,6 +460,8 @@ def check_task(f, domain, index, problems):
                 bad = [i + 1 for i, r in enumerate(b.get("rows", [])) if len(r) != n]
                 if bad:
                     problems.append(f"{rel} {k} 표 '{b.get('title', '')}': 칸 수가 머리글({n})과 다른 행 {bad}")
+            if b.get("type") == "diagram" and not (f.parent.parent / str(b.get("src", ""))).is_file():
+                problems.append(f"{rel} {k} 흐름도 '{b.get('title', '')}': 파일 {b.get('src', '')}이 없어요")
         if st.get("status") not in STATUSES:
             problems.append(f"{rel} {k}: status는 {'/'.join(STATUSES)} 중 하나")
         if st.get("status") == "done" and not st.get("conclusion"):

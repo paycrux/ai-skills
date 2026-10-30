@@ -42,11 +42,12 @@ class Site:
         for d in domains_of(self.docs):
             info = read_json(d / "domain.json")
             screens = read_json(d / "screens.json", {"screens": []})
-            tasks = {}
+            tasks, mtimes = {}, {}
             for f in task_files(d):
                 t = read_json(f)
                 tasks[t["id"]] = t
-            self.domains[d.name] = {"dir": d, "info": info, "screens": screens, "tasks": tasks,
+                mtimes[t["id"]] = f.stat().st_mtime
+            self.domains[d.name] = {"dir": d, "info": info, "screens": screens, "tasks": tasks, "mtimes": mtimes,
                                     "items": {tid: task_items(t) for tid, t in tasks.items()},
                                     "sot_ids": {tid: task_sot_ids(d.name, t) for tid, t in tasks.items()
                                                 if "screen" in (t.get("stages") or {})}}
@@ -148,6 +149,9 @@ class Ctx:
                     "body": "<br>".join(f"{a}: {b}" for a, b in node.get("rows", []))}
         return f"{site.task_page(d, t, key)}#{item}", prev
 
+    def frame(self, target):
+        return f'src="{esc(self.href(target))}"'
+
     def rich(self, text):
         def link(m):
             raw = m.group(1)
@@ -186,8 +190,9 @@ def mock_theme(ctx):
     return f"<style>:root{{{decls}}}</style>" if decls else ""
 
 
-def shell(ctx, title, nav, body, wide=False, answers=None):
-    data = json.dumps({"refs": ctx.refs, "answers": answers}, ensure_ascii=False).replace("</", "<\\/")
+def shell(ctx, title, nav, body, wide=False, answers=None, shared=None):
+    texts = {who: x["md"] for who, x in (shared or {}).items()}
+    data = json.dumps({"refs": ctx.refs, "answers": answers, "share": texts}, ensure_ascii=False).replace("</", "<\\/")
     return (
         "<!doctype html>\n<html lang=\"ko\"><head><meta charset=\"utf-8\">"
         f'<meta name="viewport" content="width=device-width,initial-scale=1">{GENERATOR}'
@@ -202,6 +207,22 @@ def shell(ctx, title, nav, body, wide=False, answers=None):
 
 LEGEND = ('<div class="legend"><span><i class="l-done"></i>완료</span><span><i class="l-now"></i>진행 중</span>'
           '<span><i class="l-ask"></i>질문 · 결정 대기</span><span><i class="l-wait"></i>시작 전</span></div>')
+
+
+def export_menu(ctx, d, t, shared):
+    if not shared:
+        return ""
+    rows = []
+    for who, label, word in (("plan", "기획 · 디자인", "질문"), ("backend", "백엔드", "요청")):
+        n = shared[who]["n"]
+        state = f"{word} {n}건" if n else "확정본"
+        rows.append(f'<div class="ex-row"><b>{label}</b><span>{state}</span>'
+                    f'<a class="ex-btn" href="{esc(ctx.href(f"{d}/{t}/share/{who}.html"))}" download target="_blank">HTML 파일</a>'
+                    f'<button class="ex-btn" type="button" data-share="{who}">텍스트 복사</button></div>')
+    return ('<details class="export"><summary>내보내기</summary><div class="ex-panel">'
+            '<p class="note">이 작업을 기획 · 백엔드에 보낼 사본이에요. 받는 사람과 형식을 골라 주세요.</p>'
+            f'{"".join(rows)}<p class="note">HTML 파일은 그림이 들어 있어 그대로 슬랙에 첨부하면 돼요. 새 탭으로 열리면 ⌘S로 저장해요. '
+            '텍스트는 슬랙 본문이나 지라 댓글에 붙여 넣는 용도예요.</p></div></details>')
 
 
 def conclusion(ctx, status, items=None, lis=None):
@@ -323,6 +344,16 @@ def cases(ctx, b):
     return f'<div class="sec">{lead}{sub}<table class="cases"><thead><tr>{head}</tr></thead><tbody>{"".join(rows)}</tbody></table></div>'
 
 
+def diagram(ctx, b):
+    target = f"{ctx.domain}/{b.get('src', '')}"
+    if not (ctx.site.docs / target).is_file():
+        return f'<p class="note">흐름도 파일({esc(b.get("src", ""))})이 없어요.</p>'
+    link = ctx.href(target)
+    more = f'<a href="{esc(link)}" target="_blank">새 탭에서 크게 보기</a>' if link != "#" else ""
+    return (f'<div class="diagram"><iframe {ctx.frame(target)} title="{esc(b.get("title", ""))}" loading="lazy" '
+            f'height="{int(b.get("height", 560))}"></iframe>{more}</div>')
+
+
 def heading(b):
     hid = f' id="{esc(b["id"])}"' if b.get("id") else ""
     small = f'<small>{esc(b["sub"])}</small>' if b.get("sub") else ""
@@ -335,6 +366,8 @@ def blocks(ctx, stage, after=None):
         t = b.get("type")
         if t == "cases":
             out.append((heading(b) if b.get("title") else "") + cases(ctx, b) + (after or {}).get(b.get("id"), ""))
+        elif t == "diagram":
+            out.append(heading(b) + diagram(ctx, b))
         elif t == "checklist":
             out.append(checklist(ctx, b))
         elif t == "quote":
@@ -587,7 +620,7 @@ def answers_data(site, d, t):
             "questions": questions, "checks": checks}
 
 
-def task_index(site, d, t):
+def task_index(site, d, t, shared=None):
     dom = site.domains[d]
     task = dom["tasks"][t]
     ctx = Ctx(site, site.task_page(d, t), d, t)
@@ -607,9 +640,9 @@ def task_index(site, d, t):
     meta = " · ".join(x for x in (esc(dom["info"].get("title", d)), esc(t), esc(task.get("type", "")),
                                   f"<code>{esc(task['branch'])}</code>" if task.get("branch") else "") if x)
     note = f'<p class="note">건너뛴 단계: {esc(", ".join(skipped))}. 필요해지면 그때 만들어요.</p>' if skipped else ""
-    body = (f'<div class="head"><h1>{esc(task.get("title", t))}</h1><p class="meta">{meta}</p></div>{link_list(task.get("links"))}'
+    body = (f'<div class="head">{export_menu(ctx, d, t, shared)}<h1>{esc(task.get("title", t))}</h1><p class="meta">{meta}</p></div>{link_list(task.get("links"))}'
             f'{"".join(cards)}{note}')
-    return shell(ctx, f"{t} {task.get('title', '')} · flow", nav_tree(ctx, d, t), body)
+    return shell(ctx, f"{t} {task.get('title', '')} · flow", nav_tree(ctx, d, t), body, shared=shared)
 
 
 def needs_answer(q):
@@ -754,7 +787,7 @@ def screen_refs(ctx, task):
     return f'<p class="meta">이 작업이 가리키는 화면과 행만 보여요 · {full}</p>{sot_map(ctx, ctx.domain, seen)}'
 
 
-def stage_page(site, d, t, key, n):
+def stage_page(site, d, t, key, n, shared=None):
     dom = site.domains[d]
     task = dom["tasks"][t]
     ctx = Ctx(site, site.task_page(d, t, key), d, t)
@@ -766,25 +799,30 @@ def stage_page(site, d, t, key, n):
         body = conclusion(ctx, s["status"], stage.get("conclusion")) + blocks(ctx, stage)
         if key == "screen":
             body += screen_refs(ctx, task)
-    head = (f'<div class="head"><h1><span class="n {s["status"]}">{n}</span>{esc(STAGE_TITLE[key])}</h1>'
+    head = (f'<div class="head">{export_menu(ctx, d, t, shared)}<h1><span class="n {s["status"]}">{n}</span>{esc(STAGE_TITLE[key])}</h1>'
             f'<p class="meta">{esc(task.get("title", t))} · {esc(t)} · {esc(plain_refs(s["summary"]))}</p></div>')
     return shell(ctx, f"{n} {STAGE_TITLE[key]} · {task.get('title', t)}", nav_tree(ctx, d, t, key), head + body,
-                 wide=key == "screen", answers=answers_data(site, d, t))
+                 wide=key == "screen", answers=answers_data(site, d, t), shared=shared)
 
 
 # ---------------------------------------------------------------- build
 
 def render_all(docs):
     """→ {path relative to docs: html} for every page the JSON defines."""
+    import share
     site = Site(docs)
     pages = {site.root: root_page(site)}
     for d, dom in site.domains.items():
         pages[site.domain_page(d)] = domain_page(site, d)
         for t, task in dom["tasks"].items():
-            pages[site.task_page(d, t)] = task_index(site, d, t)
+            shared = None
+            if share.wanted(task):
+                copies, shared = share.pages(site, d, t)
+                pages.update(copies)
+            pages[site.task_page(d, t)] = task_index(site, d, t, shared)
             for n, k in enumerate(STAGE_KEYS, 1):
                 if k in (task.get("stages") or {}):
-                    pages[site.task_page(d, t, k)] = stage_page(site, d, t, k, n)
+                    pages[site.task_page(d, t, k)] = stage_page(site, d, t, k, n, shared)
     return site, pages
 
 
@@ -792,7 +830,7 @@ def orphans(site, pages):
     """Generated pages on disk that the JSON no longer defines."""
     out = []
     for d, dom in site.domains.items():
-        for sub in sorted(p for p in dom["dir"].iterdir() if p.is_dir() and p.name not in ("tasks", "images")):
+        for sub in sorted(p for p in dom["dir"].iterdir() if p.is_dir() and p.name not in ("tasks", "images", "diagrams")):
             for f in sorted(sub.glob("*.html")):
                 rel = f.relative_to(site.docs).as_posix()
                 if rel not in pages and is_generated(f):
