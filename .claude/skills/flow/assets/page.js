@@ -78,10 +78,15 @@
 
   // ------------------------------------------------------------ jump to #id
 
+  const reveal = (el) => {
+    for (let d = el.closest("details"); d; d = d.parentElement && d.parentElement.closest("details")) d.open = true;
+  };
+
   const jump = (smooth) => {
     const id = decodeURIComponent(location.hash.slice(1));
     const el = id && document.getElementById(id);
     if (!el) return;
+    reveal(el);
     const small = el.matches("li, tr, .q");
     el.scrollIntoView({ behavior: smooth ? "smooth" : "auto", block: small ? "center" : "start" });
     if (el.matches("tr[data-i]")) hot(el.dataset.i, true);
@@ -131,6 +136,8 @@
     if (local) {
       $$("input[type=radio]", card).forEach((i) => { i.checked = i.value === local.choice; });
       $$("textarea[data-f]", card).forEach((ta) => { ta.value = local[ta.dataset.f] || ""; });
+      const more = $("details.q-more", card);
+      if (more) reveal(more);
     }
     const update = () => {
       const now = {

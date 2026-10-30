@@ -68,8 +68,13 @@ page · reading for tokens · legacy documents · earlier versions
   At most one `now`. `grill` has no status; it is derived from its rounds.
 - `summary`: one line for the nav; the page appends the checklist count itself. `[[X7]]` in it shows
   as the plain ID, not a link — put links in `conclusion`.
-- `conclusion`: 2–5 full sentences. A reader who reads only this must know what was decided and what
+- `conclusion`: 2–5 items, one fact each, written as a full sentence and read as a list. Lead with
+  what the item is about, then the outcome, then the ID where it lives (`[[S5]]`, `[[P2]]`). Never pack
+  several facts into one item, and never copy grill decisions here — they live in the case rows, SOT
+  rows and plan items they changed. A reader who reads only this must know what was decided and what
   is next. This is the only part a later stage reads.
+- `grill` has no `conclusion`: the page lists each question still waiting, one per line, on the
+  question page and the task cover alike, and shows nothing once every round is closed.
 - Block types: `text` (`html`, `"style": "bridge"` for a tinted connecting note), `quote` (`items`),
   `table` (`columns`, `rows`), `checklist` (`id`, `title`, `items`), `cases` (`id`, `columns`,
   `rows` with drawn UI — see `questions.md` § Draw the cases first). Any block takes `sub` for a

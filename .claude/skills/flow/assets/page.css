@@ -118,6 +118,17 @@ tr.ask td:first-child { box-shadow: inset 3px 0 0 var(--accent); padding-left: 1
 .decision { margin-top: 16px; border-left: 2px solid var(--st-done); padding: 2px 0 2px 14px; font-size: 15px; line-height: 1.75; }
 .decision > b { display: block; font-size: 11px; color: var(--st-done); margin-bottom: 2px; }
 .decision .applied { font-size: 13px; color: var(--muted); margin-top: 6px; }
+.wait-q .k { margin: 0 0 0 8px; vertical-align: 1px; }
+.case-qs { margin-top: 36px; }
+.case-qs > .q:last-child { padding-bottom: 0; }
+.past { border-top: 1px solid var(--hair); }
+.past:last-child { border-bottom: 1px solid var(--hair); }
+.past > summary { cursor: pointer; padding: 14px 0; font-size: 14px; color: var(--muted); }
+.past > summary b { color: var(--fg); margin-right: 6px; }
+.past[open] > summary { padding-bottom: 24px; }
+.q-more { margin-top: 14px; }
+.q-more > summary { cursor: pointer; font-size: 13px; color: var(--muted); }
+.q-more[open] > summary { margin-bottom: 4px; }
 
 /* task overview: one row per stage */
 .stage-card { grid-column: 1 / 13 !important; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: var(--gutter); padding: 0 0 48px; }

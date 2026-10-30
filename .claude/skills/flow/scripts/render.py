@@ -46,7 +46,9 @@ class Site:
                 t = read_json(f)
                 tasks[t["id"]] = t
             self.domains[d.name] = {"dir": d, "info": info, "screens": screens, "tasks": tasks,
-                                    "items": {tid: task_items(t) for tid, t in tasks.items()}}
+                                    "items": {tid: task_items(t) for tid, t in tasks.items()},
+                                    "sot_ids": {tid: task_sot_ids(d.name, t) for tid, t in tasks.items()
+                                                if "screen" in (t.get("stages") or {})}}
         root = self.docs / "index.html"
         self.root = "index.html" if not root.exists() or is_generated(root) else "flow-index.html"
         remote = git(self.docs, "remote", "get-url", "origin")
@@ -109,6 +111,8 @@ class Ctx:
             else:
                 prev = {"where": f"{d} · {s.get('title', '')} · 화면 밖", "title": f"{node['id']} {node.get('state', '')}",
                         "body": f"{node.get('when', '')} → {node.get('shows', '')}"}
+            if d == self.domain and item in dom["sot_ids"].get(self.task, ()):
+                return f"{site.task_page(d, self.task, 'screen')}#{item}", prev
             return f"{site.domain_page(d)}#{item}", prev
         task = dom["tasks"].get(t)
         if not task:
@@ -199,8 +203,8 @@ LEGEND = ('<div class="legend"><span><i class="l-done"></i>완료</span><span><i
           '<span><i class="l-ask"></i>질문 · 결정 대기</span><span><i class="l-wait"></i>시작 전</span></div>')
 
 
-def conclusion(ctx, status, items):
-    lis = "".join(f"<li>{ctx.rich(c)}</li>" for c in items or [])
+def conclusion(ctx, status, items=None, lis=None):
+    lis = lis if lis is not None else "".join(f"<li>{ctx.rich(c)}</li>" for c in items or [])
     return f'<section class="conclusion" data-status="{esc(status)}"><h2>결론</h2><ul>{lis or "<li>아직 없어요.</li>"}</ul></section>'
 
 
@@ -324,12 +328,12 @@ def heading(b):
     return f'<h2{hid}>{esc(b.get("title", ""))}{small}</h2>'
 
 
-def blocks(ctx, stage):
+def blocks(ctx, stage, after=None):
     out = []
     for b in stage.get("blocks", []):
         t = b.get("type")
         if t == "cases":
-            out.append((heading(b) if b.get("title") else "") + cases(ctx, b))
+            out.append((heading(b) if b.get("title") else "") + cases(ctx, b) + (after or {}).get(b.get("id"), ""))
         elif t == "checklist":
             out.append(checklist(ctx, b))
         elif t == "quote":
@@ -480,7 +484,8 @@ def used_html(links):
     return '<div class="used">쓰는 곳 ' + " ".join(f'<a class="ref" href="{esc(h)}">{esc(l)}</a>' for h, l in links.items()) + "</div>"
 
 
-def sot_map(ctx, d):
+def sot_map(ctx, d, only=None):
+    """The domain's SOT map; with `only`, just the screens and rows whose IDs are in it."""
     dom = ctx.site.domains[d]
     sot = dom["screens"]
     comp = dom["info"].get("kind") == "components"
@@ -488,16 +493,20 @@ def sot_map(ctx, d):
     off_intro = "Figma에 그려지지 않았지만 코드가 다뤄야 하는 경우예요." if comp else "Figma 화면에는 없지만 데이터 때문에 생기는 경우예요."
     used = used_by(ctx, d)
     counts, parts = {}, []
-    for f in sot.get("flows", []):
+    for f in sot.get("flows", []) if only is None else []:
         rows = "".join(f"<tr><td>{ctx.rich(a)}</td><td>{ctx.rich(b)}</td></tr>" for a, b in f.get("rows", []))
         parts.append(f'<h2>흐름 · {esc(f.get("title", ""))}</h2><table><thead><tr><th>언제</th><th>결과</th></tr></thead><tbody>{rows}</tbody></table>')
     for s in sot.get("screens", []):
+        markers = [m for m in s.get("markers", []) if only is None or m.get("id") in only]
+        offscreen = [o for o in s.get("offscreen", []) if only is None or o.get("id") in only]
+        if only is not None and not markers and not offscreen:
+            continue
         frame = None
         meta = dom["dir"] / s.get("metadata", "")
         if s.get("metadata") and meta.exists():
             frame = frame_boxes(meta)
         pins, groups = [], []
-        for m in s.get("markers", []):
+        for m in markers:
             label, cls = KIND.get(m.get("kind"), ("?", "pend"))
             counts[label] = counts.get(label, 0) + 1
             xy = place(m, frame[0], frame[2]) if frame else None
@@ -516,10 +525,10 @@ def sot_map(ctx, d):
         tables = "".join(f'<h3>{esc(sec)}</h3><table><thead><tr><th></th><th>{"부분" if comp else "요소"}</th><th>{field_head}</th>'
                          f'<th>규칙 · 근거</th></tr></thead><tbody>{"".join(rows)}</tbody></table>' for sec, rows in groups)
         off = ""
-        if s.get("offscreen"):
+        if offscreen:
             orows = "".join(f'<tr id="{esc(o["id"])}"><td><span class="mk k-out">{esc(o["id"])}</span></td><td><b>{ctx.rich(o.get("state", ""))}</b>'
                             f'{used_html(used.get(o["id"]))}</td><td>{ctx.rich(o.get("when", ""))}</td><td>{ctx.rich(o.get("shows", ""))}</td></tr>'
-                            for o in s["offscreen"])
+                            for o in offscreen)
             off = (f'<h3>화면 밖 상태</h3><p class="note">{esc(s.get("offscreenIntro") or off_intro)}</p><table><thead><tr><th></th>'
                    f'<th>상태</th><th>언제</th><th>보이는 것</th></tr></thead><tbody>{orows}</tbody></table>')
         variants = ""
@@ -529,7 +538,7 @@ def sot_map(ctx, d):
             variants = f'<h3>변형 축</h3><table class="tbl"><thead><tr><th>Figma 축</th><th>값</th><th>코드 속성</th><th>메모</th></tr></thead><tbody>{vrows}</tbody></table>'
         land = frame and (frame[0] > frame[1] or frame[0] > 700)
         if frame:
-            shot = (f'<div class="shot"><div class="fig" data-w="{frame[0]:g}" data-h="{frame[1]:g}"><img src="{esc(s.get("image", ""))}" '
+            shot = (f'<div class="shot"><div class="fig" data-w="{frame[0]:g}" data-h="{frame[1]:g}"><img src="{esc(ctx.href(f"{d}/{s.get('image', '')}"))}" '
                     f'alt="{esc(s.get("title", ""))} Figma 화면">{"".join(pins)}</div></div>')
         else:
             shot = f'<div class="shot"><p class="note">구조 정보({esc(s.get("metadata", ""))})를 읽지 못했어요.</p></div>'
@@ -588,10 +597,12 @@ def task_index(site, d, t):
             skipped.append(f"{n} {title}")
             continue
         st = task["stages"][k]
-        items = grill_conclusion(st, s) if k == "grill" else st.get("conclusion") or []
-        lis = "".join(f"<li>{ctx.rich(c)}</li>" for c in items) or "<li>아직 없어요.</li>"
+        if k == "grill":
+            lis = grill_conclusion(ctx, st, s)
+        else:
+            lis = "".join(f"<li>{ctx.rich(c)}</li>" for c in st.get("conclusion") or []) or "<li>아직 없어요.</li>"
         cards.append(f'<section class="stage-card {s["status"]}"><h2><a href="{fname}"><span class="n">{n}</span>{esc(title)}</a>'
-                     f'<span class="st">{esc(plain_refs(s["summary"]))}</span></h2><ul>{lis}</ul></section>')
+                     f'<span class="st">{esc(plain_refs(s["summary"]))}</span></h2>{f"<ul>{lis}</ul>" if lis else ""}</section>')
     meta = " · ".join(x for x in (esc(dom["info"].get("title", d)), esc(t), esc(task.get("type", "")),
                                   f"<code>{esc(task['branch'])}</code>" if task.get("branch") else "") if x)
     note = f'<p class="note">건너뛴 단계: {esc(", ".join(skipped))}. 필요해지면 그때 만들어요.</p>' if skipped else ""
@@ -600,81 +611,143 @@ def task_index(site, d, t):
     return shell(ctx, f"{t} {task.get('title', '')} · flow", nav_tree(ctx, d, t), body)
 
 
-def grill_conclusion(stage, s):
-    out = []
+def needs_answer(q):
+    return not q.get("decision") or (q.get("answer") or {}).get("by") == "user"
+
+
+def question_homes(stage):
+    """Question tag → the cases block it belongs under: rows that ask it first, then the 케이스 context."""
+    homes, owner = {}, {}
+    for b in stage.get("blocks", []):
+        if b.get("type") != "cases" or not b.get("id"):
+            continue
+        owner[b["id"]] = b["id"]
+        for row in b.get("rows", []):
+            if row.get("id"):
+                owner[row["id"]] = b["id"]
+            for tag in [row.get("ask")] + [ch.get("q") for ch in row.get("status", []) if isinstance(ch, dict)]:
+                if tag:
+                    homes.setdefault(tag, b["id"])
     for r in stage.get("rounds", []):
-        if r["id"] not in s["open"]:
-            out += [q["decision"] for q in r.get("questions", []) if q.get("decision")]
-    out += [f"{i}이 열려 있어요. 답을 기다려요." for i in s["open"]]
-    out += [f"{i}의 답이 바뀌었어요. 결정은 바뀌기 전 내용이라 Claude가 다시 반영해야 해요." for i in s["revised"]]
-    return out or ["아직 질문이 없어요."]
+        for q in r.get("questions", []):
+            tag = f"{r['id']}-{q['id']}"
+            if tag in homes:
+                continue
+            text = " ".join(str(v) for k, v in q.get("context", []) if k == "케이스")
+            hit = next((owner[m.group(1)] for m in REF.finditer(text) if m.group(1) in owner), None)
+            if hit:
+                homes[tag] = hit
+    return homes
+
+
+def grill_conclusion(ctx, stage, s):
+    """One line per question still needing a person; empty once every round is closed."""
+    if not stage.get("rounds"):
+        return "<li>아직 질문이 없어요.</li>"
+    out = []
+    for r in stage["rounds"]:
+        for q in r.get("questions", []):
+            if not needs_answer(q):
+                continue
+            chip = ('<span class="k ans">답이 바뀜 · 반영 전</span>' if q.get("decision")
+                    else '<span class="k ans">답 받음 · 반영 전</span>' if (q.get("answer") or {}).get("by") == "user"
+                    else '<span class="k pend">답 대기</span>')
+            out.append(f'<li class="wait-q">{ctx.rich(f"[[{r["id"]}-{q["id"]}]]")} {ctx.rich(q.get("title", ""))}{chip}</li>')
+    return "".join(out)
+
+
+def question_card(ctx, r, q):
+    tag = f"{r['id']}-{q['id']}"
+    a = q.get("answer") or {}
+    opts = (q.get("options") or DEFAULT_OPTIONS) + [UNSURE]
+    rec = q.get("recommended", "yes")
+    radios = "".join(f'<label class="{"rec" if o["value"] == rec else ""}"><input type="radio" name="{esc(tag)}" value="{esc(o["value"])}"'
+                     f'{" checked" if a.get("choice") == o["value"] else ""}>{esc(o["label"])}</label>' for o in opts)
+    if a.get("by") == "user":
+        badge = '<span class="k ans">답 받음 · 반영 전</span>'
+    elif q.get("decision"):
+        badge = '<span class="k done">결정됨</span>'
+    else:
+        badge = '<span class="k pend">답 대기</span>'
+    ctxl = "".join(f'<li><b>{esc(k)}</b><span>{copy_marks(ctx.rich(v))}</span></li>' for k, v in q.get("context", []))
+    ctxl = f'<ul class="q-ctx">{ctxl}</ul>' if ctxl else ""
+    said = f'<div class="said">{ctx.rich(q["said"])}</div>' if q.get("said") else ""
+    body = f'<div>{ctx.rich(q["body"])}</div>' if q.get("body") else ""
+    cp = q.get("copy")
+    copy_fld = (f'<label class="fld"><span>{esc(cp.get("label", "문구"))} · 줄바꿈 그대로</span><textarea data-f="copy" '
+                f'placeholder="{esc(cp.get("placeholder", "화면에 보일 문구 그대로"))}">{esc(a.get("copy", ""))}</textarea></label>') if cp else ""
+    tpls = "".join(f'<template data-preview="{esc(k)}">{mocks_html(ctx, v if isinstance(v, list) else [v])}</template>'
+                   for k, v in (q.get("preview") or {}).items())
+    live = f'<div class="live" data-live>{tpls}</div>' if tpls else ""
+    decision = (f'<div class="decision"><b>결정</b>{ctx.rich(q["decision"])}<div class="applied">반영한 곳: {ctx.rich(q.get("appliedTo", ""))}</div></div>'
+                if q.get("decision") else "")
+    form = (f'{said}{body}<div class="rec-line"><b>추천</b>{ctx.rich(q.get("recommendation", ""))}</div>'
+            f'<div class="q-grid{" has-live" if live else ""}"><div><div class="opts">{radios}</div>{copy_fld}'
+            f'<label class="fld"><span>메모</span><textarea data-f="note" placeholder="다르게 고르면 조건을 적어 주세요">{esc(a.get("note", ""))}</textarea></label>'
+            f'<label class="fld"><span>되묻기</span><textarea data-f="followUp" placeholder="되묻고 싶은 것">{esc(a.get("followUp", ""))}</textarea></label></div>{live}</div>')
+    if needs_answer(q):
+        inner = f"{ctxl}{form}{decision}"
+    else:
+        picked = next((o["label"] for o in opts if o["value"] == a.get("choice")), "")
+        lead = f"고른 답 · {esc(picked)}" if picked else "질문과 답"
+        inner = f'{ctxl}{decision}<details class="q-more"><summary>{lead} — 펼쳐서 보거나 고쳐요</summary>{form}</details>'
+    cls = "q open" if not q.get("decision") and a.get("by") != "user" else "q"
+    return (f'<div class="{cls}" id="{esc(tag)}" data-tag="{esc(tag)}"><div class="q-head"><b>{esc(tag)}. {ctx.rich(q.get("title", ""))}</b>{badge}</div>'
+            f'{inner}</div>')
 
 
 def grill_body(ctx, stage, s):
-    forms = []
-    for r in reversed(stage.get("rounds", [])):
-        is_open, revised = r["id"] in s["open"], r["id"] in s["revised"]
-        cards = []
+    homes = question_homes(stage)
+    has_cases = any(b.get("type") == "cases" for b in stage.get("blocks", []))
+    under, loose, past, anchored = {}, [], [], set()
+    for r in stage.get("rounds", []):
         for q in r.get("questions", []):
+            if not needs_answer(q):
+                continue
             tag = f"{r['id']}-{q['id']}"
-            a = q.get("answer") or {}
-            opts = (q.get("options") or DEFAULT_OPTIONS) + [UNSURE]
-            rec = q.get("recommended", "yes")
-            radios = "".join(f'<label class="{"rec" if o["value"] == rec else ""}"><input type="radio" name="{esc(tag)}" value="{esc(o["value"])}"'
-                             f'{" checked" if a.get("choice") == o["value"] else ""}>{esc(o["label"])}</label>' for o in opts)
-            if a.get("by") == "user":
-                badge = '<span class="k ans">답 받음 · 반영 전</span>'
-            elif q.get("decision"):
-                badge = '<span class="k done">결정됨</span>'
+            mark = f'<a id="{esc(r["id"])}"></a>' if r["id"] not in anchored else ""
+            anchored.add(r["id"])
+            card = mark + question_card(ctx, r, q)
+            if tag in homes:
+                under.setdefault(homes[tag], []).append(card)
             else:
-                badge = '<span class="k pend">답 대기</span>'
-            ctxl = "".join(f'<li><b>{esc(k)}</b><span>{copy_marks(ctx.rich(v))}</span></li>' for k, v in q.get("context", []))
-            ctxl = f'<ul class="q-ctx">{ctxl}</ul>' if ctxl else ""
-            said = f'<div class="said">{ctx.rich(q["said"])}</div>' if q.get("said") else ""
-            body = f'<div>{ctx.rich(q["body"])}</div>' if q.get("body") else ""
-            cp = q.get("copy")
-            copy_fld = (f'<label class="fld"><span>{esc(cp.get("label", "문구"))} · 줄바꿈 그대로</span><textarea data-f="copy" '
-                        f'placeholder="{esc(cp.get("placeholder", "화면에 보일 문구 그대로"))}">{esc(a.get("copy", ""))}</textarea></label>') if cp else ""
-            tpls = "".join(f'<template data-preview="{esc(k)}">{mocks_html(ctx, v if isinstance(v, list) else [v])}</template>'
-                           for k, v in (q.get("preview") or {}).items())
-            live = f'<div class="live" data-live>{tpls}</div>' if tpls else ""
-            decision = (f'<div class="decision"><b>결정</b>{ctx.rich(q["decision"])}<div class="applied">반영한 곳: {ctx.rich(q.get("appliedTo", ""))}</div></div>'
-                        if q.get("decision") else "")
-            cls = "q open" if not q.get("decision") and a.get("by") != "user" else "q"
-            cards.append(f'<div class="{cls}" id="{esc(tag)}" data-tag="{esc(tag)}"><div class="q-head"><b>{esc(tag)}. {ctx.rich(q.get("title", ""))}</b>{badge}</div>'
-                         f'{ctxl}{said}{body}'
-                         f'<div class="rec-line"><b>추천</b>{ctx.rich(q.get("recommendation", ""))}</div>'
-                         f'<div class="q-grid{" has-live" if live else ""}"><div><div class="opts">{radios}</div>{copy_fld}'
-                         f'<label class="fld"><span>메모</span><textarea data-f="note" placeholder="다르게 고르면 조건을 적어 주세요">{esc(a.get("note", ""))}</textarea></label>'
-                         f'<label class="fld"><span>되묻기</span><textarea data-f="followUp" placeholder="되묻고 싶은 것">{esc(a.get("followUp", ""))}</textarea></label></div>{live}</div>'
-                         f'{decision}</div>')
-        if is_open:
-            rb, inner = '<span class="k pend">답을 기다려요</span>', "".join(cards)
-        elif revised:
-            rb, inner = '<span class="k ans">답이 바뀜 · 반영 전</span>', "".join(cards)
-        else:
-            rb = '<span class="k done">결정됨</span>'
-            inner = f'<details><summary>질문 {len(cards)}개 펼치기 · 답을 바꾸려면 펼쳐서 고쳐 주세요</summary>{"".join(cards)}</details>'
-        forms.append(f'<div class="round" id="{esc(r["id"])}"><h2>{esc(r["id"])} · {esc(r.get("askedAt", ""))} · {ctx.rich(r.get("from", ""))}{rb}</h2>{inner}</div>')
-    top = blocks(ctx, stage)
-    qhead = '<h2 class="qs-head">질문<small>고르거나 적으면 위 표의 상태가 바로 바뀌어요</small></h2>' if top and forms else ""
-    return conclusion(ctx, s["status"], grill_conclusion(stage, s)) + top + qhead + "".join(forms)
+                loose.append(card)
+    for r in reversed(stage.get("rounds", [])):
+        done = [q for q in r.get("questions", []) if not needs_answer(q)]
+        if not done:
+            continue
+        rid = "" if r["id"] in anchored else f' id="{esc(r["id"])}"'
+        past.append(f'<details class="past"{rid}{"" if has_cases else " open"}><summary><b>{esc(r["id"])}</b> {esc(r.get("askedAt", ""))} · {ctx.rich(r.get("from", ""))}'
+                    f' · <span class="note">질문 {len(done)}개</span></summary>{"".join(question_card(ctx, r, q) for q in done)}</details>')
+    after = {k: f'<div class="case-qs">{"".join(v)}</div>' for k, v in under.items()}
+    lis = grill_conclusion(ctx, stage, s)
+    out = (conclusion(ctx, s["status"], lis=lis) if lis else "") + blocks(ctx, stage, after)
+    if loose:
+        title = "그 밖의 질문" if after or stage.get("blocks") else "질문"
+        out += f'<h2>{title}<small>케이스 표에 묶이지 않은 질문</small></h2><div class="case-qs">{"".join(loose)}</div>'
+    if past:
+        out += f'<h2>지난 질문<small>결정됨 · 답을 바꾸려면 펼쳐서 고쳐요</small></h2><div class="pasts">{"".join(past)}</div>'
+    return out
 
 
-def screen_refs(ctx, task):
+def task_sot_ids(domain, task):
     seen = set()
 
     def visit(raw, owner):
-        rd, rt, item = parse_ref(raw, ctx.domain, task["id"])
-        if rd == ctx.domain and rt is None and item and re.fullmatch(r"[SX]\d+", item):
+        rd, rt, item = parse_ref(raw, domain, task["id"])
+        if rd == domain and rt is None and item and re.fullmatch(r"[SX]\d+", item):
             seen.add(item)
 
     walk_refs(task.get("stages") or {}, None, visit)
+    return seen
+
+
+def screen_refs(ctx, task):
+    seen = task_sot_ids(ctx.domain, task)
     full = f'<a href="{ctx.href(ctx.site.domain_page(ctx.domain))}">도메인 SOT 맵 전체</a>'
     if not seen:
-        return f"<h2>SOT 맵</h2><p>{full}</p>"
-    ids = sorted(seen, key=lambda i: (i[0], int(i[1:])))
-    return f'<h2>이 작업이 쓰는 행</h2><p>{" ".join(ctx.rich(f"[[{i}]]") for i in ids)} · {full}</p>'
+        return f"<h2>SOT 맵</h2><p>이 작업이 가리키는 행이 아직 없어요. {full}</p>"
+    return f'<p class="meta">이 작업이 가리키는 화면과 행만 보여요 · {full}</p>{sot_map(ctx, ctx.domain, seen)}'
 
 
 def stage_page(site, d, t, key, n):
@@ -692,7 +765,7 @@ def stage_page(site, d, t, key, n):
     head = (f'<div class="head"><h1><span class="n {s["status"]}">{n}</span>{esc(STAGE_TITLE[key])}</h1>'
             f'<p class="meta">{esc(task.get("title", t))} · {esc(t)} · {esc(plain_refs(s["summary"]))}</p></div>')
     return shell(ctx, f"{n} {STAGE_TITLE[key]} · {task.get('title', t)}", nav_tree(ctx, d, t, key), head + body,
-                 answers=answers_data(site, d, t))
+                 wide=key == "screen", answers=answers_data(site, d, t))
 
 
 # ---------------------------------------------------------------- build

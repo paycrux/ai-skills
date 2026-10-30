@@ -126,7 +126,9 @@ independent features for several Jira stories belongs to `/tracker`; say so befo
 ## Step 2: 02 화면 · SOT 맵 — when `screen` exists
 
 Follow `references/sot-map.md`. The SOT map belongs to the domain (`screens.json`); the task's
-`screen` stage holds only its conclusion — which rows it added or changed, cited as `[[S5]]`.
+`screen` stage holds only its conclusion — which rows it added or changed, cited as `[[S5]]`. The
+task's 02 page draws just the screens and rows the task cites anywhere in its stages, and every
+`[[S5]]` inside the task links there; the domain page stays the full map.
 Fetch the Figma screenshot and metadata now — this is the stage the design scan belongs to; detailed
 spacing and token values are still read at implementation time.
 
@@ -222,7 +224,8 @@ Chat messages at a stop are two or three lines plus what the user should do; the
 ## Rules
 
 - **One domain, one folder** — find before creating; a task on an existing screen goes into that domain's `tasks/`
-- **Conclusions and decisions are sentences a person can read.** Never a dotted chain of keywords
+- **Conclusions and decisions are sentences a person can read.** Never a dotted chain of keywords,
+  never a paragraph of several facts — one fact per conclusion item, and a decision lives where it was applied
 - **Reference by ID, never by path** — `[[S5]]`, `[[R2-Q1]]`, `[[APP-451#P2]]`, `[[login/S3]]`; IDs are never renumbered or reused
 - **Read the brief, not the file** — `flow.py brief`, plus `--stage <key>` for the stage at hand
 - **Earlier versions are migrated before any work** — `flow.py migrate <docs>`; `check` fails while any remain

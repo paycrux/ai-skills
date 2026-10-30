@@ -35,10 +35,21 @@ Each question, for a reader who has not seen the code:
 ## Draw the cases first
 
 A question about states — failure branches, error codes, what a screen shows per status — is
-answered by looking, not by reading. Put a `cases` table above the rounds (`stages.grill.blocks`):
-one row per situation the user can end up in, with what moves, where they land, and the UI they
-see drawn in the app's own pieces. The person reads the whole set of cases once, sees which rows are
-still open (amber), and answers below; every answer turns the row's status chip and preview live.
+answered by looking, not by reading. Put a `cases` table in `stages.grill.blocks`: one row per
+situation the user can end up in, with what moves, where they land, and the UI they see drawn in the
+app's own pieces. The page puts each unanswered question directly under the cases block it belongs
+to, so the person answers next to the rows it changes; every answer turns the row's status chip and
+preview live.
+
+Where a question shows:
+
+- Unanswered (or answer changed) → under the cases block whose row cites it in `ask` or a status
+  chip `q`, else the block a `[[C…]]` in its `케이스` context points to. No case → 그 밖의 질문.
+- Decided → folded into 지난 질문 at the bottom, grouped by round. The case table is where a decided
+  question lives on: write the outcome into the row's cells and status chip (`정리됨`) — the table
+  is what a reader looks at once every round is closed.
+- The page's 결론 for this stage lists only what is still waiting and never repeats decisions. Once
+  every round is closed it disappears — the case tables, already rewritten, are the result.
 
 - One `cases` block per moment (① right after payment, ② when the detail opens, ③ when cancel is
   pressed). `title` + `sub` label the moment on the left; `lead` is one or two sentences of
@@ -116,6 +127,8 @@ When the user says they answered ("답 썼어") or copied ("복사했어"):
      what it costs. Never a dotted list of keywords (`A · B · C`) — that reads only to whoever wrote
      it. Then apply it where it belongs and record that in `appliedTo`:
      a SOT row → change `kind`, rewrite `rule`/`note` and cite the question (`[[APP-452#R1-Q2]]`);
+     a case row → rewrite its cells to the settled outcome (the drawn UI, the copy, the button) and
+     set its status chip to `{"state": "done", "label": "정리됨"}`, dropping `ask`;
      a plan item → a `결정` row on that item, remove its `blocker` row;
      behavior with no row → a `flows` row in `screens.json`.
    - **더 설명해줘** → re-ask in the next round with what was missing (usually a sketch of the
