@@ -100,6 +100,7 @@ tr.ask td:first-child { box-shadow: inset 3px 0 0 var(--accent); padding-left: 1
 .q-head { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .q-head b { font-size: 18px; letter-spacing: -0.01em; }
 .q-head .k { margin: 0; }
+.k.to { background: transparent; color: var(--muted); box-shadow: inset 0 0 0 1px var(--hair); }
 .q .said { color: var(--muted); font-size: 14px; margin: 6px 0 10px; }
 .q .said::before { content: "“"; }
 .q .said::after { content: "”"; }
@@ -342,3 +343,17 @@ tr.gone td.sit { text-decoration: line-through; text-decoration-color: var(--fai
 .mm-btns:not(.h) .mm-btn { flex: none; }
 .nt .copy, .q-ctx .copy, .cases .copy { white-space: pre-wrap; }
 .bn, .bn-sub, .mm-title, .mm-body, .tt { white-space: pre-line; }
+
+/* share: one file for people outside the flow */
+body.share { padding-left: 0; }
+.ref-name { font-weight: 600; }
+.sq { padding: 36px 0 0; }
+.sq h3 { font-size: 18px; letter-spacing: -0.01em; margin: 0 0 6px; }
+.sq-opts { margin: 10px 0 0; padding-left: 20px; font-size: 15px; }
+.sq .rec-line { margin-top: 12px; }
+.sq .rec-line b { color: var(--accent); margin-right: 6px; }
+.share .head .meta { margin-bottom: 8px; }
+.k-rec { font-size: 11px; font-weight: 700; color: var(--accent); margin-left: 6px; }
+.sq-preview { margin-top: 14px; }
+.sq-done { list-style: none; margin: 0; padding: 0; }
+.sq-done li + li { margin-top: 14px; }

@@ -14,6 +14,7 @@ ASSETS = SKILL / "assets"
 FONTS = "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
 GENERATOR = '<meta name="generator" content="flow">'
 LEGACY_EXT = {".md", ".html"}
+AUDIENCE = {"plan": "기획", "backend": "백엔드"}
 
 
 def esc(text):
@@ -673,6 +674,9 @@ def question_card(ctx, r, q):
     ctxl = f'<ul class="q-ctx">{ctxl}</ul>' if ctxl else ""
     said = f'<div class="said">{ctx.rich(q["said"])}</div>' if q.get("said") else ""
     body = f'<div>{ctx.rich(q["body"])}</div>' if q.get("body") else ""
+    to = q.get("to") or []
+    to = [to] if isinstance(to, str) else to
+    badge += "".join(f'<span class="k to">{esc(AUDIENCE.get(w, w))}</span>' for w in to)
     cp = q.get("copy")
     copy_fld = (f'<label class="fld"><span>{esc(cp.get("label", "문구"))} · 줄바꿈 그대로</span><textarea data-f="copy" '
                 f'placeholder="{esc(cp.get("placeholder", "화면에 보일 문구 그대로"))}">{esc(a.get("copy", ""))}</textarea></label>') if cp else ""

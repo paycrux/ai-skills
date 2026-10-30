@@ -211,6 +211,25 @@ With `done`, work its checklist; without it, do the same steps and record them i
 - `flow.py check <docs>/<domain>` must pass. Then suggest `/git-pr`; never open the PR from this
   skill. The PR body links the task and copies its conclusions — reviewers read the PR without opening the pages.
 
+## Sharing outside the flow
+
+When the user wants to send questions to 기획 · 디자인 or 백엔드 ("공유", "보내", "내보내기"), the
+pages are the wrong thing to send: they mix both audiences, show internal IDs, and an answer typed
+in them stays in the reader's own browser. Export a copy for one audience instead.
+
+1. Ask who it is for and which format, unless the user already said — two choices, one question
+   each: 기획 · 디자인 / 백엔드, and HTML 파일 (drawn case tables, images inside, one file to attach)
+   / 텍스트 (Markdown for a Slack message or Jira comment, images dropped). Never pick for them.
+2. Make sure every open question that audience must answer has `to` set (`references/questions.md`).
+3. `flow.py export <task.json> --to plan|backend --format html|md` — add `--copy` for text to put it
+   on the clipboard. It writes `<docs>/<domain>/<task>/share/<to>.<ext>` and prints the path.
+   - 기획 · 디자인: each cases table with the questions it holds right below it, code-only cells
+     (`enum`) and context rows (`enum`, `서버`, `코드`, `API`, `스키마`) left out.
+   - 백엔드: the requests with their code evidence, then what is already decided.
+   - IDs show as names (‘일부 발급 실패, 실패분 환불 성공’, 질문 2); nothing to answer in the file.
+4. Answers come back in the thread. When the user pastes them, record them as chat answers
+   (`references/questions.md` § When answers cannot come from the page) and continue from there.
+
 ## Communication Style
 
 Write for a reader who has not implemented this feature and does not share your context:
@@ -231,6 +250,7 @@ Chat messages at a stop are two or three lines plus what the user should do; the
 - **Earlier versions are migrated before any work** — `flow.py migrate <docs>`; `check` fails while any remain
 - **The pages are generated** — edit the JSON, then `flow.py build`; never edit an HTML page by hand
 - **Answers come from the page through `pull`** — never ask the user to paste an answer the page already holds
+- **Share an export, never the pages** — `flow.py export` per audience; the user picks the format
 - **A `"by": "user"` mark is handled, then cleared** — `changes` lists them, `clear` removes them; `check` fails while any remain
 - **A revised answer is re-applied everywhere its `appliedTo` lists** before anything else continues
 - **Never invent user-facing text** — no copy in PRD or Figma means a question, with a `blocker`

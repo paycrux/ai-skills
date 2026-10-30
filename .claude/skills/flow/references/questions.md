@@ -93,7 +93,7 @@ Other mock shapes: `{"toast": "선물 발송이 완료되었어요."}`,
   "rounds": [{
     "id": "R1", "askedAt": "10/23", "from": "<what opened this round, e.g. SOT 확인 필요 [[S4]] [[S8]]>",
     "questions": [{
-      "id": "Q1", "title": "<short question>",
+      "id": "Q1", "title": "<short question>", "to": "plan",
       "said": "<trigger, quoted>", "body": "<background → problem → choice>",
       "recommendation": "<what and why>",
       "context": [["케이스", "<the case row, [[C2-1]]>"], ["지금 앱", "<what the code does>"]],
@@ -108,6 +108,11 @@ Other mock shapes: `{"toast": "선물 발송이 완료되었어요."}`,
   }]
 }
 ```
+
+`to` names who outside the flow answers it: `"plan"` (기획 · 디자인), `"backend"`, or both as a
+list. Set it on every question that someone other than the user has to settle — it decides which
+shared copy the question goes into (§ Sharing outside the flow in `SKILL.md`). Leave it out for a
+question only the user answers.
 
 Round IDs are `R<n>`, question IDs `Q<n>`; together they are cited as `[[R1-Q2]]`. A round is
 **open** while any question lacks `decision`. `answer` is written by the page (with

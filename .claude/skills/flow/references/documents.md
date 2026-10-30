@@ -16,6 +16,7 @@ page · reading for tokens · legacy documents · earlier versions
   │ ├ prd.md                   PRD snapshot when one was fetched
   │ ├ index.html               the domain's tasks and SOT map                       (generated)
   │ └ <task-id>/               index.html (every stage's conclusion) + 01-plan.html … 06-done.html (generated)
+  │   └ share/                 plan.html · backend.md … copies for people outside the flow (flow.py export)
   └ <anything else>            legacy — listed on the root page, never written
 ```
 

@@ -10,6 +10,7 @@
     python3 flow.py changes <docs | docs/domain>            what the person changed ("by": "user")
     python3 flow.py clear <file.json> [--id ID]...            drop "by": "user" once handled
     python3 flow.py check <docs | docs/domain>
+    python3 flow.py export <docs>/<domain>/tasks/<task>.json --to plan|backend --format html|md [-o FILE] [--copy]
     python3 flow.py migrate <docs> [--apply] [--v1 <old-task-dir> --domain ID [--title "..."] [--keep]]
     python3 flow.py merge-xml <base.xml> <expanded.xml>... -o <out.xml>
 
@@ -23,6 +24,7 @@ Layout:
       images/                    Figma screenshots and structure XML
       index.html                 domain page: tasks + SOT map (generated)
       <task-id>/                 index.html + 01-plan.html … 06-done.html (generated)
+        share/                   plan.html, backend.md … copies for people outside the flow (export)
 
 Everything else under <docs> is legacy: listed on the root page, never written.
 Standard library only, Python 3.9+.
@@ -30,6 +32,7 @@ Standard library only, Python 3.9+.
 import argparse
 import json
 import re
+import subprocess
 import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -39,6 +42,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import browser  # noqa: E402
 import migrate  # noqa: E402
 import render  # noqa: E402
+import share  # noqa: E402
 from model import (ITEM_ID, KINDS, RESERVED_TASK_IDS, STAGE_KEYS, STATUSES, frame_boxes, git, parse_ref,  # noqa: E402
                    plain, read_json, scope, task_files, task_items, walk_refs, write_json)
 
@@ -157,6 +161,18 @@ def cmd_build(args):
     print(f"열기: {(site.docs / site.root).resolve()}")
     if server or v1:
         print("이전 버전 문서가 남아 있어요 — flow.py migrate " + str(docs))
+
+
+def cmd_export(args):
+    path, n, text = share.export(args.task, args.to, args.format, args.out)
+    print(f"{share.AUDIENCES[args.to]} 공유본 · {'HTML' if args.format == 'html' else '텍스트'} · 보낼 것 {n}건")
+    print(f"파일: {path.resolve()}")
+    if args.copy:
+        try:
+            subprocess.run(["pbcopy"], input=text.encode(), check=True)
+            print("클립보드에 복사했어요")
+        except (OSError, subprocess.CalledProcessError):
+            print("클립보드에 복사하지 못했어요 — 파일을 열어 복사해 주세요")
 
 
 def cmd_pull(args):
@@ -598,6 +614,13 @@ def main():
         p = sub.add_parser(name)
         p.add_argument("target")
         p.set_defaults(fn=fn)
+    p = sub.add_parser("export")
+    p.add_argument("task")
+    p.add_argument("--to", choices=list(share.AUDIENCES), required=True)
+    p.add_argument("--format", choices=["html", "md"], required=True)
+    p.add_argument("-o", "--out")
+    p.add_argument("--copy", action="store_true")
+    p.set_defaults(fn=cmd_export)
     p = sub.add_parser("clear")
     p.add_argument("file")
     p.add_argument("--id", action="append")
