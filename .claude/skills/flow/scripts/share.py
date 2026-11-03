@@ -136,9 +136,10 @@ def q_html(ctx, n, q, who, word):
         mock = (q.get("preview") or {}).get(q.get("recommended", "yes"))
         if mock:
             preview = f'<div class="sq-preview"><div class="ui-kind">제안대로라면</div>{mocks_html(ctx, mock if isinstance(mock, list) else [mock])}</div>'
-    return (f'<section class="sq"><h3>{word} {n}. {ctx.rich(q.get("title", ""))}</h3>{ctxl}{body}'
+    intent = f'<div class="intent"><b>왜 묻나요</b>{ctx.rich(q["intent"])}</div>' if q.get("intent") else ""
+    return (f'<section class="sq"><h3>{word} {n}. {ctx.rich(q.get("title", ""))}</h3>{intent}{ctxl}{body}'
             f'<div class="rec-line"><b>제안</b>{ctx.rich(q.get("recommendation", ""))}</div>'
-            f'<ol class="sq-opts">{opts}</ol>{preview}</section>')
+            f'<ol class="sq-opts">{opts}</ol>{preview}<p class="note">답과 함께, 그렇게 정하시는 이유도 한 줄 적어 주세요.</p></section>')
 
 
 def to_html(site, d, task, who):
@@ -202,11 +203,14 @@ def md_cell(ctx, c):
 
 def q_md(ctx, n, q, who, word):
     out = [f"### {word} {n}. {md_text(ctx, q.get('title', ''))}", ""]
+    if q.get("intent"):
+        out += [f"**왜 묻나요** {md_text(ctx, q['intent'])}", ""]
     out += [f"- {k}: {md_text(ctx, v)}" for k, v in context_rows(q, who)]
     if q.get("body"):
         out += ["", md_text(ctx, q["body"])]
     out += ["", f"**제안** {md_text(ctx, q.get('recommendation', ''))}", ""]
     out += [f"{i}. {label}{' (추천)' if rec else ''}" for i, (label, rec) in enumerate(options_of(q), 1)]
+    out += ["", "_답과 함께, 그렇게 정하시는 이유도 한 줄 적어 주세요._"]
     return "\n".join(out) + "\n"
 
 

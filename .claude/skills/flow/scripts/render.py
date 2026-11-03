@@ -745,7 +745,7 @@ def answers_data(site, d, t):
             a = q.get("answer") or {}
             questions[f"{r['id']}-{q['id']}"] = {
                 "title": plain(q.get("title", "")), "options": q.get("options") or [],
-                "answer": {k: a.get(k, "") for k in ("choice", "note", "followUp", "copy")},
+                "answer": {k: a.get(k, "") for k in ("choice", "why", "note", "followUp", "copy")},
                 "decided": bool(q.get("decision")), "byUser": a.get("by") == "user"}
     for key, st in (task.get("stages") or {}).items():
         if key == "grill":
@@ -784,7 +784,7 @@ def task_index(site, d, t, shared=None):
         note += (f'<h2>후속 수정<small>작업이 끝난 뒤 이 작업의 파일을 고친 기록</small></h2><table class="tbl"><thead><tr>'
                  f'<th>날짜</th><th>내용</th><th>파일</th><th>커밋</th></tr></thead><tbody>{rows}</tbody></table>')
     body = (f'<div class="head">{export_menu(ctx, d, t, shared)}<h1>{esc(task.get("title", t))}</h1><p class="meta">{meta}</p></div>{link_list(task.get("links"))}'
-            f'{"".join(cards)}{note}')
+            f'{intent_section(ctx, task)}{"".join(cards)}{note}')
     return shell(ctx, f"{t} {task.get('title', '')} · flow", nav_tree(ctx, d, t), body, shared=shared)
 
 
@@ -833,6 +833,25 @@ def grill_conclusion(ctx, stage, s):
     return "".join(out)
 
 
+REASON_BY = {"user": "본인 말", "plan": "기획 · 디자인", "backend": "백엔드", "inferred": "추정 · 확인 전"}
+INTENT_STATE = {"guess": "가설", "confirmed": "확인됨"}
+
+
+def intent_section(ctx, task):
+    items = task.get("intent") or []
+    if not items:
+        return ""
+    lis = []
+    for it in items:
+        st = it.get("state", "guess")
+        was = "".join(f'<li class="was">{ctx.rich(w)}</li>' for w in it.get("was", []))
+        basis = f'<span class="basis">{ctx.rich(it["basis"])}</span>' if it.get("basis") else ""
+        lis.append(f'<li class="{esc(st)}"><span class="k {"done" if st == "confirmed" else "pend"}">{esc(INTENT_STATE.get(st, st))}</span>'
+                   f'{ctx.rich(it.get("text", ""))}{basis}{f"<ul>{was}</ul>" if was else ""}</li>')
+    return (f'<section class="intent-card"><h2>이 기능의 의도<small>무엇을 위해 만드는지 · 답을 받을 때마다 고쳐 써요</small></h2>'
+            f'<ul>{"".join(lis)}</ul></section>')
+
+
 def question_card(ctx, r, q):
     tag = f"{r['id']}-{q['id']}"
     a = q.get("answer") or {}
@@ -849,6 +868,7 @@ def question_card(ctx, r, q):
     ctxl = "".join(f'<li><b>{esc(k)}</b><span>{copy_marks(ctx.rich(v))}</span></li>' for k, v in q.get("context", []))
     ctxl = f'<ul class="q-ctx">{ctxl}</ul>' if ctxl else ""
     said = f'<div class="said">{ctx.rich(q["said"])}</div>' if q.get("said") else ""
+    intent = f'<div class="intent"><b>왜 묻나요</b>{ctx.rich(q["intent"])}</div>' if q.get("intent") else ""
     body = f'<div>{ctx.rich(q["body"])}</div>' if q.get("body") else ""
     to = q.get("to") or []
     to = [to] if isinstance(to, str) else to
@@ -859,18 +879,22 @@ def question_card(ctx, r, q):
     tpls = "".join(f'<template data-preview="{esc(k)}">{mocks_html(ctx, v if isinstance(v, list) else [v])}</template>'
                    for k, v in (q.get("preview") or {}).items())
     live = f'<div class="live" data-live>{tpls}</div>' if tpls else ""
-    decision = (f'<div class="decision"><b>결정</b>{ctx.rich(q["decision"])}<div class="applied">반영한 곳: {ctx.rich(q.get("appliedTo", ""))}</div></div>'
+    rs = q.get("reason") or {}
+    reason = (f'<div class="reason"><b>고른 이유 · {esc(REASON_BY.get(rs.get("by"), rs.get("by", "")))}</b>{ctx.rich(rs.get("text", ""))}</div>'
+              if rs.get("text") else "")
+    decision = (f'<div class="decision"><b>결정</b>{ctx.rich(q["decision"])}{reason}<div class="applied">반영한 곳: {ctx.rich(q.get("appliedTo", ""))}</div></div>'
                 if q.get("decision") else "")
     form = (f'{said}{body}<div class="rec-line"><b>추천</b>{ctx.rich(q.get("recommendation", ""))}</div>'
             f'<div class="q-grid{" has-live" if live else ""}"><div><div class="opts">{radios}</div>{copy_fld}'
+            f'<label class="fld"><span>이렇게 고른 이유</span><textarea data-f="why" placeholder="무엇을 지키고 싶어서 이 답을 골랐는지">{esc(a.get("why", ""))}</textarea></label>'
             f'<label class="fld"><span>메모</span><textarea data-f="note" placeholder="다르게 고르면 조건을 적어 주세요">{esc(a.get("note", ""))}</textarea></label>'
             f'<label class="fld"><span>되묻기</span><textarea data-f="followUp" placeholder="되묻고 싶은 것">{esc(a.get("followUp", ""))}</textarea></label></div>{live}</div>')
     if needs_answer(q):
-        inner = f"{ctxl}{form}{decision}"
+        inner = f"{intent}{ctxl}{form}{decision}"
     else:
         picked = next((o["label"] for o in opts if o["value"] == a.get("choice")), "")
         lead = f"고른 답 · {esc(picked)}" if picked else "질문과 답"
-        inner = f'{ctxl}{decision}<details class="q-more"><summary>{lead} — 펼쳐서 보거나 고쳐요</summary>{form}</details>'
+        inner = f'{intent}{ctxl}{decision}<details class="q-more"><summary>{lead} — 펼쳐서 보거나 고쳐요</summary>{form}</details>'
     cls = "q open" if not q.get("decision") and a.get("by") != "user" else "q"
     return (f'<div class="{cls}" id="{esc(tag)}" data-tag="{esc(tag)}"><div class="q-head"><b>{esc(tag)}. {ctx.rich(q.get("title", ""))}</b>{badge}</div>'
             f'{inner}</div>')

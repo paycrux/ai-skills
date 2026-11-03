@@ -242,9 +242,9 @@ def browser_answers(docs):
 
 HEADER = re.compile(r"^\[flow 답 · ([^/\s]+)/(\S+) · .*?t=(\d+)\]\s*$")
 QUESTION = re.compile(r"^(R\d+-Q\d+) ")
-FIELD = re.compile(r"^  (답|문구|메모|되물음): ?(.*)$")
+FIELD = re.compile(r"^  (답|문구|이유|메모|되물음): ?(.*)$")
 CHECK = re.compile(r"^  \[(x| )\] (\S+)")
-FIELD_KEY = {"답": "label", "문구": "copy", "메모": "note", "되물음": "followUp"}
+FIELD_KEY = {"답": "label", "문구": "copy", "이유": "why", "메모": "note", "되물음": "followUp"}
 
 
 def read_clipboard():
@@ -314,15 +314,15 @@ def merge(task, state):
             continue
         if labels is not None and tag in labels:
             src = labels[tag]
-            new = {"choice": label_to_value(q, src.get("label", "")), "note": src.get("note", ""), "followUp": src.get("followUp", ""), "copy": src.get("copy", "")}
+            new = {"choice": label_to_value(q, src.get("label", "")), "why": src.get("why", ""), "note": src.get("note", ""), "followUp": src.get("followUp", ""), "copy": src.get("copy", "")}
         else:
             src = answers[tag]
-            new = {k: src.get(k, "") for k in ("choice", "note", "followUp", "copy")}
+            new = {k: src.get(k, "") for k in ("choice", "why", "note", "followUp", "copy")}
         cur = q.get("answer") or {}
         if all((cur.get(k) or "") == new[k] for k in new):
             continue
         q["answer"] = {**new, "by": "user"}
-        changed.append(f"{tag}: 답 '{new['choice'] or '없음'}'" + (f" · 문구 \"{new['copy']}\"" if new["copy"] else "") + (f" · 메모 \"{new['note']}\"" if new["note"] else "")
+        changed.append(f"{tag}: 답 '{new['choice'] or '없음'}'" + (f" · 문구 \"{new['copy']}\"" if new["copy"] else "") + (f" · 이유 \"{new['why']}\"" if new["why"] else "") + (f" · 메모 \"{new['note']}\"" if new["note"] else "")
                        + (f" · 되물음 \"{new['followUp']}\"" if new["followUp"] else ""))
     items = {}
     for key, st in (task.get("stages") or {}).items():

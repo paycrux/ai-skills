@@ -180,7 +180,9 @@ spacing and token values are still read at implementation time.
 `flow.py add <task.json> grill` first if the stage does not exist. When the questions are about
 states or failure branches, draw them first: `cases` tables above the rounds, each row's UI drawn as
 the app's own modal · toast · banner or a Figma capture, and each question pointing at its row
-(`references/questions.md` § Draw the cases first). Follow `references/questions.md`:
+(`references/questions.md` § Draw the cases first). Every question carries its `intent` (why we
+ask), every decision its `reason` (why they chose), and the task its `intent` (what the feature is
+for) — § Intent. Follow `references/questions.md`:
 write the round into `stages.grill.rounds`, `flow.py open <docs>/<domain>/<task>/02-grill.html` (name `R<n>` in chat),
 and stop:
 
@@ -257,7 +259,7 @@ With `done`, work its checklist; without it, do the same steps and record them i
 - Then suggest `/git-pr`; never open the PR from this skill. The PR body links the task and copies
   its conclusions — reviewers read the PR without opening the pages.
 - Once the PR is merged and the user confirms the task is over, `flow.py prune <task.json>`: the
-  question rounds keep only title and decision, checklist items only their `결정` and `파일` rows.
+  question rounds keep only title, intent, decision and reason, checklist items only their `결정` and `파일` rows.
   The full record stays in git history.
 
 ## Follow-ups on a finished task
@@ -292,7 +294,8 @@ format there: HTML 파일 (drawn case tables, images inside, one file to attach)
 - When the user asks in chat instead, point them to the menu, or run
   `flow.py export <task.json> --to plan|backend --format html|md [-o FILE] [--copy]`.
 - Answers come back in the thread. When the user pastes them, record them as chat answers
-  (`references/questions.md` § When answers cannot come from the page) and continue from there.
+  (`references/questions.md` § When answers cannot come from the page) and continue from there;
+  a reason given in the thread goes into `reason` with `by: "plan"` or `"backend"`.
 
 ## Communication Style
 

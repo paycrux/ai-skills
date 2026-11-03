@@ -307,11 +307,13 @@ def describe(trail, node):
         lines = []
         if node.get("choice") == "unsure":
             lines.append(f"{tag}: '더 설명해줘' — 빠진 설명을 붙여 다음 라운드에서 다시 물어요")
-        elif not node.get("choice") and not node.get("note") and not node.get("copy"):
+        elif not node.get("choice") and not node.get("note") and not node.get("copy") and not node.get("why"):
             lines.append(f"{tag}: 사람이 답을 지움 — 결정을 되돌릴지 물어요")
         else:
             note = (f" · 문구 \"{node['copy']}\"" if node.get("copy") else "") + (f" · 메모 \"{node['note']}\"" if node.get("note") else "")
-            lines.append(f"{tag}: 답 '{node.get('choice')}'{note} — 결정 문장을 쓰거나 고치고 반영한 곳(appliedTo)에 옮겨요")
+            why = (f" · 이유 \"{node['why']}\" — reason에 by: user로 옮겨요" if node.get("why")
+                   else " · 이유 없음 — reason에 추정(by: inferred)을 쓰고 다음 라운드에서 확인받아요")
+            lines.append(f"{tag}: 답 '{node.get('choice')}'{note}{why} — 결정 문장을 쓰거나 고치고 반영한 곳(appliedTo)에 옮기고, 작업 intent를 다시 읽어요")
         if node.get("followUp"):
             lines.append(f"{tag}: 되물음 \"{node['followUp']}\" — 답해야 해요")
         return lines
@@ -467,6 +469,7 @@ def check_task(f, domain, index, problems):
             problems.append(f"{rel}: 없는 단계 {k}")
             continue
         if k == "grill":
+            live = task_state(t) != "done"
             for r in st.get("rounds", []):
                 for q in r.get("questions", []):
                     tag = f"{r.get('id')}-{q.get('id')}"
@@ -475,6 +478,15 @@ def check_task(f, domain, index, problems):
                         problems.append(f"{rel} {tag}: 답은 있는데 결정 문장이 없어요")
                     if q.get("decision") and not q.get("appliedTo"):
                         problems.append(f"{rel} {tag}: 결정을 어디에 반영했는지(appliedTo)가 없어요")
+                    if live and not q.get("intent"):
+                        problems.append(f"{rel} {tag}: 왜 묻는지(intent)가 없어요")
+                    if live and q.get("decision") and not (q.get("reason") or {}).get("text"):
+                        problems.append(f"{rel} {tag}: 고른 이유(reason)가 없어요 — 사람 말이 없으면 추정(by: inferred)으로 써요")
+                    rb = (q.get("reason") or {}).get("by")
+                    if rb and rb not in ("user", "plan", "backend", "inferred"):
+                        problems.append(f"{rel} {tag}: reason.by는 user/plan/backend/inferred 중 하나")
+            if live and st.get("rounds") and not t.get("intent"):
+                problems.append(f"{rel}: 질문이 있는데 작업 의도(intent)가 없어요 — 기획서에서 가설로 시작해요")
             continue
         for b in st.get("blocks", []):
             if b.get("type") == "table":
@@ -723,7 +735,7 @@ def cmd_log(args):
     print(f"{name}/{task['id']}에 후속 수정 한 줄을 남겼어요 ({sha})")
 
 
-KEEP_Q = ("id", "title", "decision", "appliedTo", "to")
+KEEP_Q = ("id", "title", "intent", "decision", "reason", "appliedTo", "to")
 KEEP_ROWS = ("결정", "파일")
 
 

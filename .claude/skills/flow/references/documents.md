@@ -53,6 +53,7 @@ page · reading for tokens · legacy documents · earlier versions
   "id": "APP-452", "title": "선물내역 · 받은 선물 목록", "type": "기능 개발",
   "branch": "feat/APP-452", "links": [{"label": "기획서 2.3", "url": "…"}],
   "feature": {"id": "gift", "doc": "<absolute path of feature.json>"},
+  "intent": [{"text": "…", "state": "guess", "basis": "기획서 2.3"}],
   "followUps": [{"date": "2026-11-03", "text": "…", "files": ["app/gift/payment.tsx"], "sha": "abc1234"}],
   "stages": {
     "plan":   {"status": "done", "summary": "…", "conclusion": ["…"], "blocks": [

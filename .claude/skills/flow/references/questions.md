@@ -3,8 +3,8 @@
 Page 02 is both the question record and the place the user answers. Rounds live in the task's
 `stages.grill.rounds`; `02-grill.html` renders them with an answer form under each question.
 
-Contents: where questions come from · writing a round · the rounds JSON · receiving answers ·
-revisions · when answers cannot come from the page
+Contents: where questions come from · intent · writing a round · the rounds JSON · receiving
+answers · revisions · when answers cannot come from the page
 
 ## Where questions come from
 
@@ -15,6 +15,43 @@ revisions · when answers cannot come from the page
 | Verification | behavior is ambiguous once seen on a device | the verify item |
 
 Never invent user-facing text to avoid a question.
+
+## Intent — why we asked, why they chose, what the feature is for
+
+A decision history says what was settled. Months later the reader also needs why: what the
+question was protecting and what the person wanted when they picked an answer. Three places hold it.
+
+| Field | Written by | What it says |
+|---|---|---|
+| question `intent` | Claude, when writing the question | Why this question was chosen: what it decides for the end user, and what goes wrong on screen if we guess. One or two sentences. Required. |
+| `answer.why` | the person, in the page's 이렇게 고른 이유 field | Their reason, in their words. |
+| question `reason` | Claude, with the decision | `{"text": "…", "by": "user|plan|backend|inferred"}` — the chooser's intent, not Claude's rationale. |
+| task `intent` | Claude | What the feature is for — the end of every round's reading. See below. |
+
+Reading intent out of an answer:
+
+- `answer.why` present → `reason.text` quotes it, `by: "user"` (or `plan` / `backend` when the
+  answer came back from that thread).
+- No `why` → infer it from the choice, the note and earlier answers; write it as `by: "inferred"`
+  and open the next round with one question that confirms it ("이렇게 이해했어요 — 맞나요?"). On a
+  yes, change `by` to the confirmer.
+- A choice that differs from the recommendation is the strongest signal — the recommendation
+  modelled the wrong goal. Always get a `why` for it, inferred first if the person left it empty.
+- A pattern across answers (three answers all keeping the user on the same screen) is a feature
+  intent, not a question's — write it into the task `intent`.
+
+The task `intent` is a list at the top of the task JSON, shown first on the task page:
+
+```json
+"intent": [
+  {"text": "<what the feature is for, one sentence>", "state": "guess|confirmed",
+   "basis": "<where it comes from: 기획서 2.3, [[R1-Q2]], [[R2-Q1]]>", "was": ["<an earlier wording>"]}
+]
+```
+
+Start it at the first round from the PRD as `guess`. After every round, re-read it against the
+answers: a line the answers back becomes `confirmed` with the question cited in `basis`; a line
+they contradict is rewritten and the old wording moves into `was`. Never delete a line silently.
 
 ## Writing a round
 
@@ -27,6 +64,7 @@ Each question, for a reader who has not seen the code:
   evidence (`[[S8]]`, the layer name, and the rendered text side by side).
 - `body` — what happens now → what goes wrong → the choice. Full sentences. Unpack any term the
   first time. File paths go in parentheses after the sentence that explains them.
+- `intent` — why this question was chosen (§ Intent). Required.
 - `recommendation` — what you would do and why, one or two sentences. Required.
 - `options` — only for a real multi-way choice; each `label` says what the user will notice.
   Omit for yes/no — the page shows 추천대로 / 다르게. The page always adds 더 설명해줘.
@@ -94,15 +132,17 @@ Other mock shapes: `{"toast": "선물 발송이 완료되었어요."}`,
     "id": "R1", "askedAt": "10/23", "from": "<what opened this round, e.g. SOT 확인 필요 [[S4]] [[S8]]>",
     "questions": [{
       "id": "Q1", "title": "<short question>", "to": "plan",
-      "said": "<trigger, quoted>", "body": "<background → problem → choice>",
+      "said": "<trigger, quoted>", "intent": "<why we ask: what it decides for the end user>",
+      "body": "<background → problem → choice>",
       "recommendation": "<what and why>",
       "context": [["케이스", "<the case row, [[C2-1]]>"], ["지금 앱", "<what the code does>"]],
       "options": [{"value": "a", "label": "<what the user notices>"}],
       "recommended": "a",
       "copy": {"label": "<what to type>", "placeholder": "<example>"},
       "preview": {"copy": {"banner": {"body": "{copy}"}}, "a": {"toast": "<copy>"}},
-      "answer": {"choice": "a", "copy": "", "note": "", "followUp": ""},
+      "answer": {"choice": "a", "why": "", "copy": "", "note": "", "followUp": ""},
       "decision": "<full sentences: what was decided and why>",
+      "reason": {"text": "<the chooser's intent, quoted or inferred>", "by": "user"},
       "appliedTo": "<every place it changed: [[S8]], [[P2-2]]>"
     }]
   }]
@@ -116,7 +156,9 @@ question only the user answers.
 
 Round IDs are `R<n>`, question IDs `Q<n>`; together they are cited as `[[R1-Q2]]`. A round is
 **open** while any question lacks `decision`. `answer` is written by the page (with
-`"by": "user"`) or by Claude from a chat answer; `decision` and `appliedTo` are written by Claude.
+`"by": "user"`) or by Claude from a chat answer; `decision`, `reason` and `appliedTo` are written by
+Claude. `check` fails on an unfinished task while a question lacks `intent`, a decision lacks
+`reason`, or a task with questions lacks `intent`. `prune` keeps `intent` and `reason`.
 
 ## Receiving answers
 
@@ -130,7 +172,8 @@ When the user says they answered ("답 썼어") or copied ("복사했어"):
 2. For each line:
    - **new answer** → write `decision` as sentences a person can read: what was decided, why, and
      what it costs. Never a dotted list of keywords (`A · B · C`) — that reads only to whoever wrote
-     it. Then apply it where it belongs and record that in `appliedTo`:
+     it. Write `reason` from `answer.why`, or infer it (§ Intent). Then apply it where it belongs and
+     record that in `appliedTo`:
      a SOT row → change `kind`, rewrite `rule`/`note` and cite the question (`[[APP-452#R1-Q2]]`);
      a case row → rewrite its cells to the settled outcome (the drawn UI, the copy, the button) and
      set its status chip to `{"state": "done", "label": "정리됨"}`, dropping `ask`;
@@ -144,7 +187,8 @@ When the user says they answered ("답 썼어") or copied ("복사했어"):
      the condition. Respect it in the decision text.
    - **a tick or an edited text** → read it and carry it on (a ticked verify item the person saw
      themselves stays ticked).
-3. `flow.py clear <file> --id R1-Q2 --id P3-2 …` for what you handled (no `--id` clears all), then
+3. Re-read the task `intent` against this round's answers (§ Intent) and update it.
+4. `flow.py clear <file> --id R1-Q2 --id P3-2 …` for what you handled (no `--id` clears all), then
    `flow.py build` and `flow.py check`. Report in two lines.
 
 ## Revisions after a decision
@@ -157,6 +201,7 @@ remains — the old decision must never silently stand.
 ## When answers cannot come from the page
 
 When the host cannot open a browser, or the person prefers chat, ask the same questions in chat,
-write the answers into `answer` yourself (quote them, no `by`), and continue from step 2. When
+write the answers into `answer` yourself (quote them, no `by`; a stated reason goes in `why`), and
+continue from step 2. When
 `pull` finds nothing twice and the clipboard holds no flow answer either, ask the person to paste
 the 답 복사 text into chat and read it the same way.

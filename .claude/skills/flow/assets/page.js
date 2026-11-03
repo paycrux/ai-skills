@@ -126,7 +126,7 @@
 
   const DEFAULT_OPTS = [{ value: "yes", label: "추천대로" }, { value: "no", label: "다르게" }];
   const optsOf = (q) => [...(q.options && q.options.length ? q.options : DEFAULT_OPTS), { value: "unsure", label: "더 설명해줘" }];
-  const FIELDS = ["choice", "note", "followUp", "copy"];
+  const FIELDS = ["choice", "why", "note", "followUp", "copy"];
   const sameAnswer = (a, b) => FIELDS.every((k) => (a[k] || "") === (b[k] || ""));
 
   let saveFailed = false;
@@ -153,6 +153,7 @@
     const update = () => {
       const now = {
         choice: ($("input[type=radio]:checked", card) || {}).value || "",
+        why: ($("textarea[data-f=why]", card) || { value: "" }).value.trim(),
         note: $("textarea[data-f=note]", card).value.trim(),
         followUp: $("textarea[data-f=followUp]", card).value.trim(),
         copy: ($("textarea[data-f=copy]", card) || { value: "" }).value.trim(),
@@ -199,7 +200,7 @@
       const q = A.questions[tag] || {};
       const local = !!st.answers[tag];
       const a = answerOf(tag);
-      const answered = !!(a.choice || a.copy || a.note);
+      const answered = !!(a.choice || a.copy || a.note || a.why);
       $$(`[data-status-for="${tag}"]`).forEach((chip) => {
         if (q.decided && !local) [chip.className, chip.textContent] = ["k done", "결정됨"];
         else if (answered) [chip.className, chip.textContent] = ["k ans", "답 있음 · 반영 전"];
@@ -287,6 +288,7 @@
       const label = (optsOf(q).find((o) => o.value === a.choice) || {}).label;
       out.push(...block("답", label || "답 없음"));
       if (a.copy) out.push(...block("문구", a.copy));
+      if (a.why) out.push(...block("이유", a.why));
       if (a.note) out.push(...block("메모", a.note));
       if (a.followUp) out.push(...block("되물음", a.followUp));
       out.push("");
