@@ -287,6 +287,8 @@ def user_marks(node, trail=()):
         if node.get("by") == "user":
             yield trail, node
         for k, v in node.items():
+            if k == "reason":
+                continue
             if isinstance(v, dict):
                 yield from user_marks(v, trail + (k,))
             elif isinstance(v, list):
