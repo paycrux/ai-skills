@@ -854,9 +854,9 @@ record_install
 install_cli
 register_path
 
-# Note: browse (headless browser for /qa) is intentionally NOT built here.
-# /qa and /browse detect a missing binary on first use and build it then —
-# see the "Setup" step in their SKILL.md files.
+# Note: browse (headless browser) is intentionally NOT built here.
+# /browse detects a missing binary on first use and builds it then —
+# see the "Setup" step in its SKILL.md.
 
 echo ""
 ok "Done! ai-skills installed to ${TARGET_DIR}/"

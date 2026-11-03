@@ -93,9 +93,9 @@ stylesheet contains `input:checked`. Plans from the older template also put a ch
 확인 필요 question, so the file-wide count includes them; per-Phase counting is unaffected. Progress is counted per Phase: the checkboxes between a `Phase`
 heading and the next `<h2>` (or `##`), checked over total.
 
-## Sections other skills append
+## Sections the removed skills appended (legacy plans only)
 
-- `/implement` — `<h2>기기 확인</h2>` + a checklist (React Native / Expo)
-- `/qa` — one 진행 기록 line; a `QA Fix Phase` as an ordinary Phase section
+- The removed `implement` skill added `<h2>기기 확인</h2>` + a checklist (React Native / Expo)
+- The removed `qa` skill added one 진행 기록 line and a `QA Fix Phase` as an ordinary Phase section
 - `_shared/jira/md_to_adf.py` accepts `tasks.html` directly: `--section "## QA 가이드"` matches
   `<h2>QA 가이드</h2>` too
