@@ -17,6 +17,7 @@
     python3 flow.py open <page.html>                        build, then open the page in the OS default browser
     python3 flow.py current [<dir>]                         the flow task whose branch is the checked-out one (SessionStart hook)
     python3 flow.py log <docs> --file PATH... -m "..." [--sha SHA] [--task ID]   one follow-up line on the task that covers the files
+    python3 flow.py verify <task.json> [--cmd CMD]... [--repo DIR]   a read-only checker in a fresh context writes <domain>/verify/<task>.json
     python3 flow.py prune <task.json>                       a finished task keeps conclusions and decisions only
     python3 flow.py feature <docs> <feature-id> --title "..." --root BRANCH [--prd URL]   a feature document skeleton
     python3 flow.py start <docs>/features/<id>/feature.json [--row KEY]... [--approve] [--dry-run]
@@ -460,7 +461,7 @@ def check_task(f, domain, index, problems):
     if t.get("id") != f.stem:
         problems.append(f"{rel}: id({t.get('id')})가 파일 이름과 달라요")
     if str(t.get("id", "")).lower() in RESERVED_TASK_IDS:
-        problems.append(f"{rel}: 작업 ID로 tasks · images · diagrams · index는 쓸 수 없어요")
+        problems.append(f"{rel}: 작업 ID로 tasks · images · diagrams · verify · index는 쓸 수 없어요")
     if not t.get("title"):
         problems.append(f"{rel}: title이 없어요")
     stages = t.get("stages") or {}
@@ -556,6 +557,120 @@ def check_feature(fd, problems):
         problems.append(f"{rel}: jira.path에 \"mark\": \"start\"와 \"done\" 단계가 있어야 해요")
 
 
+# ---------------------------------------------------------------- plan vs. changed files
+
+CODE = re.compile(r"<code>(.*?)</code>")
+LINE_SUFFIX = re.compile(r":\d+(?:-\d+)?$")
+ROOTS = ("origin/develop", "develop", "origin/main", "main", "origin/master", "master")
+
+
+def planned_files(task, top):
+    out = set()
+    for b in ((task.get("stages") or {}).get("tasks") or {}).get("blocks", []):
+        for item in b.get("items", []) if b.get("type") == "checklist" else []:
+            for row in item.get("rows", []):
+                if len(row) < 2 or row[0] not in ("파일", "테스트"):
+                    continue
+                for raw in CODE.findall(str(row[1])):
+                    path = Path(os.path.expanduser(LINE_SUFFIX.sub("", raw.strip())))
+                    if not path.is_absolute():
+                        out.add(path.as_posix().rstrip("/"))
+                    elif path.resolve().is_relative_to(top):
+                        out.add(path.resolve().relative_to(top).as_posix())
+    return out
+
+
+def changed_files(top, docs):
+    branch = git(top, "branch", "--show-current")
+    root = next((r for r in ROOTS if git(top, "rev-parse", "--verify", "-q", r)), None)
+    if not root or branch in (root, root.split("/")[-1]):
+        return None
+    base = git(top, "merge-base", "HEAD", root)
+    files = set(git(top, "diff", "--name-only", base, "HEAD").splitlines())
+    files |= set(git(top, "diff", "--name-only", "HEAD").splitlines())
+    files |= set(git(top, "ls-files", "--others", "--exclude-standard").splitlines())
+    d = Path(docs).resolve()
+    skip = d.relative_to(top).as_posix() + "/" if d.is_relative_to(top) else None
+    return {f for f in files if f and not (skip and f.startswith(skip))}
+
+
+def covers(planned, f):
+    return any(f == p or f.startswith(p + "/") for p in planned)
+
+
+def plan_drift(docs, doms):
+    """Compare each task's planned 파일 rows on the current branch with what git says changed.
+    Returns (notes, problems): drift is a note while the plan is in progress, a problem once tasks is done."""
+    notes, problems = [], []
+    top_s = git(docs, "rev-parse", "--show-toplevel")
+    if not top_s:
+        return notes, problems
+    top = Path(top_s).resolve()
+    branch = git(top, "branch", "--show-current")
+    changed = None
+    for d in doms:
+        for f in task_files(d):
+            t = read_json(f)
+            st = (t.get("stages") or {}).get("tasks") or {}
+            if t.get("branch") != branch or st.get("status") not in ("now", "ask", "done"):
+                continue
+            planned = planned_files(t, top)
+            if not planned:
+                continue
+            if changed is None:
+                changed = changed_files(top, docs)
+                if changed is None:
+                    return notes, problems
+            extra = sorted(c for c in changed if not covers(planned, c))
+            untouched = sorted(p for p in planned if not any(covers({p}, c) for c in changed))
+            out = problems if st.get("status") == "done" else notes
+            rel = f"{d.name}/tasks/{f.name}"
+            if extra:
+                out.append(f"{rel}: 계획에 없는 변경 파일 {len(extra)}개 — {', '.join(extra)}")
+            if untouched:
+                out.append(f"{rel}: 계획에 있는데 안 바뀐 파일 {len(untouched)}개 — {', '.join(untouched)}")
+    return notes, problems
+
+
+def repro_problems(docs, doms):
+    """A 버그 수정 reproduction test must stay as it was at its 실패 커밋."""
+    problems = []
+    top = git(docs, "rev-parse", "--show-toplevel")
+    if not top:
+        return problems
+    branch = git(top, "branch", "--show-current")
+    for d in doms:
+        for f in task_files(d):
+            t = read_json(f)
+            stages = t.get("stages") or {}
+            st = stages.get("tasks") or {}
+            if t.get("branch") != branch:
+                continue
+            rel = f"{d.name}/tasks/{f.name}"
+            found = False
+            for b in st.get("blocks", []):
+                for item in b.get("items", []) if b.get("type") == "checklist" else []:
+                    rows = {r[0]: str(r[1]) for r in item.get("rows", []) if len(r) >= 2}
+                    tests = CODE.findall(rows.get("테스트", ""))
+                    if not tests:
+                        continue
+                    found = True
+                    sha = (CODE.findall(rows.get("실패 커밋", "")) or [""])[0].strip()
+                    if not sha:
+                        if item.get("done"):
+                            problems.append(f"{rel} {item.get('id')}: 재현 테스트의 실패 커밋이 없어요")
+                        continue
+                    if not git(top, "rev-parse", "--verify", "-q", f"{sha}^{{commit}}"):
+                        problems.append(f"{rel} {item.get('id')}: 실패 커밋 {sha}을 이 저장소에서 못 찾아요")
+                        continue
+                    touched = git(top, "diff", "--name-only", sha, "--", *tests).splitlines()
+                    if touched:
+                        problems.append(f"{rel} {item.get('id')}: 재현 테스트가 실패 커밋 {sha} 뒤에 바뀌었어요 — {', '.join(touched)}")
+            if t.get("type") == "버그 수정" and st.get("status") == "done" and not found and "verify" not in stages:
+                problems.append(f"{rel}: 버그 수정인데 재현 테스트(테스트 · 실패 커밋 행)도 verify 단계도 없어요")
+    return problems
+
+
 def cmd_check(args):
     docs, doms = scope(args.target)
     index = Index(docs)
@@ -568,6 +683,12 @@ def cmd_check(args):
     for fd in feat.feature_dirs(docs):
         check_feature(fd, problems)
     problems += [f"HTML: {s} — flow.py build {docs}" for s in render.stale(docs)]
+    notes, drift = plan_drift(docs, doms)
+    problems += drift + repro_problems(docs, doms)
+    if notes:
+        print(f"계획과 다른 변경 {len(notes)}건 (구현 중이라 실패로 치지 않아요)")
+        for n in notes:
+            print(f"- {n}")
     if problems:
         print(f"문제 {len(problems)}건")
         for p in problems:
@@ -643,6 +764,89 @@ def tracked_generated(docs):
     return out
 
 
+# ---------------------------------------------------------------- fresh-context verify
+
+EVIDENCE_ROWS = ("파일", "테스트", "실패 커밋", "증상", "재현")
+VERDICT = {"pass": "통과", "fail": "실패", "unknown": "확인 못 함"}
+VERIFY_SCHEMA = {
+    "type": "object", "required": ["items", "commands"],
+    "properties": {
+        "items": {"type": "array", "items": {
+            "type": "object", "required": ["id", "verdict", "evidence"],
+            "properties": {"id": {"type": "string"}, "verdict": {"enum": list(VERDICT)},
+                           "evidence": {"type": "string"}}}},
+        "commands": {"type": "array", "items": {
+            "type": "object", "required": ["command", "exit"],
+            "properties": {"command": {"type": "string"}, "exit": {"type": "integer"}}}},
+    },
+}
+
+
+def verify_payload(t, changed, commands):
+    items = []
+    for key in ("tasks", "verify"):
+        for b in ((t.get("stages") or {}).get(key) or {}).get("blocks", []):
+            for item in b.get("items", []) if b.get("type") == "checklist" else []:
+                rows = [[r[0], plain(r[1])] for r in item.get("rows", []) if len(r) >= 2 and r[0] in EVIDENCE_ROWS]
+                items.append({"id": item.get("id"), "title": plain(item.get("title", "")),
+                              "done": bool(item.get("done")), "rows": rows})
+    return {"task": {"id": t.get("id"), "title": t.get("title"), "type": t.get("type")},
+            "items": items, "changed": sorted(changed or []), "commands": commands}
+
+
+def result_message(out):
+    data = json.loads(out)
+    if isinstance(data, list):
+        data = next((m for m in reversed(data) if m.get("type") == "result"), {})
+    return data
+
+
+def cmd_verify(args):
+    f = Path(args.task).resolve()
+    t = read_json(f)
+    domain = f.parent.parent
+    docs = domain.parent
+    repo = Path(args.repo or git(docs, "rev-parse", "--show-toplevel") or docs).resolve()
+    payload = verify_payload(t, changed_files(repo, docs), args.cmd)
+    if not payload["items"]:
+        sys.exit("확인할 체크리스트 항목이 없어요")
+    guide = (Path(__file__).parent.parent / "references" / "verifier.md").read_text()
+    prompt = guide + "\n\n```json\n" + json.dumps(payload, ensure_ascii=False, indent=1) + "\n```\n"
+    tools = ["Read", "Grep", "Glob"] + (["Bash"] if args.cmd else [])
+    cmd = ["claude", "-p", prompt, "--output-format", "json", "--json-schema", json.dumps(VERIFY_SCHEMA),
+           "--tools", *tools, "--allowedTools", "Read", "Grep", "Glob", *[f"Bash({c})" for c in args.cmd],
+           "--permission-mode", "default", "--strict-mcp-config", "--no-session-persistence"]
+    if args.model:
+        cmd += ["--model", args.model]
+    print(f"새 컨텍스트에서 검증 중 — 항목 {len(payload['items'])}개, 명령 {len(args.cmd)}개 ({repo})")
+    proc = subprocess.run(cmd, cwd=repo, capture_output=True, text=True)
+    try:
+        res = result_message(proc.stdout)
+    except ValueError:
+        res = {}
+    out = res.get("structured_output")
+    if proc.returncode or res.get("is_error") or not isinstance(out, dict):
+        sys.stderr.write(proc.stderr[-2000:] + str(res.get("result", ""))[-2000:])
+        sys.exit("검증자가 결과를 내지 못했어요 — 파일을 쓰지 않았어요")
+    record = {"task": t.get("id"), "date": date.today().isoformat(), "repo": str(repo),
+              "head": git(repo, "rev-parse", "--short", "HEAD"), "commands": out.get("commands", []),
+              "items": out.get("items", []), "cost": res.get("total_cost_usd")}
+    dest = domain / "verify" / f"{t.get('id')}.json"
+    dest.parent.mkdir(exist_ok=True)
+    write_json(dest, record)
+    counts = {k: sum(1 for i in record["items"] if i.get("verdict") == k) for k in VERDICT}
+    print(f"결과: {dest}")
+    print(" · ".join(f"{VERDICT[k]} {n}" for k, n in counts.items()))
+    for i in record["items"]:
+        if i.get("verdict") != "pass":
+            print(f"- {i.get('id')} {VERDICT.get(i.get('verdict'), '?')}: {i.get('evidence')}")
+    bad_cmd = [c for c in record["commands"] if c.get("exit")]
+    for c in bad_cmd:
+        print(f"- 명령 실패 (exit {c.get('exit')}): {c.get('command')}")
+    if counts["fail"] or bad_cmd:
+        sys.exit(1)
+
+
 # ---------------------------------------------------------------- open / current
 
 def docs_above(path):
@@ -672,7 +876,7 @@ def cmd_open(args):
     if not page.exists():
         sys.exit(f"build 뒤에도 없는 페이지예요: {page}")
     opener = {"darwin": ["open"], "win32": ["cmd", "/c", "start", ""]}.get(sys.platform, ["xdg-open"])
-    if os.environ.get("SSH_CONNECTION") or (sys.platform.startswith("linux") and not os.environ.get("DISPLAY")):
+    if os.environ.get("FLOW_NO_OPEN") or os.environ.get("SSH_CONNECTION") or (sys.platform.startswith("linux") and not os.environ.get("DISPLAY")):
         print(f"열 수 없는 환경이에요 — 경로: {page.resolve()}")
         return
     subprocess.run([*opener, str(page.resolve())], check=False)
@@ -966,6 +1170,12 @@ def main():
     p.add_argument("task")
     p.add_argument("--src")
     p.set_defaults(fn=cmd_routes)
+    p = sub.add_parser("verify")
+    p.add_argument("task")
+    p.add_argument("--cmd", action="append", default=[], help="a command the verifier may run (exact)")
+    p.add_argument("--repo", help="the code repository, when it is not the one holding <docs>")
+    p.add_argument("--model")
+    p.set_defaults(fn=cmd_verify)
     p = sub.add_parser("open")
     p.add_argument("page")
     p.set_defaults(fn=cmd_open)

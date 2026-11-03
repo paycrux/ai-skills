@@ -18,6 +18,7 @@ page · reading for tokens · legacy documents · earlier versions
   │ ├ tasks/<task-id>.json     one per task; the ID is the Jira key or a short English slug
   │ ├ images/                  Figma screenshots and structure XML
   │ ├ diagrams/                Archify flow diagrams: <task>-<slug>.json (candidate) + .html
+  │ ├ verify/<task-id>.json    the fresh-context verifier's verdicts — `flow.py verify`
   │ ├ prd.md                   PRD snapshot when one was fetched
   │ ├ index.html               the domain's tasks and SOT map                       (generated)
   │ └ <task-id>/               index.html (every stage's conclusion) + 01-plan.html … 05-done.html (generated)
@@ -30,7 +31,7 @@ page · reading for tokens · legacy documents · earlier versions
 - One JSON file per task keeps two branches working on the same domain from conflicting when they
   merge. Only two tasks editing the same `screens.json` row conflict — and that is a real conflict.
   A conflict inside a generated page is never resolved by hand: take either side and `flow.py build`.
-- Commit the JSON, `prd.md`, Figma screenshots and structure XML, and the Archify diagrams (`diagrams/*.json`
+- Commit the JSON, `prd.md`, Figma screenshots and structure XML, `verify/*.json`, and the Archify diagrams (`diagrams/*.json`
   and their `.html` — Archify writes those, not `build`). Never commit what `build` writes — every page,
   `share/`, `diagrams/.receipts/`. `build` lists them in `<docs>/.gitignore`; a teammate runs
   `flow.py build <docs>` (or `flow.py open <page>`, which builds first) after checkout.
@@ -104,7 +105,8 @@ see sot-map.md). Any block takes `sub` for a
   so use the section (`2-1 · 닉네임 변경`), not a per-line label, and keep items of a section together.
   Write a condition and its copy as `조건 → 인라인 메시지 “문구”`: text inside `“…”` is shown as
   user-facing copy, so wrap only the exact on-screen words in it.
-- Item `rows` labels: `파일` · `SOT` · `재사용` · `패턴` · `결정` · `blocker` · `증상` · `재현` · `원인`.
+- Item `rows` labels: `파일` · `SOT` · `재사용` · `패턴` · `결정` · `blocker` · `증상` · `재현` · `원인` ·
+  `테스트` · `실패 커밋` (a `버그 수정` reproduction, SKILL.md Step 5).
   A `결정` row stays after the item is done. Remove `blocker` when its question is decided.
 - Text fields accept inline HTML (`<code>`, `<b>`) and references.
 

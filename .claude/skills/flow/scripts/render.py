@@ -1115,7 +1115,7 @@ def orphans(site, pages):
     """Generated pages on disk that the JSON no longer defines."""
     out = []
     for d, dom in site.domains.items():
-        for sub in sorted(p for p in dom["dir"].iterdir() if p.is_dir() and p.name not in ("tasks", "images", "diagrams")):
+        for sub in sorted(p for p in dom["dir"].iterdir() if p.is_dir() and p.name not in ("tasks", "images", "diagrams", "verify")):
             for f in sorted(sub.glob("*.html")):
                 rel = f.relative_to(site.docs).as_posix()
                 if rel not in pages and is_generated(f):
@@ -1152,7 +1152,7 @@ IGNORE_END = "# flow:end"
 def ignore_lines(site):
     lines = [f"/{site.root}"]
     for d in site.domains:
-        lines += [f"/{d}/index.html", f"/{d}/*/", f"!/{d}/tasks/", f"!/{d}/images/", f"!/{d}/diagrams/", f"/{d}/diagrams/.receipts/"]
+        lines += [f"/{d}/index.html", f"/{d}/*/", f"!/{d}/tasks/", f"!/{d}/images/", f"!/{d}/diagrams/", f"!/{d}/verify/", f"/{d}/diagrams/.receipts/"]
     lines.append(f"/{feat.FEATURES}/*/index.html")
     return lines
 

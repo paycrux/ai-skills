@@ -1,0 +1,13 @@
+{
+  "from": "work-flow docs/workflow/tasks/playbook-sdlc.json — plan done, 03 written and stopped",
+  "branch": "feat/gift-sort",
+  "prompt": "/flow gift-sort — docs/gift/tasks/gift-sort.json 작업을 이어서 진행해. 01 기획은 끝났으니 03 구현 계획을 쓰고 승인 단계에서 멈춰.",
+  "expect": {
+    "task": "docs/gift/tasks/gift-sort.json",
+    "status": {
+      "tasks": "ask"
+    },
+    "checklistEndsWithV": true,
+    "srcUnchanged": true
+  }
+}

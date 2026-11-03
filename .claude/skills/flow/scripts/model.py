@@ -36,7 +36,7 @@ KIND = {
 }
 ITEM_ID = re.compile(r"^(S\d+|X\d+|R\d+(-Q\d+)?|P\d+(-[A-Za-z0-9]+)?|C\d+(-\d+)?|[BVD]\d+)$")
 REF = re.compile(r"\[\[([^\]\s]+)\]\]")
-RESERVED_TASK_IDS = {"tasks", "images", "diagrams", "index"}
+RESERVED_TASK_IDS = {"tasks", "images", "diagrams", "verify", "index"}
 DEFAULT_OPTIONS = [{"value": "yes", "label": "추천대로"}, {"value": "no", "label": "다르게"}]
 UNSURE = {"value": "unsure", "label": "더 설명해줘"}
 

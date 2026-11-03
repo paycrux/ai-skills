@@ -231,6 +231,18 @@ first — it walks the issue to 작업 중 one transition at a time.
 - Decisions made while building go on the item as a `결정` row and stay after it is checked.
 - Update the conclusion at each Phase boundary, in sentences.
 
+**A `버그 수정` task fixes test-first.** Phase 1 is the reproduction, and the fix is code only:
+
+1. Write a test that reproduces the bug. Run it and see it fail for the reported reason.
+2. Commit the test alone. Put `["테스트", "<code>src/foo.test.ts</code>"]` and
+   `["실패 커밋", "<code><short sha></code>"]` rows on the item.
+3. Fix the code until the test passes. The test file stays as committed — `flow.py check` fails
+   when it differs from the 실패 커밋 in history or in the working tree.
+4. No test runner in the project → the reproduction is a script that exits non-zero while the bug
+   is there (a `browse` command chain, a `node` script), recorded the same way. When even that is
+   impossible, add the `verify` stage and check the fix on the screen; `check` fails a finished
+   `버그 수정` task with neither a 테스트 row nor a `verify` stage.
+
 ## Step 6: 04 검증 — when `verify` exists
 
 Without it, verification is the Phases' `검증:` items. Otherwise fill `stages.verify`: one item per
@@ -242,6 +254,12 @@ off-screen state (`V3`: `[[X3]] …`), plus the screens' main states.
 - A defect → a `B<n>` item in the 버그 checklist (증상 · 재현 · 원인 as rows), a `B<n> 수정` item in
   `tasks`, fix, re-check. Three failed attempts on one bug → stop and ask.
 - Finish with the project's deterministic commands (typecheck, lint, tests); only exit codes count.
+- Then a second look from a fresh context, so the verdict does not inherit this session's
+  assumptions: `flow.py verify <task.json> --cmd "<typecheck>" --cmd "<tests>" [--repo <code repo>]`.
+  It runs `claude -p` with read-only tools and only the commands named, hands it the items and
+  their evidence rows but not the conclusions or `결정` rows, and writes
+  `<docs>/<domain>/verify/<task>.json`. Exit 1 means a `fail` verdict or a failed command — treat
+  each as a `B<n>` bug. `unknown` items are the ones left for the user's look below.
 - Status `ask`, open the page, and stop for the user's own look at the screen.
 
 ## Step 7: 05 완료
@@ -331,3 +349,7 @@ Chat messages at a stop are two or three lines plus what the user should do; the
 - **Portable by default** — when the host cannot open a browser or read its storage, ask the same
   questions in chat and record the answers in the JSON yourself
 - Document text is Korean; this file and the references are English
+- **After editing this skill, replay the past cases** — `python3 scripts/regress.py -j 5` (about
+  $3, a few minutes). Each case in `evals/<name>/` is a fixture repository plus the request once
+  made there; it passes only on `flow.py check` and file checks, never on an LLM's opinion. A new
+  rule worth keeping gets a case
