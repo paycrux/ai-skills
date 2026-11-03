@@ -1,7 +1,7 @@
 ---
 name: flow
-description: "Run a frontend task from PRD to PR as JSON documents under docs/<domain>/, rendered to linked static HTML pages that open from disk with no server — Figma SOT map per domain, question rounds answered in the page, plan, build, verify. Use when the user runs /flow or hands over PRD + Figma links for a screen."
-argument-hint: "<PRD link or text> [figma links] [Jira key] — or a task ID to resume"
+description: "Run a frontend task from PRD to PR as JSON documents under docs/<domain>/, rendered to linked static HTML pages that open from disk with no server — Figma SOT map per domain, question rounds answered in the page, plan, build, verify. A PRD spanning several Jira stories gets a feature document that cuts it into [프론트] issues, worktrees and flow tasks. Use when the user runs /flow, hands over PRD + Figma links for a screen, or hands over a PRD with several Jira story links."
+argument-hint: "<PRD link or text> [figma links] [Jira key(s)] — or a task ID to resume"
 ---
 
 # /flow
@@ -14,7 +14,7 @@ browser's localStorage, and `flow.py pull` reads it back into the JSON. Claude r
 JSON, then rebuilds — the HTML is always the finished version Claude wrote.
 
 ```
-01 기획 → 02 화면 · SOT 맵 → 03 질문 ⇄ (02 · 04 · 05) → 04 구현 계획 · 구현 → 05 검증 → 06 완료
+01 기획 · 화면 → 02 질문 ⇄ (01 · 03 · 04) → 03 구현 계획 · 구현 → 04 검증 → 05 완료
 ```
 
 The user acts in four places only: answering questions, approving the plan, unblocking an item,
@@ -23,8 +23,9 @@ confirming completion. Everywhere else, keep going.
 Read before starting:
 
 - `${CLAUDE_SKILL_DIR}/references/documents.md` — layout, JSON shapes, references, the pages, answers, earlier versions
-- `${CLAUDE_SKILL_DIR}/references/sot-map.md` — stage 02, when the task has a screen
-- `${CLAUDE_SKILL_DIR}/references/questions.md` — stage 03, every time a round opens or answers arrive
+- `${CLAUDE_SKILL_DIR}/references/sot-map.md` — the `screen` stage, when the task has a screen
+- `${CLAUDE_SKILL_DIR}/references/questions.md` — the `grill` stage, every time a round opens or answers arrive
+- `${CLAUDE_SKILL_DIR}/references/feature.md` — when the request carries a PRD and several Jira stories
 
 `flow.py` below means `python3 ${CLAUDE_SKILL_DIR}/scripts/flow.py`. `<docs>` is the repository's
 `docs/` folder. Write the full command each time — `F="python3 …"; $F build` fails in zsh, which
@@ -53,7 +54,17 @@ flow.py migrate <docs> --v1 <docs>/<old-task> --domain <id> [--title "<새 도�
 ```
 
 Tell the user in one or two lines what moved; a removed `package.json` script is a shared-repo change.
+`migrate` also lists generated pages that an earlier version committed; `--apply` takes them out of
+git (`git rm --cached`, files stay) — that removal is part of the next commit.
 
+**Several Jira stories → feature document first.** A PRD with several story links is cut in a
+feature document draft (`references/feature.md`): write it, open its page, and stop. On approval run
+`flow.py start <docs>/features/<id>/feature.json --approve` in the same turn; it creates the issues,
+worktrees, branches and the task skeletons. Each task is then worked in its own worktree from
+**resume** below.
+
+- The session started on a branch that has a task → the SessionStart hook already printed
+  `flow.py current` (task line and stage lines); that is the task — **resume** it.
 - The argument names an existing task → **resume**: `flow.py pull <docs>` (answers left in the
   pages since last time), `flow.py brief <task.json>`, then `flow.py changes <docs>/<domain>` if
   either reports something, and continue at the first stage that is `ask` or `now`. Do not read the
@@ -80,7 +91,7 @@ Then create the task with only the stages it needs; add more the moment a need a
 | A screen that draws server data is built or changes what it shows | `plan,screen,tasks` | |
 
 Whatever the row, add `plan` when a PRD (기획서) section covers the task — a failure branch, a policy,
-copy — even with no screen. Never leave 01 skipped while the PRD holds rules the task follows.
+copy — even with no screen. Never leave `plan` out while the PRD holds rules the task follows.
 
 ```bash
 flow.py task <docs>/<domain> <JIRA-KEY or short-slug> --title "<한국어 제목>" --type "<기능 개발|기능 수정|버그 수정>" --stages tasks
@@ -98,9 +109,14 @@ flow.py add <docs>/<domain>/tasks/<id>.json grill        # later, when a questio
 Add PRD / Figma / Jira URLs to the task's `links` as `{"label", "url"}`.
 
 **After every JSON edit, `flow.py build <docs>`** — the pages are generated, never edited by hand,
-and `check` fails while one is out of date.
+and `check` fails while one is out of date. Generated files (pages, `share/`, `.receipts/`) are not
+committed: `build` keeps a `# flow:begin … # flow:end` block in `<docs>/.gitignore`, and
+`flow.py open <page>` builds before opening, so a fresh checkout opens current pages.
 
-## Step 1: 01 기획 — when `plan` exists
+## Step 1: 01 기획 · 화면, the PRD part — when `plan` exists
+
+`plan` and `screen` are two stages in the JSON shown on one page, `01-plan.html`: the PRD part
+first, then the screens under a 화면 · SOT 맵 divider. Either one alone still gets the page.
 
 **Read the PRD.**
 - Notion: use the host's Notion connector when one is available; otherwise
@@ -117,15 +133,16 @@ gave (Figma `계정 설정` ↔ PRD `2-1. 계정 설정`). Then compare the two 
 | Found | Do |
 |---|---|
 | In both | In scope. Quote it |
-| In the PRD section, no Figma frame (회원탈퇴 with no frame) | A scope question in 03 — never silently in or out |
-| A Figma frame whose rules live in another PRD section (로그아웃 under `2-2. 설정`) | Read that section too; ask in 03 whether it belongs to this task |
-| A PRD heading with no body (`SNS연동 관리 — 참고`) | A question in 03: which source is the spec — Figma annotation, another page, or nobody yet |
+| In the PRD section, no Figma frame (회원탈퇴 with no frame) | A scope question in 02 — never silently in or out |
+| A Figma frame whose rules live in another PRD section (로그아웃 under `2-2. 설정`) | Read that section too; ask in 02 whether it belongs to this task |
+| A PRD heading with no body (`SNS연동 관리 — 참고`) | A question in 02: which source is the spec — Figma annotation, another page, or nobody yet |
 
 **Write the stage** (`stages.plan`): a `quote` block with only the sentences this task depends on,
 verbatim, with their section number; user-facing copy (snackbar, modal, inline error) quoted exactly
-— 02 and 04 cite it from here. Conclusion: what gets built, what does not, which scope questions are
+— the screen part and 03 cite it from here. Conclusion: what gets built, what does not, which scope questions are
 open. Status `done` when none are open, `ask` otherwise. One Figma section bundling several
-independent features for several Jira stories belongs to `/tracker`; say so before going further.
+independent features for several Jira stories belongs in a feature document
+(`references/feature.md`); say so before going further.
 
 **Draw the server ↔ app flow** when the task depends on what the server does — an API call, a
 payment or issue step, a callback, an error code that picks the screen. Use the `archify` skill and
@@ -142,14 +159,14 @@ follow its own instructions, with these fixed choices:
   to `finalize`. Only a passing `finalize` counts.
 - Add a block to `stages.plan.blocks`, after the quotes:
   `{"type": "diagram", "title": "서버 · 앱 흐름", "sub": "<what it covers>", "src": "diagrams/<task>-<slug>.html", "height": 600}`.
-  The 01 page shows it in place, and the shared copies carry it inside the file.
+  Page 01 shows it in place, and the shared copies carry it inside the file.
 - When a later answer changes the flow, edit the candidate, rerun `finalize`, rebuild.
 
-## Step 2: 02 화면 · SOT 맵 — when `screen` exists
+## Step 2: 01 기획 · 화면, the SOT part — when `screen` exists
 
 Follow `references/sot-map.md`. The SOT map belongs to the domain (`screens.json`); the task's
 `screen` stage holds only its conclusion — which rows it added or changed, cited as `[[S5]]`. The
-task's 02 page draws just the screens and rows the task cites anywhere in its stages, and every
+task's page 01 draws just the screens and rows the task cites anywhere in its stages, and every
 `[[S5]]` inside the task links there; the domain page stays the full map.
 Fetch the Figma screenshot and metadata now — this is the stage the design scan belongs to; detailed
 spacing and token values are still read at implementation time.
@@ -158,13 +175,13 @@ spacing and token values are still read at implementation time.
   and check every pin sits on its element.
 - Each `pending` row becomes a question. Status `ask` while any remain, `done` when none do.
 
-## Step 3: 03 질문 — whenever a question comes up
+## Step 3: 02 질문 — whenever a question comes up
 
 `flow.py add <task.json> grill` first if the stage does not exist. When the questions are about
 states or failure branches, draw them first: `cases` tables above the rounds, each row's UI drawn as
 the app's own modal · toast · banner or a Figma capture, and each question pointing at its row
 (`references/questions.md` § Draw the cases first). Follow `references/questions.md`:
-write the round into `stages.grill.rounds`, `flow.py build`, open `<docs>/<domain>/<task>/03-grill.html#R<n>`,
+write the round into `stages.grill.rounds`, `flow.py open <docs>/<domain>/<task>/02-grill.html` (name `R<n>` in chat),
 and stop:
 
 ```
@@ -175,11 +192,11 @@ and stop:
 
 On "답 썼어": `flow.py pull <docs>`; on "복사했어": `flow.py pull <docs> --clipboard`. Then
 `flow.py changes <docs>/<domain>`, handle every printed line — write decisions as full sentences,
-apply them to 02 / 04, record `appliedTo` — `flow.py clear <file> --id R1-Q2 …`, `flow.py build`.
+apply them to 01 / 03, record `appliedTo` — `flow.py clear <file> --id R1-Q2 …`, `flow.py build`.
 Loop until no round is open. A decided answer the user changes later arrives the same way and must
 be re-applied, never ignored.
 
-## Step 4: 04 구현 계획
+## Step 4: 03 구현 계획
 
 Write `stages.tasks` from the conclusions of the stages that exist (plus the `screens.json` rows you
 cite). For a `tasks`-only task, the conclusion carries the scope in one or two sentences.
@@ -191,7 +208,7 @@ cite). For a `tasks`-only task, the conclusion carries the scope in one or two s
   `재사용` / `패턴` from a real look at the codebase. Do not restate behavior the SOT map already
   holds; cite the row.
 - Explore only enough to fill `재사용` / `패턴` for every item, or to confirm nothing exists.
-- Status `ask`, `flow.py build`, open `<docs>/<domain>/<task>/04-tasks.html`, and stop for approval:
+- Status `ask`, `flow.py open <docs>/<domain>/<task>/03-tasks.html`, and stop for approval:
 
 ```
 계획을 세웠어요. Phase 3개예요: 데이터 → 화면 → 화면 밖 상태.
@@ -200,7 +217,9 @@ cite). For a `tasks`-only task, the conclusion carries the scope in one or two s
 
 ## Step 5: 구현
 
-On approval set `tasks` to `now` and work Phase by Phase.
+On approval set `tasks` to `now` and work Phase by Phase. When the task ID is a Jira key and a
+transition path is recorded (`references/feature.md` § Jira), run `flow.py jira <task.json> start`
+first — it walks the issue to 작업 중 one transition at a time.
 
 - After each item set its `done: true`. After each Phase run its `검증:` command; a failure is fixed
   before the next Phase.
@@ -210,7 +229,7 @@ On approval set `tasks` to `now` and work Phase by Phase.
 - Decisions made while building go on the item as a `결정` row and stay after it is checked.
 - Update the conclusion at each Phase boundary, in sentences.
 
-## Step 6: 05 검증 — when `verify` exists
+## Step 6: 04 검증 — when `verify` exists
 
 Without it, verification is the Phases' `검증:` items. Otherwise fill `stages.verify`: one item per
 off-screen state (`V3`: `[[X3]] …`), plus the screens' main states.
@@ -223,15 +242,35 @@ off-screen state (`V3`: `[[X3]] …`), plus the screens' main states.
 - Finish with the project's deterministic commands (typecheck, lint, tests); only exit codes count.
 - Status `ask`, open the page, and stop for the user's own look at the screen.
 
-## Step 7: 06 완료
+## Step 7: 05 완료
 
 With `done`, work its checklist; without it, do the same steps and record them in the `tasks` conclusion.
 
 - Rewrite SOT evidence from plan-time guesses to real `file:line`, update `base` to the current
   short SHAs.
 - List every remaining `calc` row and server or PRD request.
-- `flow.py check <docs>/<domain>` must pass. Then suggest `/git-pr`; never open the PR from this
-  skill. The PR body links the task and copies its conclusions — reviewers read the PR without opening the pages.
+- Run `/code-review` on the branch's changes. Refactor only what it flags; fix, re-check.
+- `flow.py check <docs>/<domain>` must pass.
+- Jira key with a recorded path → `flow.py jira <task.json> done`: the done comment, then the walk
+  toward the done status. A transition with a precondition (a dev deploy) is not taken — it shows on
+  the feature page as 사람이 옮길 것.
+- Then suggest `/git-pr`; never open the PR from this skill. The PR body links the task and copies
+  its conclusions — reviewers read the PR without opening the pages.
+- Once the PR is merged and the user confirms the task is over, `flow.py prune <task.json>`: the
+  question rounds keep only title and decision, checklist items only their `결정` and `파일` rows.
+  The full record stays in git history.
+
+## Follow-ups on a finished task
+
+A direct change (no new task) to a file a task covers is recorded on that task, one line:
+
+```bash
+flow.py find <docs> --path <file>                       # which task covers it
+flow.py log <docs> --file <file> -m "<한 줄: 무엇을 고쳤는지>" [--sha <short sha>] [--task <id>]
+```
+
+`--sha` defaults to `HEAD`, so run it after the commit. No covering task → nothing to record; the
+commit message is the record.
 
 ## Sharing outside the flow
 
@@ -283,7 +322,9 @@ Chat messages at a stop are two or three lines plus what the user should do; the
 - **Never write legacy documents** — anything under `docs/` outside a domain folder is read only
 - **`flow.py check` passes before reporting a stage done**
 - **Create a stage only when the task needs it** — `add` it at the moment the need appears, never "just in case"
-- **Open a page only at a stop** — `open <file>` in the OS default browser; elsewhere print the path
+- **Open a page only at a stop** — `flow.py open <file>` builds, then opens the OS default browser; elsewhere print the path
+- **Generated files are never committed** — pages, `share/`, `.receipts/`; JSON, `prd.md`, Figma images and structure XML are
+- **A feature document only shows and records** — progress is read from each row's task; work is never sent to another session
 - **Portable by default** — when the host cannot open a browser or read its storage, ask the same
   questions in chat and record the answers in the JSON yourself
 - Document text is Korean; this file and the references are English

@@ -4,8 +4,8 @@
 Extracts one `## Heading` section and emits ADF suitable for
 `acli jira workitem edit --description-file`.
 
-HTML input (a `.html` file, or text starting with `<`) — the format `/task-plan` writes
-`tasks.html` in — is first rewritten to markdown, so `--section "## QA 가이드"` matches
+HTML input (a `.html` file, or text starting with `<`) — the format legacy `/task-plan` plans used
+for `tasks.html` — is first rewritten to markdown, so `--section "## QA 가이드"` matches
 `<h2>QA 가이드</h2>` and a checked `<input type="checkbox">` becomes `[x]`.
 
 Deliberately never emits taskList/taskItem nodes — a `- [ ]` line becomes a plain

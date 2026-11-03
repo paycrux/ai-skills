@@ -5,8 +5,9 @@ import posixpath
 import re
 from pathlib import Path
 
-from model import (DEFAULT_OPTIONS, KIND, REF, STAGE_FILE, STAGE_KEYS, STAGE_TITLE, STAGES, STATE_LABEL, UNSURE,
-                   domains_of, frame_boxes, git, grill_state, parse_ref, place, plain, read_json, stage_state,
+import feature as feat
+from model import (DEFAULT_OPTIONS, KIND, PAGES, REF, STAGE_FILE, STAGE_TITLE, STATE_LABEL, UNSURE, domains_of,
+                   frame_boxes, git, grill_state, page_state, parse_ref, place, plain, read_json, stage_state,
                    task_files, task_items, task_state, walk_refs)
 
 SKILL = Path(__file__).resolve().parent.parent
@@ -51,6 +52,12 @@ class Site:
                                     "items": {tid: task_items(t) for tid, t in tasks.items()},
                                     "sot_ids": {tid: task_sot_ids(d.name, t) for tid, t in tasks.items()
                                                 if "screen" in (t.get("stages") or {})}}
+        self.features = {}
+        for fd in feat.feature_dirs(self.docs):
+            f = read_json(fd / "feature.json")
+            f["id"] = fd.name
+            self.features[fd.name] = f
+        self._progress = {}
         root = self.docs / "index.html"
         self.root = "index.html" if not root.exists() or is_generated(root) else "flow-index.html"
         remote = git(self.docs, "remote", "get-url", "origin")
@@ -59,6 +66,26 @@ class Site:
 
     def domain_page(self, d):
         return f"{d}/index.html"
+
+    def feature_page(self, fid):
+        return f"{feat.FEATURES}/{fid}/index.html"
+
+    def progress(self, fid):
+        """Row key → progress, read once per build from each row's task."""
+        if fid not in self._progress:
+            f = self.features[fid]
+            self._progress[fid] = {feat.row_key(r): feat.row_progress(self.docs, r) for r in f.get("rows", [])}
+        return self._progress[fid]
+
+    def feature_state(self, fid):
+        states = [p["task"] and task_state(p["task"]) or ("ask" if p["state"] == "legacy" else "wait")
+                  for p in self.progress(fid).values()]
+        if not states:
+            return "wait"
+        for s in ("ask", "now"):
+            if s in states:
+                return s
+        return "done" if all(x == "done" for x in states) else ("now" if "done" in states else "wait")
 
     def task_page(self, d, t, key=None):
         return f"{d}/{t}/{STAGE_FILE[key] if key else 'index.html'}"
@@ -370,6 +397,8 @@ def blocks(ctx, stage, after=None):
             out.append(heading(b) + diagram(ctx, b))
         elif t == "checklist":
             out.append(checklist(ctx, b))
+        elif t == "routes":
+            out.append(routes_block(ctx, b))
         elif t == "quote":
             out.append(f"<h2>{esc(b.get('title') or '인용')}</h2>{quotes(ctx, b.get('items', []))}")
         elif t == "table":
@@ -386,6 +415,27 @@ def blocks(ctx, stage, after=None):
 def link_list(links):
     lis = "".join(f'<li><a href="{esc(l.get("url", ""))}" target="_blank" rel="noopener">{esc(l.get("label", ""))}</a></li>' for l in links or [])
     return f'<ul class="links">{lis}</ul>' if lis else ""
+
+
+def feature_up(ctx, task):
+    """The feature page above a task → (href, title, same docs?, state) or None."""
+    ref = task.get("feature") or {}
+    fid = ref.get("id")
+    if not fid:
+        return None
+    if fid in ctx.site.features:
+        f = ctx.site.features[fid]
+        return ctx.href(ctx.site.feature_page(fid)), f.get("title") or fid, True, ctx.site.feature_state(fid)
+    doc = Path(ref.get("doc") or "")
+    if doc.is_file():
+        title = read_json(doc).get("title") or fid
+        return (doc.parent / "index.html").as_uri(), title, False, "wait"
+    return None
+
+
+def feature_meta(ctx, task):
+    up = feature_up(ctx, task)
+    return f'기능 <a href="{esc(up[0])}">{esc(up[1])}</a>' if up else ""
 
 
 # ---------------------------------------------------------------- nav
@@ -405,8 +455,8 @@ def domain_state(dom):
 def nav_steps(ctx, d, t, current):
     task = ctx.site.domains[d]["tasks"][t]
     steps = []
-    for n, (k, title, fname) in enumerate(STAGES, 1):
-        s = stage_state(task, k)
+    for n, (k, title, fname, keys) in enumerate(PAGES, 1):
+        s = page_state(task, keys)
         if s["status"] == "skip":
             steps.append(f'<span class="step skip" data-n="{n}"><b>{esc(title)}</b><span>건너뜀</span></span>')
             continue
@@ -445,12 +495,20 @@ def nav_tree(ctx, d=None, t=None, current=None):
         doms.append(f'<details class="dom {domain_state(dom)}"{" open" if mine else ""}><summary>'
                     f'<a href="{ctx.href(page)}">{esc(dom["info"].get("title", dd))}</a>{cnt}</summary>'
                     f'<div class="dom-body">{"".join(rows)}</div></details>')
+    feats = []
+    for fid, f in site.features.items():
+        page = site.feature_page(fid)
+        feats.append(f'<a class="tn {site.feature_state(fid)}{" on" if here == page else ""}" href="{ctx.href(page)}">{esc(f.get("title") or fid)}</a>')
+    up = feature_up(ctx, site.domains[d]["tasks"][t]) if d and t else None
+    if up and not up[2]:
+        feats.append(f'<a class="tn {up[3]}" href="{esc(up[0])}">{esc(up[1])}</a>')
     foot = ""
     if d and t:
         links = site.domains[d]["tasks"][t].get("links", [])
         foot = "".join(f'<a href="{esc(l.get("url", ""))}" target="_blank" rel="noopener">{esc(l.get("label", ""))}</a>' for l in links)
     return (f'<a class="home" href="{ctx.href(site.root)}">{esc(site.repo)}</a><p class="nav-meta">flow 문서</p>'
             f'<a class="tn root{" on" if here == site.root else ""}" href="{ctx.href(site.root)}">전체 문서</a>'
+            f'{"<div class=nav-group>기능</div>" + "".join(feats) if feats else ""}'
             f'<div class="nav-group">도메인</div>{"".join(doms) or "<p class=note>아직 없어요</p>"}'
             f'{LEGEND}{f"<div class=foot>{foot}</div>" if foot else ""}')
 
@@ -466,7 +524,7 @@ def legacy_files(site):
             if p.name.startswith("."):
                 continue
             if p.is_dir():
-                if depth == 0 and (p / "domain.json").exists():
+                if depth == 0 and ((p / "domain.json").exists() or p.name == feat.FEATURES):
                     continue
                 if depth < 4:
                     walk(p, depth + 1)
@@ -486,12 +544,20 @@ def root_page(site):
                       f'<span class="st-dot {task_state(task)}">{STATE_LABEL[task_state(task)]}</span></div>' for t, task in active)
         rows.append(f'<div class="row"><h3><a href="{ctx.href(site.domain_page(d))}">{esc(dom["info"].get("title", d))}</a>'
                     f'<small>{esc(d)} · 작업 {len(dom["tasks"])}</small></h3><div>{lst or "<span class=note>진행 중인 작업 없음</span>"}</div></div>')
+    frows = []
+    for fid, f in site.features.items():
+        prog = site.progress(fid)
+        lst = "".join(f'<div>{esc(k)} {esc(r.get("title", ""))} <span class="st-dot {row_dot(prog[k])}">{esc(feat.ROW_STATE[prog[k]["state"]])}</span></div>'
+                      for r in f.get("rows", []) for k in [feat.row_key(r)])
+        frows.append(f'<div class="row"><h3><a href="{ctx.href(site.feature_page(fid))}">{esc(f.get("title") or fid)}</a>'
+                     f'<small>{esc(fid)} · 작업 {len(f.get("rows", []))}</small></h3><div>{lst or "<span class=note>아직 줄이 없어요</span>"}</div></div>')
     legacy = legacy_files(site)
     leg = ""
     if legacy:
         leg = ("<h2>그 밖의 문서</h2><ul class=\"legacy-list\">"
                + "".join(f'<li><a href="{esc(ctx.href(p))}">{esc(p)}</a></li>' for p in legacy) + "</ul>")
     body = (f'<div class="head"><h1>{esc(site.repo)}</h1><p class="meta">도메인 {len(site.domains)} · 그 밖의 문서 {len(legacy)}</p></div>'
+            f'{"<h2>기능</h2><div class=cards>" + "".join(frows) + "</div><h2>도메인</h2>" if frows else ""}'
             f'<div class="cards">{"".join(rows) or "<p class=note>아직 flow 도메인이 없어요.</p>"}</div>{leg}')
     return shell(ctx, f"{site.repo} · flow", nav_tree(ctx), body)
 
@@ -516,6 +582,77 @@ def used_html(links):
     if not links:
         return ""
     return '<div class="used">쓰는 곳 ' + " ".join(f'<a class="ref" href="{esc(h)}">{esc(l)}</a>' for h, l in links.items()) + "</div>"
+
+
+def at(text):
+    return f' <code class="at">{esc(text)}</code>' if text else ""
+
+
+def entry_html(ctx, s):
+    steps = s.get("entry") or []
+    if not steps:
+        return ""
+    parts = " → ".join(f'{ctx.rich(x.get("text", ""))}{at(x.get("at"))}' if isinstance(x, dict) else ctx.rich(x) for x in steps)
+    return f'<p class="meta entry"><b>들어오는 길</b> {parts}</p>'
+
+
+def pin_chips(ctx, ids, markers):
+    out = []
+    for i in ids:
+        m = markers.get(i)
+        label, cls = KIND.get((m or {}).get("kind"), ("?", "pend"))
+        out.append(f'<span class="mk k-{cls}">{esc(i[1:])}</span> {ctx.rich(m.get("title", "")) if m else esc(i)}')
+    return "<br>".join(out)
+
+
+def api_boxes(ctx, s, only=None):
+    """API → normalising function (file:line) → screen element, one box per call."""
+    markers = {m.get("id"): m for m in s.get("markers", [])}
+    out = []
+    for a in s.get("apis") or []:
+        rows = [r for r in a.get("rows", []) if only is None or set(r.get("to") or []) & only]
+        if not rows:
+            continue
+        trs = []
+        for r in rows:
+            to = r.get("to") or []
+            fn = f'<b>{esc(r["fn"])}</b>' if r.get("fn") else '<span class="note">정규화 없음</span>'
+            rule = f'<div class="nt">{copy_marks(ctx.rich(r["rule"]))}</div>' if r.get("rule") else ""
+            di = f' data-i="{esc(to[0])}"' if to else ""
+            trs.append(f'<tr{di}><td><code>{esc(r.get("field", ""))}</code></td><td>{fn}{at(r.get("at"))}{rule}</td>'
+                       f'<td>{pin_chips(ctx, to, markers)}</td></tr>')
+        via = f'<p class="note">{ctx.rich(a["via"])}{" → <code>" + esc(a["type"]) + "</code>" if a.get("type") else ""}</p>' if a.get("via") else ""
+        out.append(f'<h3>API · <code>{esc(a.get("call", ""))}</code></h3>{via}<table class="flowmap"><thead><tr><th>응답 필드</th>'
+                   f'<th>정규화 · 위치</th><th>화면 요소</th></tr></thead><tbody>{"".join(trs)}</tbody></table>')
+    return "".join(out)
+
+
+def param_boxes(ctx, s):
+    """URL query · path params · navigation values ↔ the UI that sets them → the API request value."""
+    out = []
+    for p in s.get("params") or []:
+        trs = []
+        for r in p.get("rows", []):
+            default = f'<div class="nt todo">{copy_marks(ctx.rich(r["default"]))}</div>' if r.get("default") else ""
+            req_rule = f'<div class="nt todo">{copy_marks(ctx.rich(r["rule"]))}</div>' if r.get("rule") else ""
+            trs.append(f'<tr><td><code>{esc(r.get("param", ""))}</code>{at(r.get("paramAt"))}{default}</td>'
+                       f'<td>↔ {ctx.rich(r.get("ui", ""))}{at(r.get("uiAt"))}</td>'
+                       f'<td>→ {ctx.rich(r.get("request", ""))}{at(r.get("requestAt"))}{req_rule}</td></tr>')
+        call = f' · <code>{esc(p["call"])}</code>' if p.get("call") else ""
+        via = f'<p class="note">{ctx.rich(p["via"])}</p>' if p.get("via") else ""
+        note = f'<p class="note">{copy_marks(ctx.rich(p["note"]))}</p>' if p.get("note") else ""
+        out.append(f'<h3>파라미터{call}</h3>{via}<table class="flowmap"><thead><tr><th>파라미터 · 기본값</th><th>UI</th>'
+                   f'<th>API 요청 값 · 변환</th></tr></thead><tbody>{"".join(trs)}</tbody></table>{note}')
+    return "".join(out)
+
+
+def routes_block(ctx, b):
+    trs = "".join(f'<tr><td><code>{esc(r.get("path", ""))}</code></td><td>{ctx.rich(r.get("name", "")) or "<span class=note>—</span>"}</td>'
+                  f'<td><code>{esc(r.get("file", ""))}</code></td><td>{" ".join(f"<code>{esc(x)}</code>" for x in r.get("sheets", [])) or "—"}</td>'
+                  f'<td>{"<br>".join(f"<code>{esc(x)}</code>" for x in r.get("apis", [])) or "<span class=note>확인 전</span>"}</td></tr>'
+                  for r in b.get("rows", []))
+    return (f'{heading({**b, "title": b.get("title") or "작업 경로 맵", "sub": b.get("sub") or "경로 · 시트는 스크립트가 뽑고, API는 이 작업에서 확인한 것만"})}'
+            f'<table class="tbl"><thead><tr><th>경로</th><th>기능</th><th>파일</th><th>시트</th><th>API</th></tr></thead><tbody>{trs}</tbody></table>')
 
 
 def sot_map(ctx, d, only=None):
@@ -577,7 +714,8 @@ def sot_map(ctx, d, only=None):
         else:
             shot = f'<div class="shot"><p class="note">구조 정보({esc(s.get("metadata", ""))})를 읽지 못했어요.</p></div>'
         parts.append(f'<h2 class="screen" id="screen-{esc(s.get("id", ""))}">{"컴포넌트" if comp else "화면"} · {esc(s.get("title", ""))}</h2>'
-                     f'<p class="meta">Figma <code>{esc(s.get("figma", ""))}</code></p><div class="cols{" landscape" if land else ""}">{shot}<div>{variants}{tables}{off}</div></div>')
+                     f'<p class="meta">Figma <code>{esc(s.get("figma", ""))}</code></p>{entry_html(ctx, s)}<div class="cols{" landscape" if land else ""}">{shot}<div>{variants}{tables}{off}</div></div>'
+                     f'{api_boxes(ctx, s, only)}{param_boxes(ctx, s)}')
     chips = "".join(f"<span>{esc(k)} {v}</span>" for k, v in counts.items())
     meta = " · ".join(x for x in (f"API <code>{esc(sot['api'])}</code>" if sot.get("api") else "",
                                   f"기준 {esc(sot['base'])}" if sot.get("base") else "") if x)
@@ -625,21 +763,26 @@ def task_index(site, d, t, shared=None):
     task = dom["tasks"][t]
     ctx = Ctx(site, site.task_page(d, t), d, t)
     cards, skipped = [], []
-    for n, (k, title, fname) in enumerate(STAGES, 1):
-        s = stage_state(task, k)
+    for n, (k, title, fname, keys) in enumerate(PAGES, 1):
+        s = page_state(task, keys)
         if s["status"] == "skip":
             skipped.append(f"{n} {title}")
             continue
-        st = task["stages"][k]
         if k == "grill":
-            lis = grill_conclusion(ctx, st, s)
+            lis = grill_conclusion(ctx, task["stages"]["grill"], s)
         else:
-            lis = "".join(f"<li>{ctx.rich(c)}</li>" for c in st.get("conclusion") or []) or "<li>아직 없어요.</li>"
+            lis = "".join(f"<li>{ctx.rich(c)}</li>" for c in page_conclusion(task, keys)) or "<li>아직 없어요.</li>"
         cards.append(f'<section class="stage-card {s["status"]}"><h2><a href="{fname}"><span class="n">{n}</span>{esc(title)}</a>'
                      f'<span class="st">{esc(plain_refs(s["summary"]))}</span></h2>{f"<ul>{lis}</ul>" if lis else ""}</section>')
-    meta = " · ".join(x for x in (esc(dom["info"].get("title", d)), esc(t), esc(task.get("type", "")),
+    meta = " · ".join(x for x in (feature_meta(ctx, task), esc(dom["info"].get("title", d)), esc(t), esc(task.get("type", "")),
                                   f"<code>{esc(task['branch'])}</code>" if task.get("branch") else "") if x)
     note = f'<p class="note">건너뛴 단계: {esc(", ".join(skipped))}. 필요해지면 그때 만들어요.</p>' if skipped else ""
+    if task.get("followUps"):
+        rows = "".join(f'<tr><td>{esc(x.get("date", ""))}</td><td>{copy_marks(ctx.rich(x.get("text", "")))}</td>'
+                       f'<td>{" ".join(f"<code>{esc(p)}</code>" for p in x.get("files", []))}</td><td><code>{esc(x.get("sha", ""))}</code></td></tr>'
+                       for x in task["followUps"])
+        note += (f'<h2>후속 수정<small>작업이 끝난 뒤 이 작업의 파일을 고친 기록</small></h2><table class="tbl"><thead><tr>'
+                 f'<th>날짜</th><th>내용</th><th>파일</th><th>커밋</th></tr></thead><tbody>{rows}</tbody></table>')
     body = (f'<div class="head">{export_menu(ctx, d, t, shared)}<h1>{esc(task.get("title", t))}</h1><p class="meta">{meta}</p></div>{link_list(task.get("links"))}'
             f'{"".join(cards)}{note}')
     return shell(ctx, f"{t} {task.get('title', '')} · flow", nav_tree(ctx, d, t), body, shared=shared)
@@ -787,22 +930,138 @@ def screen_refs(ctx, task):
     return f'<p class="meta">이 작업이 가리키는 화면과 행만 보여요 · {full}</p>{sot_map(ctx, ctx.domain, seen)}'
 
 
-def stage_page(site, d, t, key, n, shared=None):
-    dom = site.domains[d]
-    task = dom["tasks"][t]
-    ctx = Ctx(site, site.task_page(d, t, key), d, t)
-    stage = task["stages"][key]
-    s = stage_state(task, key)
-    if key == "grill":
-        body = grill_body(ctx, stage, s)
+def page_conclusion(task, keys):
+    stages = task.get("stages") or {}
+    return [c for k in keys if k in stages for c in stages[k].get("conclusion") or []]
+
+
+def stage_page(site, d, t, page, n, shared=None):
+    task = site.domains[d]["tasks"][t]
+    ctx = Ctx(site, site.task_page(d, t, page), d, t)
+    _, title, _, keys = next(x for x in PAGES if x[0] == page)
+    stages = task["stages"]
+    s = page_state(task, keys)
+    if page == "grill":
+        body = grill_body(ctx, stages["grill"], s)
     else:
-        body = conclusion(ctx, s["status"], stage.get("conclusion")) + blocks(ctx, stage)
-        if key == "screen":
-            body += screen_refs(ctx, task)
-    head = (f'<div class="head">{export_menu(ctx, d, t, shared)}<h1><span class="n {s["status"]}">{n}</span>{esc(STAGE_TITLE[key])}</h1>'
-            f'<p class="meta">{esc(task.get("title", t))} · {esc(t)} · {esc(plain_refs(s["summary"]))}</p></div>')
-    return shell(ctx, f"{n} {STAGE_TITLE[key]} · {task.get('title', t)}", nav_tree(ctx, d, t, key), head + body,
-                 wide=key == "screen", answers=answers_data(site, d, t), shared=shared)
+        body = conclusion(ctx, s["status"], page_conclusion(task, keys))
+        body += "".join(blocks(ctx, stages[k]) for k in keys if k in stages)
+        if "screen" in stages and "screen" in keys:
+            part = f'<h2 class="part">{esc(STAGE_TITLE["screen"])}</h2>' if any(k in stages for k in keys if k != "screen") else ""
+            body += part + screen_refs(ctx, task)
+    head = (f'<div class="head">{export_menu(ctx, d, t, shared)}<h1><span class="n {s["status"]}">{n}</span>{esc(title)}</h1>'
+            f'<p class="meta">{" · ".join(x for x in (feature_meta(ctx, task), esc(task.get("title", t)), esc(t), esc(plain_refs(s["summary"]))) if x)}</p></div>')
+    return shell(ctx, f"{n} {title} · {task.get('title', t)}", nav_tree(ctx, d, t, page), head + body,
+                 wide="screen" in keys and "screen" in stages, answers=answers_data(site, d, t), shared=shared)
+
+
+# ---------------------------------------------------------------- feature page
+
+def row_dot(prog):
+    if prog["task"]:
+        return task_state(prog["task"])
+    return "ask" if prog["state"] == "legacy" else "wait"
+
+
+def row_task_link(ctx, row, prog):
+    """Link to the row's task pages: relative in this checkout, absolute in another worktree."""
+    tid, d = row.get("task"), row.get("domain")
+    if not tid:
+        return esc(feat.row_key(row))
+    if prog["where"] == "이 체크아웃" and d in ctx.site.domains and tid in ctx.site.domains[d]["tasks"]:
+        return f'<a href="{esc(ctx.href(ctx.site.task_page(d, tid)))}">{esc(tid)}</a>'
+    if row.get("worktree"):
+        page = Path(row["worktree"]) / feat.docs_rel(ctx.site.docs) / d / tid / "index.html"
+        return f'<a href="{esc(page.as_uri())}" title="다른 워크트리 — 그 워크트리에서 flow.py build 후 열려요">{esc(tid)}</a>'
+    return esc(tid)
+
+
+def stage_chain(prog):
+    if not prog["stages"]:
+        return '<span class="note">—</span>'
+    return " ".join(f'<span class="st-dot {s["status"]}" title="{esc(plain_refs(s["summary"]))}">{esc(k)}</span>'
+                    for k, s in prog["stages"])
+
+
+def feature_page(site, fid):
+    f = site.features[fid]
+    ctx = Ctx(site, site.feature_page(fid))
+    prog = site.progress(fid)
+    rows = f.get("rows", [])
+    draft = [r for r in rows if not r.get("approved")]
+    banner = ""
+    if draft:
+        banner = (f'<div class="banner"><p>초안이에요 — 승인 전인 줄 {len(draft)}개. 승인하면 <code>flow.py start</code>가 '
+                  '지라 하위 이슈 · 워크트리 · 브랜치 · flow 작업을 만들어요.</p></div>')
+    snaps = " · ".join(f'{esc(p.get("label", "기획서"))} 스냅샷 {esc(str(p.get("lastEdited", ""))[:10])}' for p in f.get("prd") or [] if p.get("snapshot"))
+    home = f.get("home") or {}
+    meta = " · ".join(x for x in (f"기능 <code>{esc(fid)}</code>", f"루트 <code>{esc(f['root'])}</code>" if f.get("root") else "",
+                                  f"문서 위치 <code>{esc(home['branch'])}</code>" if home.get("branch") else "", snaps) if x)
+    links = [{"label": p.get("label", "기획서"), "url": p["url"]} for p in f.get("prd") or [] if p.get("url")] + (f.get("links") or [])
+    scope = "".join(f"<li>{ctx.rich(x)}</li>" for x in f.get("scope") or [])
+    scope = f'<h2>전체 범위</h2><ul>{scope}</ul>' if scope else ""
+    trs = []
+    for r in rows:
+        k = feat.row_key(r)
+        p = prog[k]
+        cnt = f'{p["count"][0]}/{p["count"][1]}' if p["count"] else "—"
+        jira = (r.get("jira") or {})
+        jira_cell = esc(jira.get("status") or "—")
+        notes = []
+        if p["next"]:
+            notes.append(esc(p["next"]))
+        if p["blockers"]:
+            notes.append(f"blocker {p['blockers']}건")
+        todo = f'<div class="todo">{esc(jira["todo"])}</div>' if jira.get("todo") else ""
+        story = f'{esc(r.get("story", ""))}<br><span class="note">{esc(r.get("storyTitle", ""))}</span>' if r.get("story") else "—"
+        branch = r.get("branch") or (p["task"] or {}).get("branch")
+        where = f'<code>{esc(branch)}</code>' if branch else '<span class="note">만들기 전</span>'
+        if r.get("worktree"):
+            where += f'<br><span class="note">{esc(r["worktree"])}</span>'
+        trs.append(f'<tr{" class=ask" if not r.get("approved") else ""}><td><b>{row_task_link(ctx, r, p)}</b> {esc(r.get("title", ""))}'
+                   f'<br><span class="st-dot {row_dot(p)}">{esc(feat.ROW_STATE[p["state"]])}</span>'
+                   f'{"<div class=nt>" + " · ".join(notes) + "</div>" if notes else ""}{todo}</td>'
+                   f'<td>{story}</td><td>{where}</td><td class="chain">{stage_chain(p)}</td><td>{cnt}</td><td>{jira_cell}</td></tr>')
+    table = (f'<h2>작업<small>진행도는 각 줄의 flow 작업에서 읽어요</small></h2><table class="feat"><thead><tr><th>작업</th><th>스토리</th>'
+             f'<th>브랜치 · 워크트리</th><th>flow 단계</th><th>체크</th><th>지라</th></tr></thead><tbody>{"".join(trs)}</tbody></table>') if trs else ""
+    sections, missing = feat.section_matrix(site.docs, f, prog)
+    matrix = ""
+    if sections or missing:
+        keys = [feat.row_key(r) for r in rows]
+        head = "".join(f"<th>{esc(k)}</th>" for k in keys)
+        mrows = []
+        for num, title, leaf, owners in sections:
+            gap = leaf and not owners
+            cells = "".join(f'<td class="mx">{"●" if k in owners else ""}</td>' for k in keys)
+            label = f'{"" if leaf else "<b>"}{esc(num)}. {esc(title)}{"" if leaf else "</b>"}'
+            mrows.append(f'<tr{" class=ask" if gap else ""}><td>{label}{"<div class=todo>주인 없는 섹션</div>" if gap else ""}</td>{cells}</tr>')
+        for num, owners in missing:
+            cells = "".join(f'<td class="mx">{"●" if k in owners else ""}</td>' for k in keys)
+            mrows.append(f'<tr class="ask"><td>{esc(num)}<div class="todo">스냅샷에 없는 섹션 — 기획서가 바뀌었거나 번호가 틀려요</div></td>{cells}</tr>')
+        matrix = (f'<h2>기획 섹션 × 작업<small>줄의 sections와 각 작업 기획 인용의 출처에서 점을 찍어요</small></h2>'
+                  f'<table class="feat matrix"><thead><tr><th>기획 섹션</th>{head}</tr></thead><tbody>{"".join(mrows)}</tbody></table>')
+    extra = ""
+    for key, title, cols, fields in (
+            ("copy", "사용자 노출 문구", ["위치", "문구", "작업"], ["where", "text", "row"]),
+            ("shared", "범위 간 공유물", ["항목", "쓰는 곳", "근거", "만드는 곳", "상태"], ["item", "usedBy", "evidence", "buildIn", "status"]),
+            ("componentDiffs", "공유 컴포넌트 차이", ["컴포넌트", "차이", "보고한 곳", "판단"], ["component", "diff", "reportedBy", "decision"]),
+            ("questions", "남은 질문", ["작업", "질문"], ["row", "text"]),
+            ("log", "기록", ["날짜", "내용"], ["date", "text"])):
+        items = f.get(key) or []
+        if not items:
+            continue
+        def cell(v):
+            return copy_marks(ctx.rich(", ".join(v) if isinstance(v, list) else v))
+        body = "".join("<tr>" + "".join(f"<td>{cell(it.get(x, ''))}</td>" for x in fields) + "</tr>" for it in items)
+        extra += f'<h2>{title}</h2><table class="tbl"><thead><tr>{"".join(f"<th>{c}</th>" for c in cols)}</tr></thead><tbody>{body}</tbody></table>'
+    jpath = (f.get("jira") or {}).get("path") or []
+    if jpath:
+        steps = " → ".join(f'{"<b>" if s.get("mark") else ""}{esc(s["status"])}{"</b>" if s.get("mark") else ""}'
+                           + (f' <span class="note">({esc(s["via"])}, 사람이 옮김)</span>' if s.get("manual") else "") for s in jpath)
+        extra += f'<h2>지라 전환<small>굵은 단계까지 flow가 한 단계씩 옮겨요</small></h2><p>{steps}</p>'
+    body = (f'<div class="head"><h1>{esc(f.get("title") or fid)}</h1><p class="meta">{meta}</p></div>{banner}{link_list(links)}'
+            f'{scope}{table}{matrix}{extra}')
+    return shell(ctx, f"{f.get('title') or fid} · flow", nav_tree(ctx), body, wide=True)
 
 
 # ---------------------------------------------------------------- build
@@ -812,6 +1071,8 @@ def render_all(docs):
     import share
     site = Site(docs)
     pages = {site.root: root_page(site)}
+    for fid in site.features:
+        pages[site.feature_page(fid)] = feature_page(site, fid)
     for d, dom in site.domains.items():
         pages[site.domain_page(d)] = domain_page(site, d)
         for t, task in dom["tasks"].items():
@@ -820,9 +1081,9 @@ def render_all(docs):
                 copies, shared = share.pages(site, d, t)
                 pages.update(copies)
             pages[site.task_page(d, t)] = task_index(site, d, t, shared)
-            for n, k in enumerate(STAGE_KEYS, 1):
-                if k in (task.get("stages") or {}):
-                    pages[site.task_page(d, t, k)] = stage_page(site, d, t, k, n, shared)
+            for n, (page, _, _, keys) in enumerate(PAGES, 1):
+                if any(k in (task.get("stages") or {}) for k in keys):
+                    pages[site.task_page(d, t, page)] = stage_page(site, d, t, page, n, shared)
     return site, pages
 
 
@@ -835,6 +1096,12 @@ def orphans(site, pages):
                 rel = f.relative_to(site.docs).as_posix()
                 if rel not in pages and is_generated(f):
                     out.append(rel)
+    fdir = site.docs / feat.FEATURES
+    if fdir.is_dir():
+        for f in sorted(fdir.glob("*/index.html")):
+            rel = f.relative_to(site.docs).as_posix()
+            if rel not in pages and is_generated(f):
+                out.append(rel)
     other = "flow-index.html" if site.root == "index.html" else "index.html"
     if (site.docs / other).exists() and is_generated(site.docs / other):
         out.append(other)
@@ -854,8 +1121,35 @@ def stale(docs):
     return out
 
 
+IGNORE_BEGIN = "# flow:begin — flow.py build writes these; never committed"
+IGNORE_END = "# flow:end"
+
+
+def ignore_lines(site):
+    lines = [f"/{site.root}"]
+    for d in site.domains:
+        lines += [f"/{d}/index.html", f"/{d}/*/", f"!/{d}/tasks/", f"!/{d}/images/", f"!/{d}/diagrams/", f"/{d}/diagrams/.receipts/"]
+    lines.append(f"/{feat.FEATURES}/*/index.html")
+    return lines
+
+
+def write_ignore(site):
+    path = site.docs / ".gitignore"
+    old = path.read_text() if path.exists() else ""
+    block = "\n".join([IGNORE_BEGIN, *ignore_lines(site), IGNORE_END]) + "\n"
+    if IGNORE_BEGIN in old and IGNORE_END in old:
+        head, rest = old.split(IGNORE_BEGIN, 1)
+        tail = rest.split(IGNORE_END, 1)[1].lstrip("\n")
+        new = head + block + tail
+    else:
+        new = old + ("\n" if old and not old.endswith("\n") else "") + block
+    if new != old:
+        path.write_text(new)
+
+
 def build(docs):
     site, pages = render_all(docs)
+    write_ignore(site)
     written = 0
     for rel, text in pages.items():
         p = site.docs / rel

@@ -1,6 +1,8 @@
-# Plan document format
+# Plan document format (legacy)
 
-`/task-plan` writes two files per task under `docs/{task-name}/plans/`:
+The removed `/task-plan` skill wrote two files per task under `docs/{task-name}/plans/`. New work
+uses `/flow` task JSON instead; this file stays so `/git-pr` can still read the old
+plans:
 
 | File | Holds |
 |---|---|

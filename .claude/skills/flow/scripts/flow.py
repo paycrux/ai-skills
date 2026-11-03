@@ -13,10 +13,19 @@
     python3 flow.py export <docs>/<domain>/tasks/<task>.json --to plan|backend --format html|md [-o FILE] [--copy]
     python3 flow.py migrate <docs> [--apply] [--v1 <old-task-dir> --domain ID [--title "..."] [--keep]]
     python3 flow.py merge-xml <base.xml> <expanded.xml>... -o <out.xml>
+    python3 flow.py routes <task.json> [--src DIR]          route · sheet rows for the files the task names (task route map)
+    python3 flow.py open <page.html>                        build, then open the page in the OS default browser
+    python3 flow.py current [<dir>]                         the flow task whose branch is the checked-out one (SessionStart hook)
+    python3 flow.py log <docs> --file PATH... -m "..." [--sha SHA] [--task ID]   one follow-up line on the task that covers the files
+    python3 flow.py prune <task.json>                       a finished task keeps conclusions and decisions only
+    python3 flow.py feature <docs> <feature-id> --title "..." --root BRANCH [--prd URL]   a feature document skeleton
+    python3 flow.py start <docs>/features/<id>/feature.json [--row KEY]... [--approve] [--dry-run]
+    python3 flow.py jira <task.json> start|done [--dry-run]  walk the Jira issue one transition at a time; done also comments
 
 Layout:
 
     <docs>/index.html            every domain (generated)
+    <docs>/features/<id>/        feature.json, prd.md snapshot, issues/*.md, index.html (generated)
     <docs>/<domain>/
       domain.json                title, figma, nodes, paths, links
       screens.json               SOT map of the domain's screens (markers S1…, off-screen states X1…)
@@ -24,7 +33,7 @@ Layout:
       images/                    Figma screenshots and structure XML
       diagrams/                  Archify flow diagrams (<task>-<slug>.json + .html), shown by "diagram" blocks
       index.html                 domain page: tasks + SOT map (generated)
-      <task-id>/                 index.html + 01-plan.html … 06-done.html (generated)
+      <task-id>/                 index.html + 01-plan.html … 05-done.html (generated)
         share/                   plan.html · plan.md · backend.html · backend.md, copies to send outside (generated)
 
 Everything else under <docs> is legacy: listed on the root page, never written.
@@ -32,42 +41,24 @@ Standard library only, Python 3.9+.
 """
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
+from datetime import date
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import browser  # noqa: E402
+import feature as feat  # noqa: E402
 import migrate  # noqa: E402
 import render  # noqa: E402
 import share  # noqa: E402
-from model import (ITEM_ID, KINDS, RESERVED_TASK_IDS, STAGE_KEYS, STATUSES, frame_boxes, git, parse_ref,  # noqa: E402
-                   plain, read_json, scope, task_files, task_items, walk_refs, write_json)
-
-
-def stage_skeleton(key):
-    if key == "plan":
-        return {"status": "now", "summary": "작성 중", "conclusion": [],
-                "blocks": [{"type": "quote", "title": "기획서 발췌", "items": []}, {"type": "text", "title": "디자인", "html": ""}]}
-    if key == "screen":
-        return {"status": "wait", "summary": "시작 전", "conclusion": []}
-    if key == "grill":
-        return {"rounds": []}
-    if key == "tasks":
-        return {"status": "wait", "summary": "계획 작성 전", "conclusion": [], "blocks": []}
-    if key == "verify":
-        return {"status": "wait", "summary": "검증 전", "conclusion": [],
-                "blocks": [{"type": "checklist", "title": "화면 밖 상태 확인", "items": []},
-                           {"type": "checklist", "title": "버그", "items": []}]}
-    return {"status": "wait", "summary": "PR 전", "conclusion": [],
-            "blocks": [{"type": "checklist", "title": "PR 전", "items": [
-                {"id": "D1", "title": "SOT 맵 근거를 실제 코드 파일:줄로 바꿈", "done": False},
-                {"id": "D2", "title": "남은 Computed · 계산 행을 서버 · 기획 요청으로 정리", "done": False},
-                {"id": "D3", "title": "PR 생성", "done": False}]},
-                {"type": "text", "title": "서버 · 기획에 요청할 것", "html": "없어요"}]}
+from model import (ITEM_ID, KINDS, RESERVED_TASK_IDS, STAGE_KEYS, STATUSES, domains_of, frame_boxes, git,  # noqa: E402
+                   parse_ref, plain, read_json, scope, stage_skeleton, task_files, task_items, task_state, walk_refs,
+                   write_json)
 
 
 def parse_stages(text):
@@ -106,6 +97,23 @@ def cmd_find(args):
         return
     for name, title, why in hits:
         print(f"{name} ({title}): {' · '.join(dict.fromkeys(why))}")
+    if args.path:
+        for name, task, f in tasks_naming(doms, [args.path]):
+            print(f"  작업 {name}/{task['id']} ({task.get('title', '')}) — {STATE_WORD[task_state(task)]}: {f}")
+
+
+STATE_WORD = {"done": "끝남", "now": "진행 중", "ask": "답 대기", "wait": "시작 전"}
+
+
+def tasks_naming(doms, paths):
+    """Tasks whose JSON names one of the paths (or a file under it)."""
+    out = []
+    for d in doms:
+        for f in task_files(d):
+            text = f.read_text()
+            if any(p.strip().rstrip("/") and p.strip().rstrip("/") in text for p in paths):
+                out.append((d.name, json.loads(text), f))
+    return out
 
 
 def cmd_domain(args):
@@ -113,7 +121,7 @@ def cmd_domain(args):
     root = docs / args.id
     if (root / "domain.json").exists():
         sys.exit(f"이미 있는 도메인이에요: {root} — 작업은 flow.py task로 추가해요")
-    if not re.fullmatch(r"[a-z0-9][a-z0-9-]*", args.id):
+    if not re.fullmatch(r"[a-z0-9][a-z0-9-]*", args.id) or args.id == feat.FEATURES:
         sys.exit("도메인 ID는 영어 소문자 · 숫자 · 하이픈으로 (예: gift, account-settings)")
     (root / "tasks").mkdir(parents=True, exist_ok=True)
     (root / "images").mkdir(exist_ok=True)
@@ -160,6 +168,9 @@ def cmd_build(args):
     site, total, written, removed = render.build(docs)
     print(f"HTML {total}쪽 — 새로 쓴 것 {written}" + (f", 지운 것 {len(removed)}" if removed else ""))
     print(f"열기: {(site.docs / site.root).resolve()}")
+    tracked = tracked_generated(docs)
+    if tracked:
+        print(f"커밋된 생성물 {len(tracked)}개 — git에서 빼려면 flow.py migrate {docs} --apply")
     if server or v1:
         print("이전 버전 문서가 남아 있어요 — flow.py migrate " + str(docs))
 
@@ -226,13 +237,18 @@ def stage_line(key, st):
     return f"{key}: {st.get('status')} · {st.get('summary', '')}"
 
 
+def brief_head(t):
+    stages = t.get("stages", {})
+    lines = [f"{t['id']} {t['title']} · {t.get('type', '')} · {t.get('branch', '')}"]
+    lines += ["  " + stage_line(k, stages[k]) for k in STAGE_KEYS if k in stages]
+    return lines
+
+
 def cmd_brief(args):
     t = read_json(args.task)
     stages = t.get("stages", {})
-    print(f"{t['id']} {t['title']} · {t.get('type', '')} · {t.get('branch', '')}")
-    for k in STAGE_KEYS:
-        if k in stages:
-            print("  " + stage_line(k, stages[k]))
+    for line in brief_head(t):
+        print(line)
     keys = [args.stage] if args.stage else [k for k in STAGE_KEYS if k in stages]
     for k in keys:
         st = stages.get(k)
@@ -410,6 +426,12 @@ def check_domain(d, index, problems):
                 problems.append(f"{name}/screens.json {mid}: 구조 파일에 없는 노드 {m['node']} — merge-xml로 컴포넌트 안쪽을 합쳤는지 확인")
             if not m.get("node") and not ("x" in m and "y" in m):
                 problems.append(f"{name}/screens.json {mid}: node 또는 x · y가 있어야 해요")
+        mids = {m.get("id") for m in s.get("markers", [])}
+        for a in s.get("apis") or []:
+            for r in a.get("rows", []):
+                bad = [i for i in r.get("to") or [] if i not in mids]
+                if bad:
+                    problems.append(f"{name}/screens.json 화면 {s.get('id')} API {a.get('call', '?')} {r.get('field', '?')}: 이 화면에 없는 마커 {', '.join(bad)}")
         for o in s.get("offscreen", []):
             oid = o.get("id", "")
             if not re.fullmatch(r"X\d+", oid) or oid in seen:
@@ -491,6 +513,35 @@ def check_task(f, domain, index, problems):
         problems.append(f"{rel}: 사람이 바꾼 것 {len(marks)}건을 아직 처리하지 않았어요 — flow.py changes")
 
 
+def check_feature(fd, problems):
+    rel = f"{feat.FEATURES}/{fd.name}/feature.json"
+    f = read_json(fd / "feature.json")
+    for key in ("title", "root"):
+        if not f.get(key):
+            problems.append(f"{rel}: {key}가 없어요")
+    for p in f.get("prd") or []:
+        if p.get("snapshot") and not (fd / p["snapshot"]).is_file():
+            problems.append(f"{rel}: 기획서 스냅샷 {p['snapshot']}이 없어요")
+    seen = set()
+    for r in f.get("rows", []):
+        k = feat.row_key(r)
+        if not k:
+            problems.append(f"{rel}: id도 issue도 없는 줄이 있어요 ({r.get('title', '?')})")
+        if k in seen:
+            problems.append(f"{rel}: 줄 {k}가 겹쳐요")
+        seen.add(k)
+        if not r.get("legacy"):
+            for key in ("story", "title", "domain"):
+                if not r.get(key):
+                    problems.append(f"{rel} {k}: {key}가 없어요")
+            if r.get("approved") and not r.get("issue") and not (fd / (r.get("issueBody") or "")).is_file():
+                problems.append(f"{rel} {k}: 만들 이슈의 issueBody 파일이 없어요")
+    steps = (f.get("jira") or {}).get("path") or []
+    marks = [s.get("mark") for s in steps if s.get("mark")]
+    if steps and ("start" not in marks or "done" not in marks):
+        problems.append(f"{rel}: jira.path에 \"mark\": \"start\"와 \"done\" 단계가 있어야 해요")
+
+
 def cmd_check(args):
     docs, doms = scope(args.target)
     index = Index(docs)
@@ -500,6 +551,8 @@ def cmd_check(args):
         problems.append(f"이전 버전 flow 문서가 있어요 ({', '.join(p.name for p in server + v1)}) — flow.py migrate {docs}")
     for d in doms:
         check_domain(d, index, problems)
+    for fd in feat.feature_dirs(docs):
+        check_feature(fd, problems)
     problems += [f"HTML: {s} — flow.py build {docs}" for s in render.stale(docs)]
     if problems:
         print(f"문제 {len(problems)}건")
@@ -522,8 +575,20 @@ def cmd_migrate(args):
         print(f"HTML을 다시 만들었어요 — 다음: flow.py check {docs}")
         return
     server, v1 = migrate.detect(docs)
+    tracked = tracked_generated(docs)
+    if tracked and args.apply:
+        top = git(docs, "rev-parse", "--show-toplevel")
+        subprocess.run(["git", "-C", top, "rm", "--cached", "-q", "--", *tracked], check=False)
+        print(f"커밋돼 있던 생성물 {len(tracked)}개를 git에서 뺐어요 (파일은 그대로) — 다음 커밋에 함께 들어가요")
+    elif tracked:
+        print(f"커밋된 생성물 {len(tracked)}개 — 이제 생성물은 커밋하지 않아요. 사용자에게 알리고 flow.py migrate {docs} --apply")
+        for t in tracked[:8]:
+            print(f"  {t}")
+        if len(tracked) > 8:
+            print(f"  … 외 {len(tracked) - 8}개")
     if not server and not v1:
-        print("옮길 이전 버전 문서가 없어요")
+        if not tracked:
+            print("옮길 이전 버전 문서가 없어요")
         return
     if server and not args.apply:
         print("이전 로컬 서버 방식의 파일이에요. 아직 지우지 않았어요:")
@@ -547,6 +612,253 @@ def cmd_migrate(args):
         print(f"v1 작업 폴더: {d.name} ({title}){hint}\n  옮기기: flow.py migrate {docs} --v1 {d} --domain <도메인 ID> [--title \"<새 도메인 이름>\"]")
     site, total, written, removed = render.build(docs)
     print(f"HTML {total}쪽을 다시 만들었어요")
+
+
+# ---------------------------------------------------------------- generated files stay out of git
+
+def tracked_generated(docs):
+    top = git(docs, "rev-parse", "--show-toplevel")
+    if not top:
+        return []
+    files = git(top, "ls-files", "--", str(Path(docs).resolve())).splitlines()
+    out = []
+    for f in files:
+        p = Path(top) / f
+        if "/share/" in f or "/.receipts/" in f or (p.suffix == ".html" and render.is_generated(p)):
+            out.append(f)
+    return out
+
+
+# ---------------------------------------------------------------- open / current
+
+def docs_above(path):
+    for parent in Path(path).resolve().parents:
+        if domains_of_safe(parent) or (parent / feat.FEATURES).is_dir():
+            top = parent
+            for up in parent.parents:
+                if domains_of_safe(up) or (up / feat.FEATURES).is_dir():
+                    top = up
+            return top
+    return None
+
+
+def domains_of_safe(p):
+    try:
+        return p.is_dir() and bool(domains_of(p))
+    except OSError:
+        return False
+
+
+def cmd_open(args):
+    page = Path(args.page)
+    docs = docs_above(page)
+    if docs is None:
+        sys.exit(f"flow 문서 폴더를 찾지 못했어요: {page}")
+    render.build(docs)
+    if not page.exists():
+        sys.exit(f"build 뒤에도 없는 페이지예요: {page}")
+    opener = {"darwin": ["open"], "win32": ["cmd", "/c", "start", ""]}.get(sys.platform, ["xdg-open"])
+    if os.environ.get("SSH_CONNECTION") or (sys.platform.startswith("linux") and not os.environ.get("DISPLAY")):
+        print(f"열 수 없는 환경이에요 — 경로: {page.resolve()}")
+        return
+    subprocess.run([*opener, str(page.resolve())], check=False)
+    print(f"열었어요: {page.resolve()}")
+
+
+def cmd_current(args):
+    try:
+        here = Path(args.dir or ".").resolve()
+        top = Path(git(here, "rev-parse", "--show-toplevel") or here)
+        docs = top / "docs"
+        if not docs.is_dir():
+            return
+        doms = domains_of(docs)
+        if not doms:
+            return
+        branch = git(top, "branch", "--show-current")
+        hits = []
+        for d in doms:
+            for f in task_files(d):
+                try:
+                    t = json.loads(f.read_text())
+                except ValueError:
+                    continue
+                if branch and t.get("branch") == branch:
+                    hits.append((f, t))
+        if not hits:
+            print("이 브랜치에 맞는 flow 작업이 없음")
+        elif len(hits) > 1:
+            print("여러 개: " + ", ".join(t["id"] for _, t in hits))
+        else:
+            f, t = hits[0]
+            for line in brief_head(t):
+                print(line)
+            print(f"  작업 파일: {f.relative_to(top)}")
+    except Exception:  # noqa: BLE001 — a hook must never break session start
+        return
+
+
+# ---------------------------------------------------------------- follow-up log / prune
+
+def cmd_log(args):
+    docs, doms = scope(args.docs)
+    if args.task:
+        hits = [(d.name, read_json(f), f) for d in doms for f in task_files(d) if f.stem == args.task]
+    else:
+        hits = tasks_naming(doms, args.file)
+    if not hits:
+        print("이 파일을 다룬 flow 작업이 없어요 — 커밋 메시지가 기록이에요")
+        return
+    if len(hits) > 1:
+        print("이 파일을 다룬 작업이 여럿이에요 — --task로 하나를 골라요:")
+        for name, t, _ in hits:
+            print(f"  {name}/{t['id']} {t.get('title', '')}")
+        sys.exit(1)
+    name, task, f = hits[0]
+    sha = args.sha or git(f.parent, "rev-parse", "--short", "HEAD")
+    task.setdefault("followUps", []).append({"date": date.today().isoformat(), "text": args.message,
+                                             "files": args.file or [], "sha": sha})
+    write_json(f, task)
+    render.build(docs)
+    print(f"{name}/{task['id']}에 후속 수정 한 줄을 남겼어요 ({sha})")
+
+
+KEEP_Q = ("id", "title", "decision", "appliedTo", "to")
+KEEP_ROWS = ("결정", "파일")
+
+
+def cmd_prune(args):
+    task = read_json(args.task)
+    if task_state(task) != "done":
+        sys.exit(f"{task['id']}: 아직 끝나지 않은 작업이에요 — 모든 단계가 done일 때만 정리해요")
+    stages = task.get("stages") or {}
+    dropped = 0
+    for r in (stages.get("grill") or {}).get("rounds", []):
+        for q in r.get("questions", []):
+            for k in [k for k in q if k not in KEEP_Q]:
+                del q[k]
+                dropped += 1
+    for key, st in stages.items():
+        if key == "grill":
+            continue
+        for b in st.get("blocks", []):
+            if b.get("type") != "checklist":
+                continue
+            for it in b.get("items", []):
+                keep = [r for r in it.get("rows", []) if r and r[0] in KEEP_ROWS]
+                dropped += len(it.get("rows", [])) - len(keep)
+                if keep:
+                    it["rows"] = keep
+                else:
+                    it.pop("rows", None)
+    task.pop("pulledAt", None)
+    task["pruned"] = date.today().isoformat()
+    write_json(args.task, task)
+    print(f"{task['id']}: 세부 {dropped}개를 정리했어요 — 결론 · 결정 · 결정 행은 남김. 전체 기록은 git에 있어요")
+    print(f"다음: flow.py check {Path(args.task).resolve().parent.parent}")
+
+
+# ---------------------------------------------------------------- feature / start / jira
+
+def cmd_feature(args):
+    root = Path(args.docs) / feat.FEATURES / args.id
+    if (root / "feature.json").exists():
+        sys.exit(f"이미 있는 기능 문서예요: {root / 'feature.json'}")
+    if not re.fullmatch(r"[a-z0-9][a-z0-9-]*", args.id):
+        sys.exit("기능 ID는 영어 소문자 · 숫자 · 하이픈으로 (예: gift, account-settings)")
+    (root / "issues").mkdir(parents=True, exist_ok=True)
+    prd = [{"label": "기획서", "url": args.prd, "snapshot": "prd.md", "lastEdited": ""}] if args.prd else []
+    write_json(root / "feature.json", {
+        "id": args.id, "title": args.title, "root": args.root, "repo": feat.common_repo(args.docs),
+        "prd": prd, "links": [], "scope": [],
+        "jira": {"project": "", "issueType": "[개발]", "site": "", "path": []},
+        "rows": [], "copy": [], "shared": [], "componentDiffs": [], "questions": [], "log": []})
+    print(f"기능 문서를 만들었어요: {root / 'feature.json'}")
+
+
+def cmd_start(args):
+    try:
+        lines = feat.start(args.feature, args.row, args.approve, args.dry_run)
+    except RuntimeError as e:
+        print(f"멈춤: {e}\n끝난 단계는 feature.json에 기록됐어요 — 고친 뒤 같은 명령을 다시 실행하면 이어서 해요")
+        sys.exit(1)
+    for line in lines:
+        print(line)
+    if not args.dry_run:
+        f = Path(args.feature)
+        docs = feat.docs_of_feature(f) if f.exists() else None
+        if docs and docs.is_dir():
+            render.build(docs)
+
+
+def cmd_jira(args):
+    try:
+        for line in feat.jira_step(args.task, args.step, args.dry_run):
+            print(line)
+    except RuntimeError as e:
+        sys.exit(f"멈춤: {e}")
+    fpath, _ = feat.feature_of(read_json(args.task))
+    for docs in {feat.docs_of_feature(fpath) if fpath else None, docs_above(args.task)} - {None}:
+        render.build(docs)
+
+
+# ---------------------------------------------------------------- task route map
+
+ROUTE_EXT = (".tsx", ".ts", ".jsx", ".js")
+SHEET = re.compile(r"""openSheet\(\s*['"]([\w-]+)['"]""")
+
+
+def app_routes(top, src):
+    """Every route file under an Expo Router / Next.js app directory → [(path, file)]."""
+    base = Path(top) / src if src else next((Path(top) / c for c in ("app", "src/app") if (Path(top) / c).is_dir()), None)
+    if base is None or not base.is_dir():
+        return []
+    files = [p for p in base.rglob("*") if p.suffix in ROUTE_EXT and "node_modules" not in p.parts]
+    nextjs = any(p.stem == "page" for p in files)
+    out = []
+    for p in sorted(files):
+        if nextjs and p.stem != "page":
+            continue
+        if not nextjs and (p.stem.startswith(("_", "+")) or p.stem.endswith((".test", ".spec"))):
+            continue
+        parts = list(p.relative_to(base).with_suffix("").parts)
+        if nextjs or parts[-1] == "index":
+            parts = parts[:-1]
+        parts = [x for x in parts if not (x.startswith("(") and x.endswith(")"))]
+        out.append(("/" + "/".join(parts), p.relative_to(top).as_posix()))
+    return out
+
+
+def cmd_routes(args):
+    path = Path(args.task).resolve()
+    task = read_json(path)
+    top = git(path.parent, "rev-parse", "--show-toplevel")
+    if not top:
+        sys.exit("git 저장소 안의 작업이 아니에요")
+    text = path.read_text()
+    domain = read_json(path.parent.parent / "domain.json")
+    prefixes = [p.rstrip("/") + "/" for p in domain.get("paths") or [] if p.startswith(("app", "src/app"))]
+    named = [(r, f) for r, f in app_routes(top, args.src) if f in text or any(f.startswith(x) for x in prefixes)]
+    if not named:
+        print("이 작업이 이름을 댄 경로 파일이 없어요 — 항목의 파일 행이나 도메인 paths에 app/ 경로가 있어야 해요")
+        return
+    stage_key = "screen" if "screen" in task["stages"] else "tasks" if "tasks" in task["stages"] else next(iter(task["stages"]))
+    stage = task["stages"][stage_key]
+    block = next((b for b in stage.setdefault("blocks", []) if b.get("type") == "routes"), None)
+    if block is None:
+        block = {"type": "routes", "title": "작업 경로 맵", "rows": []}
+        stage["blocks"].insert(0, block)
+    old = {r.get("file"): r for r in block.get("rows", [])}
+    rows = []
+    for route, f in named:
+        sheets = sorted(set(SHEET.findall((Path(top) / f).read_text(errors="ignore"))))
+        prev = old.get(f, {})
+        rows.append({"path": route, "file": f, "name": prev.get("name", ""), "sheets": sheets, "apis": prev.get("apis", [])})
+    block["rows"] = rows
+    write_json(path, task)
+    print(f"{task['id']} {stage_key} 단계에 경로 {len(rows)}개 — 기능 이름과 이 작업에서 확인한 API만 채워요")
+    for r in rows:
+        print(f"  {r['path']:<28} {r['file']}" + (f"  시트 {', '.join(r['sheets'])}" if r["sheets"] else ""))
 
 
 # ---------------------------------------------------------------- merge-xml
@@ -636,6 +948,44 @@ def main():
     p.add_argument("--keep", action="store_true")
     p.add_argument("--apply", action="store_true")
     p.set_defaults(fn=cmd_migrate)
+    p = sub.add_parser("routes")
+    p.add_argument("task")
+    p.add_argument("--src")
+    p.set_defaults(fn=cmd_routes)
+    p = sub.add_parser("open")
+    p.add_argument("page")
+    p.set_defaults(fn=cmd_open)
+    p = sub.add_parser("current")
+    p.add_argument("dir", nargs="?")
+    p.set_defaults(fn=cmd_current)
+    p = sub.add_parser("log")
+    p.add_argument("docs")
+    p.add_argument("--file", action="append", default=[])
+    p.add_argument("-m", "--message", required=True)
+    p.add_argument("--sha")
+    p.add_argument("--task")
+    p.set_defaults(fn=cmd_log)
+    p = sub.add_parser("prune")
+    p.add_argument("task")
+    p.set_defaults(fn=cmd_prune)
+    p = sub.add_parser("feature")
+    p.add_argument("docs")
+    p.add_argument("id")
+    p.add_argument("--title", required=True)
+    p.add_argument("--root", required=True)
+    p.add_argument("--prd")
+    p.set_defaults(fn=cmd_feature)
+    p = sub.add_parser("start")
+    p.add_argument("feature")
+    p.add_argument("--row", action="append")
+    p.add_argument("--approve", action="store_true")
+    p.add_argument("--dry-run", action="store_true")
+    p.set_defaults(fn=cmd_start)
+    p = sub.add_parser("jira")
+    p.add_argument("task")
+    p.add_argument("step", choices=["start", "done"])
+    p.add_argument("--dry-run", action="store_true")
+    p.set_defaults(fn=cmd_jira)
     p = sub.add_parser("merge-xml")
     p.add_argument("base")
     p.add_argument("expanded", nargs="+")

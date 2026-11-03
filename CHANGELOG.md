@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Changed
+
+- `flow`: 기획서 하나가 지라 스토리 여러 개에 걸치면 **기능 문서**(`docs/features/<id>/feature.json`)를 씀. 기획 섹션 → 스토리 → `[프론트]` 이슈 → 브랜치 · 워크트리 → flow 작업을 한 표로 묶고, 각 줄의 진행도는 그 줄의 flow 작업 JSON에서 계산함. 기능 페이지는 아무 작업도 인용하지 않는 기획 섹션과 스냅샷에 없는 섹션을 노란 줄로 표시. 작업 페이지 머리에서 기능 페이지로 올라감
+- `flow`: `flow.py start` — 승인된 줄마다 지라 `[프론트]` 하위 이슈(이미 있으면 재사용), orca 최상위 워크트리(상위 워크트리 없음 확인), `feat/<키>` 브랜치(upstream 해제), flow 작업 뼈대를 만들고 결과를 기능 문서에 씀. 단계마다 저장해서 실패 뒤 다시 실행하면 이어서 함
+- `flow`: `flow.py jira start|done` — 전환 경로를 기능 문서에 한 번 기록해 두고 한 단계씩 옮김. 완료 단계는 완료 댓글 후 이동. 개발계 배포처럼 조건이 붙은 전환은 하지 않고 '사람이 옮길 것'으로 표시
+- `flow`: `flow.py current` — 체크아웃한 브랜치의 flow 작업 요약 머리말(SessionStart 훅용)
+- `flow`: 생성물(페이지 · `share/` · `.receipts/`)을 커밋하지 않음. `build`가 `docs/.gitignore`에 블록을 관리하고, 이미 커밋된 생성물은 `migrate --apply`가 git에서 뺌. `flow.py open`은 build 후 엶
+- `flow`: 완료 단계에 `/code-review`(지적된 것만 수정), 후속 수정 한 줄 기록(`flow.py log`), 끝난 작업 정리(`flow.py prune`)
+- `flow`: SOT 맵에 들어오는 길, API → 정규화 함수 → 화면 요소 상자, 파라미터 → UI → API 요청 값 상자. `flow.py routes`가 작업이 건드리는 경로 · 시트를 뽑아 작업 경로 맵을 씀
+
+### Removed
+
+- `tracker` 스킬 — flow 기능 문서로 대체. 세션끼리 메시지로 일을 시키던 관제는 없애고, 보기는 기능 페이지가 맡음. 완료 댓글 · 이슈 설명 템플릿은 `flow/templates/`로 옮김
+
 ## [1.0.0] - 2026-10-23
 
 ### Added

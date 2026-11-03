@@ -7,16 +7,24 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 STAGES = [
-    ("plan", "기획", "01-plan.html"),
-    ("screen", "화면 · SOT 맵", "02-screen.html"),
-    ("grill", "질문", "03-grill.html"),
-    ("tasks", "구현 계획 · 구현", "04-tasks.html"),
-    ("verify", "검증", "05-verify.html"),
-    ("done", "완료", "06-done.html"),
+    ("plan", "기획"),
+    ("screen", "화면 · SOT 맵"),
+    ("grill", "질문"),
+    ("tasks", "구현 계획 · 구현"),
+    ("verify", "검증"),
+    ("done", "완료"),
 ]
-STAGE_KEYS = [k for k, _, _ in STAGES]
-STAGE_TITLE = {k: t for k, t, _ in STAGES}
-STAGE_FILE = {k: f for k, _, f in STAGES}
+PAGES = [
+    ("plan", "기획 · 화면", "01-plan.html", ("plan", "screen")),
+    ("grill", "질문", "02-grill.html", ("grill",)),
+    ("tasks", "구현 계획 · 구현", "03-tasks.html", ("tasks",)),
+    ("verify", "검증", "04-verify.html", ("verify",)),
+    ("done", "완료", "05-done.html", ("done",)),
+]
+STAGE_KEYS = [k for k, _ in STAGES]
+STAGE_TITLE = dict(STAGES)
+STAGE_FILE = {k: f for _, _, f, keys in PAGES for k in keys}
+PAGE_OF = {k: page for page, _, _, keys in PAGES for k in keys}
 STATUSES = ("done", "now", "ask", "wait")
 STATE_LABEL = {"done": "완료", "now": "진행 중", "ask": "질문 · 결정 대기", "wait": "시작 전", "skip": "건너뜀"}
 KINDS = {"screens": ("server", "format", "calc", "action", "pending", "out"),
@@ -75,6 +83,29 @@ def task_files(domain_dir):
     return sorted((Path(domain_dir) / "tasks").glob("*.json"))
 
 
+def stage_skeleton(key):
+    if key == "plan":
+        return {"status": "now", "summary": "작성 중", "conclusion": [],
+                "blocks": [{"type": "quote", "title": "기획서 발췌", "items": []}, {"type": "text", "title": "디자인", "html": ""}]}
+    if key == "screen":
+        return {"status": "wait", "summary": "시작 전", "conclusion": []}
+    if key == "grill":
+        return {"rounds": []}
+    if key == "tasks":
+        return {"status": "wait", "summary": "계획 작성 전", "conclusion": [], "blocks": []}
+    if key == "verify":
+        return {"status": "wait", "summary": "검증 전", "conclusion": [],
+                "blocks": [{"type": "checklist", "title": "화면 밖 상태 확인", "items": []},
+                           {"type": "checklist", "title": "버그", "items": []}]}
+    return {"status": "wait", "summary": "PR 전", "conclusion": [],
+            "blocks": [{"type": "checklist", "title": "PR 전", "items": [
+                {"id": "D1", "title": "SOT 맵 근거를 실제 코드 파일:줄로 바꿈", "done": False},
+                {"id": "D2", "title": "남은 Computed · 계산 행을 서버 · 기획 요청으로 정리", "done": False},
+                {"id": "D3", "title": "<code>/code-review</code> — 지적된 것만 고침", "done": False},
+                {"id": "D4", "title": "PR 생성", "done": False}]},
+                {"type": "text", "title": "서버 · 기획에 요청할 것", "html": "없어요"}]}
+
+
 # ---------------------------------------------------------------- stage state
 
 def grill_state(stage):
@@ -123,6 +154,20 @@ def stage_state(task, key):
     if total:
         summary = f"{summary}{' · ' if summary else ''}체크 {done}/{total}"
     return {"status": status, "summary": summary}
+
+
+def page_state(task, keys):
+    live = [s for s in (stage_state(task, k) for k in keys) if s["status"] != "skip"]
+    if not live:
+        return {"status": "skip", "summary": "필요하면 생겨요"}
+    statuses = [s["status"] for s in live]
+    if "ask" in statuses or "now" in statuses:
+        status = "ask" if "ask" in statuses else "now"
+    elif all(x == "done" for x in statuses):
+        status = "done"
+    else:
+        status = "now" if "done" in statuses else "wait"
+    return {"status": status, "summary": " · ".join(s["summary"] for s in live if s["summary"])}
 
 
 def task_state(task):

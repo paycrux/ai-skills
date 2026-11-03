@@ -62,10 +62,10 @@
   });
   const hot = (i, scrollFig) => {
     $$(".pin.hot, tr.hot").forEach((e) => e.classList.remove("hot"));
-    const p = $(`.pin[data-i="${i}"]`), r = $(`tr[data-i="${i}"]`);
-    if (!p || !r) return;
+    const p = $(`.pin[data-i="${i}"]`), rows = $$(`tr[data-i="${i}"]`);
+    if (!p || !rows.length) return;
     p.classList.add("hot");
-    r.classList.add("hot");
+    rows.forEach((r) => r.classList.add("hot"));
     const shot = p.closest(".shot");
     if (scrollFig && shot) shot.scrollTop = p.offsetTop - shot.clientHeight / 2;
   };

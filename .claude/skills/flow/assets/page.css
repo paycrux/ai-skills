@@ -293,6 +293,8 @@ tbody tr[data-i] { cursor: pointer; scroll-margin-top: 96px; }
 .sum span { font: 600 12px var(--font); background: var(--tint); border-radius: 999px; padding: 5px 12px; }
 .page > h2.screen { grid-column: 1 / 13; font-size: 24px; letter-spacing: -0.015em; margin-top: 80px; }
 .page > h2.screen + * { margin-top: 0; }
+.page > h2.part { grid-column: 1 / 13; border-top: 2px solid var(--fg); padding-top: 16px; margin-top: 96px; font-size: 14px; }
+.page > h2.part + * { margin-top: 24px; }
 .page > .meta + .cols { margin-top: 0; }
 
 /* case tables: what the person sees in each state, drawn with the app's own pieces */
@@ -374,3 +376,15 @@ body.share { padding-left: 0; }
 .ex-row > span { font-size: 12px; color: var(--muted); }
 .ex-btn { font: 600 12px var(--font); padding: 6px 10px; border: 0; border-radius: 6px; background: var(--tint-2); color: var(--fg); cursor: pointer; text-decoration: none; }
 .ex-btn:hover { background: var(--fg); color: var(--bg); }
+
+/* feature page */
+table.feat td { vertical-align: top; }
+table.feat td.mx { text-align: center; color: var(--st-now); }
+table.feat .chain .st-dot { margin-right: 8px; white-space: nowrap; }
+.todo { color: var(--pin); font-size: 13px; }
+
+/* SOT map: API → normalise → element, parameters */
+.page > p.entry { margin-top: -4px; }
+code.at { font-size: 0.78em; color: var(--muted); background: none; padding: 0; }
+table.flowmap td { vertical-align: top; }
+table.flowmap td:first-child { white-space: nowrap; }

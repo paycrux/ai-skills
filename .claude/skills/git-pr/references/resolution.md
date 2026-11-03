@@ -15,10 +15,16 @@ at the first hit.
 1. **Flags** — `--no-issue` in `$ARGUMENTS` → no prefix, skip the rest. `--issue <no>` → use that
    value verbatim.
 
-2. **Plan header** — the `이슈:` field written by `/task-plan`, the authoritative source when the
-   branch has a plan document. The plan is `tasks.html`, or `tasks.md` for plans written before the
-   HTML format. Locate it — prefer one changed by this branch, otherwise the `docs/*/plans/tasks.*`
-   matching the branch topic:
+2. **Task id** — the `id` of a `/flow` task JSON changed by this branch, the authoritative source
+   when the branch has one. The file name is the id:
+
+   ```bash
+   git diff origin/{PR_BASE}..{HEAD_BRANCH} --name-only -- 'docs/*/tasks/*.json'
+   ```
+
+   With no flow task, fall back to the `이슈:` header of a legacy plan document from the removed
+   `/task-plan` skill: `tasks.html`, or `tasks.md` for older plans. Locate it — prefer one changed by
+   this branch, otherwise the `docs/*/plans/tasks.*` matching the branch topic:
 
    ```bash
    git diff origin/{PR_BASE}..{HEAD_BRANCH} --name-only -- '**/tasks.html' '**/tasks.md'

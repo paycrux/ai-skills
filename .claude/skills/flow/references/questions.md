@@ -1,7 +1,7 @@
-# Questions — stage 03
+# Questions — the `grill` stage (page 02)
 
-Stage 03 is both the question record and the place the user answers. Rounds live in the task's
-`stages.grill.rounds`; `03-grill.html` renders them with an answer form under each question.
+Page 02 is both the question record and the place the user answers. Rounds live in the task's
+`stages.grill.rounds`; `02-grill.html` renders them with an answer form under each question.
 
 Contents: where questions come from · writing a round · the rounds JSON · receiving answers ·
 revisions · when answers cannot come from the page

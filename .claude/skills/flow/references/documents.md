@@ -7,7 +7,11 @@ page · reading for tokens · legacy documents · earlier versions
 
 ```
 <repo>/docs/
-  ├ index.html                 every domain and its open tasks                      (generated)
+  ├ index.html                 every feature and domain, open tasks                 (generated)
+  ├ .gitignore                 flow keeps a "# flow:begin … # flow:end" block listing the generated files
+  ├ features/<id>/             a PRD across several stories — see feature.md
+  │ ├ feature.json · prd.md · issues/*.md
+  │ └ index.html               the feature page                                     (generated)
   ├ <domain>/                  one per Figma top-level section, kebab-case English (gift, account-settings)
   │ ├ domain.json              {"title", "kind": "screens|components", "figma", "nodes": [...], "paths": [...], "links": [...], "mockTheme": {...}}
   │ ├ screens.json             the domain's SOT map — see sot-map.md
@@ -16,7 +20,7 @@ page · reading for tokens · legacy documents · earlier versions
   │ ├ diagrams/                Archify flow diagrams: <task>-<slug>.json (candidate) + .html
   │ ├ prd.md                   PRD snapshot when one was fetched
   │ ├ index.html               the domain's tasks and SOT map                       (generated)
-  │ └ <task-id>/               index.html (every stage's conclusion) + 01-plan.html … 06-done.html (generated)
+  │ └ <task-id>/               index.html (every stage's conclusion) + 01-plan.html … 05-done.html (generated)
   │   └ share/                 plan.html · plan.md · backend.html · backend.md — copies to send outside (generated)
   └ <anything else>            legacy — listed on the root page, never written
 ```
@@ -26,8 +30,10 @@ page · reading for tokens · legacy documents · earlier versions
 - One JSON file per task keeps two branches working on the same domain from conflicting when they
   merge. Only two tasks editing the same `screens.json` row conflict — and that is a real conflict.
   A conflict inside a generated page is never resolved by hand: take either side and `flow.py build`.
-- Commit everything, the generated pages and images included — a teammate opens the pages from the
-  checkout or from a shared file with nothing installed.
+- Commit the JSON, `prd.md`, Figma screenshots and structure XML, and the Archify diagrams (`diagrams/*.json`
+  and their `.html` — Archify writes those, not `build`). Never commit what `build` writes — every page,
+  `share/`, `diagrams/.receipts/`. `build` lists them in `<docs>/.gitignore`; a teammate runs
+  `flow.py build <docs>` (or `flow.py open <page>`, which builds first) after checkout.
 - `docs/index.html` is written only when the file is missing or flow made it; a project that already
   has its own `docs/index.html` gets `docs/flow-index.html` instead.
 
@@ -35,7 +41,8 @@ page · reading for tokens · legacy documents · earlier versions
 
 | File | Written by | How |
 |---|---|---|
-| `domain.json`, `screens.json`, `tasks/*.json` | Claude | edit the JSON directly |
+| `domain.json`, `screens.json`, `tasks/*.json`, `features/*/feature.json` | Claude | edit the JSON directly |
+| `issue`, `worktree`, `branch`, `base`, `task`, `home`, `jira` in a feature row | `flow.py start`, `flow.py jira` | never by hand |
 | answers and ticks in those files (`"by": "user"`) | `flow.py pull` | from what the person typed in a page |
 | every `.html` | `flow.py build` | after every JSON edit; never by hand |
 
@@ -45,6 +52,8 @@ page · reading for tokens · legacy documents · earlier versions
 {
   "id": "APP-452", "title": "선물내역 · 받은 선물 목록", "type": "기능 개발",
   "branch": "feat/APP-452", "links": [{"label": "기획서 2.3", "url": "…"}],
+  "feature": {"id": "gift", "doc": "<absolute path of feature.json>"},
+  "followUps": [{"date": "2026-11-03", "text": "…", "files": ["app/gift/payment.tsx"], "sha": "abc1234"}],
   "stages": {
     "plan":   {"status": "done", "summary": "…", "conclusion": ["…"], "blocks": [
                 {"type": "quote", "title": "기획서 발췌", "items": [{"text": "…", "source": "2.3"}]},
@@ -64,6 +73,9 @@ page · reading for tokens · legacy documents · earlier versions
 }
 ```
 
+- `branch` is matched against the checked-out branch by `flow.py current` (the SessionStart hook), so
+  it holds the exact branch name. `feature` exists when the task came from a feature document; the
+  task pages link up to it. `followUps` are written by `flow.py log`; `pruned` by `flow.py prune`.
 - A stage exists only if its key is present (`flow.py task --stages`, `flow.py add`). The pages
   show missing stages as 건너뜀.
 - `status`: `done` (green) · `now` (blue) · `ask` (amber — waiting on a person) · `wait` (grey).
@@ -81,7 +93,8 @@ page · reading for tokens · legacy documents · earlier versions
   `table` (`columns`, `rows`), `checklist` (`id`, `title`, `items`), `cases` (`id`, `columns`,
   `rows` with drawn UI — see `questions.md` § Draw the cases first), `diagram` (`src` — an Archify
   page under the domain's `diagrams/`, `height` in px; shown in place, `check` fails when the file
-  is missing — see SKILL.md § Step 1). Any block takes `sub` for a
+  is missing — see SKILL.md § Step 1), `routes` (the task route map, written by `flow.py routes` —
+see sot-map.md). Any block takes `sub` for a
   small line under its title. The `grill` stage may carry `blocks` too; they render above the rounds.
 - Anything that compares or classifies — PRD vs Figma, frame kinds, before vs after — is a `table`,
   never a `text` block of `라벨: …<br>` lines. The first column is the row's name; `“…”` in a cell
@@ -122,15 +135,16 @@ path, so the whole `docs/` folder works from disk, from a zip, or from another c
 
 | Page | Shows |
 |---|---|
-| `docs/index.html` | every domain with its open tasks; legacy files at the bottom |
+| `docs/index.html` | every feature and domain with its open tasks; legacy files at the bottom |
+| `docs/features/<id>/index.html` | rows with progress read from each task, PRD sections × rows, copy, shared items, Jira path |
 | `docs/<domain>/index.html` | the domain's tasks and SOT map (pins ⇄ rows, which task items cite each row) |
 | `docs/<domain>/<task>/index.html` | every stage's conclusion on one page |
 | `docs/<domain>/<task>/share/*` | copies to send outside, one per audience and format — opened from the 내보내기 menu on the task's pages; images are inlined, not linked |
-| `docs/<domain>/<task>/0N-<stage>.html` | one stage; `#P2-1`, `#R1-Q2`, `#S5` jump to an item |
+| `docs/<domain>/<task>/0N-<page>.html` | one page: `01-plan` (plan + screen), `02-grill`, `03-tasks`, `04-verify`, `05-done`; `#P2-1`, `#R1-Q2`, `#S5` jump to an item |
 
 The left nav is one tree on every page: 전체 문서, then each domain (only the current one open) with
-its SOT map and open tasks, finished tasks folded under 끝난 작업. The current task expands to its six
-stages (skipped ones dashed); depth is shown by indentation, not a breadcrumb. `[` folds it. A reference preview is built into each page, so hovering works from disk.
+its SOT map and open tasks, finished tasks folded under 끝난 작업. The current task expands to its five
+pages (skipped ones dashed); depth is shown by indentation, not a breadcrumb. `[` folds it. A reference preview is built into each page, so hovering works from disk.
 
 What the person can do in a page, and how it reaches the JSON:
 
@@ -140,7 +154,7 @@ What the person can do in a page, and how it reaches the JSON:
 | tick a checklist item | localStorage | `done`, `"by": "user"` on the item |
 
 - The key is `flow:<absolute path of the task's page folder>/` — one per task and worktree, shared by
-  that task's six pages. The save bar shows how many entries wait and 되돌리기; 답 복사 appears only where `pull` cannot read the browser (Safari, Firefox) or when saving to the browser failed.
+  that task's five pages. The save bar shows how many entries wait and 되돌리기; 답 복사 appears only where `pull` cannot read the browser (Safari, Firefox) or when saving to the browser failed.
 - `flow.py pull <docs>` reads the localStorage files of the Chromium browsers on this machine —
   Chrome, Aside, Arc, Dia, Edge, Brave, Vivaldi, Atlas — only keys starting `flow:` under this `docs/`,
   newest copy per task. A browser writes them to disk a few seconds after typing; when nothing is
@@ -155,19 +169,20 @@ What the person can do in a page, and how it reaches the JSON:
 ## Opening a page
 
 Open only when the person has to look or act: a new or revised round, plan approval, completion.
-Build first, then open the file in the OS default browser — never name a browser: macOS
-`open <docs>/<domain>/<task>/03-grill.html`, Linux `xdg-open …`, Windows `start "" …`. Open the
-page file itself and name the item to look at in chat (`R2-Q1`). Remote sessions and other agents:
-print the path.
+`flow.py open <docs>/<domain>/<task>/02-grill.html` builds, then opens the file in the OS default
+browser (`open` / `xdg-open` / `start`) — never name a browser. Open the page file itself and name
+the item to look at in chat (`R2-Q1`). Over SSH or with no display it prints the path instead.
 
 Each `open` adds a tab; at other stops tell the person to reload the page they already have.
 
 To screenshot a page headless (playwright and similar), serve the folder — `python3 -m http.server
-<port> -d <docs>` — and load `http://localhost:<port>/<domain>/<task>/03-grill.html`. A `file://`
+<port> -d <docs>` — and load `http://localhost:<port>/<domain>/<task>/02-grill.html`. A `file://`
 load comes back blank.
 
 ## Reading for tokens
 
+- Session start: `flow.py current` prints the head of the brief for the task whose `branch` is checked
+  out (or one warning line); the SessionStart hook runs it.
 - Resuming: `flow.py brief <task.json>` — stage lines, conclusions, decided questions, pending marks.
 - Working on a stage: `flow.py brief <task.json> --stage tasks`, plus the JSON of that stage only.
 - SOT rows: read the rows you cite from `screens.json`, not the whole file, when it is large.

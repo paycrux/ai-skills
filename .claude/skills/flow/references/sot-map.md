@@ -1,14 +1,14 @@
-# SOT map — stage 02
+# SOT map — the `screen` stage (page 01, SOT part)
 
 The screen stage answers one question per element on a screen: **where does this value come from?**
 The map belongs to the domain — `<docs>/<domain>/screens.json` — and stays current across tasks: a
 task adds or changes rows and cites them (`[[S5]]`) in its `screen` conclusion and plan items.
 Server field as-is, app-side transform, an action, or not decided yet. Undecided rows become
-questions in stage 03. The method comes from an earlier in-house `sot-map` skill; this skill
+questions in page 02. The method comes from an earlier in-house `sot-map` skill; this skill
 is now its source.
 
 Contents: when to build · given a Figma section · gather · pick elements · classify · off-screen states · screens.json ·
-check · non-screen tasks
+API, parameters, routes · check · non-screen tasks
 
 ## When to build it
 
@@ -20,7 +20,7 @@ a config change, a skill document) gets `flows` only — see the last section.
 A link to a Figma **section** (`<section>` at the top of `get_metadata`) holds many frames, and only
 some are screens. Classify every direct child before fetching anything else:
 
-| Kind | How to tell | In 02 |
+| Kind | How to tell | In the map |
 |---|---|---|
 | **Screen** | device-sized frame with the real layout (status bar, app bar, content) | its own entry in `screens`, markers on every element |
 | **Overlay state** | same layout as a screen plus a `BottomSheet`, `Modal`, or dimmed layer on top | its own entry titled `<screen> · <state>`; markers only on the sheet or modal — the screen behind is already mapped |
@@ -28,9 +28,9 @@ some are screens. Classify every direct child before fetching anything else:
 | **Annotation** | not device-sized, mostly text plus component samples (often an empty or blank name) | not a screen. Take a screenshot and read it: each state it draws (empty, error copy, rejected) is an off-screen row whose evidence is `주석 <node id>` |
 | **Title or decoration** | a banner or group holding the section name | ignore |
 
-- Write the classification as the first line of 02's conclusion: `섹션 프레임 9개: 화면 1, 상태 2,
+- Write the classification as the first line of the `screen` conclusion: `섹션 프레임 9개: 화면 1, 상태 2,
   외부 3, 주석 1, 제목 1`.
-- A frame that fits none of these, or two readings of the same frame, is a question in 03 — do not
+- A frame that fits none of these, or two readings of the same frame, is a question in 02 — do not
   guess which screen is the real one.
 - Screenshot every screen and overlay frame; screenshot annotation frames to read them, but do not
   put them in `screens`.
@@ -94,13 +94,13 @@ coordinates — say so in its `note`.
 | `pending` | 확인 필요 | no field, or Figma / PRD / API disagree and nobody decided |
 | `out` | 범위 제외 | not built in this task — cite who decided |
 
-Never guess a `pending` row into another kind. Every `pending` row becomes a question in 03.
+Never guess a `pending` row into another kind. Every `pending` row becomes a question in 02.
 
 ## Off-screen states
 
 List every branch the data can produce that the main frame does not show: each optional field
 absent, each remaining enum value, zero/empty, loading, failure, pagination, variants that only
-exist in another frame, features cut from scope. These rows become the 05 verification checklist.
+exist in another frame, features cut from scope. These rows become the 04 verification checklist.
 
 ## screens.json
 
@@ -131,6 +131,46 @@ exist in another frame, features cut from scope. These rows become the 05 verifi
 - A decided `pending` row changes `kind`, and its `note` cites the decision: `… ([[APP-452#R1-Q2]])`.
 - The task's `screen` stage conclusion names the rows it added or changed. The domain page lists under
   each row which task items cite it — that is the history of the row.
+
+## How the data reaches the element — API, parameters, routes
+
+The pins say *what* each element shows. Three more pieces say *how it gets there*. Pin positions are
+always computed from the structure XML; Claude writes only what it read in code.
+
+**Entry and API box, per screen.** `entry` is how the user reaches the screen (a route, a sheet opened
+from another screen). `apis` holds one box per call: each row is a response field → the function
+that normalises it (with `file:line`) → the pins it feeds. Hovering a row lights its pin.
+
+```json
+"entry": [{"text": "/gift 선물 탭", "at": "app/(tabs)/gift.tsx"}, {"text": "<code>openSheet('receivedGift')</code>", "at": "ReceivedGiftList.tsx:40"}],
+"apis": [{"call": "GET /coupons/received/{couponId}", "via": "<code>useMobileVoucherDetail</code> · composeCoupon.query.ts:103",
+          "type": "ReceivedCouponDetailResponse",
+          "rows": [{"field": ".balance · .faceValue", "fn": "toGiftVoucherAmount", "at": "domain/gift/model/gift.ts:132",
+                    "rule": "금액권은 잔액, 교환권은 원래 금액", "to": ["S2"]}]}]
+```
+
+- A row with no `fn` is drawn as 정규화 없음 — the field goes to the screen as is.
+- `to` holds marker IDs of this screen; `check` fails on one that is not there.
+- A task page shows only the rows whose `to` it cites.
+
+**Parameter box, per screen.** When a screen's request depends on URL query, a path parameter, or a
+value passed between screens (`openSheet('x', {giftId})`, `/order/[id]`), add `params`: each row is
+the parameter (with its default) ↔ the UI that changes it → the value that goes into the request,
+with any conversion. Defaults and conversions show in red — they are the rules a reader misses.
+
+```json
+"params": [{"call": "GET /v2/cs/coupons/list", "via": "couponService.list · coupon.service.ts:37",
+            "rows": [{"param": "?page", "paramAt": "giftVoucherSearchParams.ts:21", "default": "없으면 1",
+                      "ui": "페이지네이션", "uiAt": "giftVoucherSearchListView.tsx:64",
+                      "request": "pageNo = page − 1", "requestAt": "useGiftVoucherSearch.ts:46", "rule": "서버는 0부터 세요"}],
+            "note": "<a rule the rows do not show, one sentence>"}]
+```
+
+**Task route map.** `flow.py routes <task.json> [--src app]` reads the app directory (Expo Router or
+Next.js `app/`), keeps the routes whose file the task names or that sit under the domain's `paths`,
+and finds the sheets each one opens (`openSheet('…')`). It writes a `routes` block into the task's
+`screen` stage (else `tasks`), keeping names and APIs already filled. Fill `name` and add to `apis`
+only calls this task actually confirmed in code — never the whole import graph.
 
 ## Check
 
