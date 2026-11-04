@@ -65,6 +65,8 @@ td { padding: 14px 16px 14px 0; vertical-align: top; }
 .tbl { font-size: 15px; line-height: 1.65; }
 .tbl td { padding: 10px 20px 10px 0; }
 .tbl td:first-child, .tbl th { white-space: nowrap; }
+.tbl.wrap { width: 100%; }
+.tbl.wrap td:first-child { white-space: normal; min-width: 8em; }
 tr.ask td { background: color-mix(in srgb, var(--accent) 6%, transparent); }
 tr.ask td:first-child { box-shadow: inset 3px 0 0 var(--accent); padding-left: 12px; }
 

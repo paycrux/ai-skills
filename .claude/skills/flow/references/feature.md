@@ -43,7 +43,9 @@ screen → a plain `/flow` task, no feature document.
     "figma": [{"label": "기프트샵", "url": "…"}], "issueBody": "issues/gift-shop.md",
     "approved": false
   }],
-  "copy": [{"where": "스낵바", "text": "“…”", "row": "gift-shop"}],
+  "copy": [{"where": "<화면>", "when": "<무엇을 했을 때/어떤 상태일 때>",
+            "kind": "<스낵바 · 토스트 · 인라인 메시지 · 확인 모달 · 툴팁 · placeholder · 빈 상태 문구 …>",
+            "text": "“…”", "row": "<row>"}],
   "shared": [{"item", "usedBy": [], "evidence", "buildIn", "status"}],
   "componentDiffs": [{"component", "diff", "reportedBy", "decision"}],
   "questions": [{"row", "text"}],
@@ -63,7 +65,18 @@ screen → a plain `/flow` task, no feature document.
   begins, `mark: "done"` where flow stops. `manual: true` marks a transition with a precondition
   that the files cannot show (a dev deploy); flow never takes it.
 - `copy` — every snackbar, modal, button and error string, verbatim from the PRD. Missing copy is a
-  `questions` entry, never invented.
+  `questions` entry, never invented. A bare list of strings says nothing about when each appears, so
+  every entry carries the screen, the trigger and the form:
+  - `where` — the screen. The same string on several screens is one entry per screen; never dedupe.
+  - `when` — the user's action or state, as a sentence: "[로그인]을 눌렀는데 비활성 처리된 구성원일
+    때", "입력한 값이 있는데 [취소]·뒤로가기로 나가려 할 때". A placeholder such as N is named here
+    ("(N = 겹친 건수)"). Copy the PRD gives only as "~와 동일" names its source here too.
+  - `kind` — the form: 스낵바 · 토스트 · 인라인 메시지 · 확인 모달 · 툴팁 · placeholder · 빈 상태
+    문구 …. A modal names its buttons: "확인 모달 (2줄) · 버튼 [취소] [폐점 처리]".
+  - `text` — the PRD string in “…”. A multi-line modal is one entry, lines separated as “…” / “…”.
+  - The page shows 화면 · 언제 · 형태 · 문구 · 작업; a document with no `when`/`kind` at all keeps
+    the old 위치 · 문구 · 작업 table. Each `issues/<row>.md` repeats its rows' entries in the same
+    columns (`templates/dev-issue.template.md`).
 - `shared` — only when the PRD shows the same element in two or more rows (same copy row, same Figma
   node). Across stories it gets its own row and branch, PR to the root; app-wide primitives are not
   edited — their differences go in `componentDiffs`, and the user decides 보류 or 치명적.

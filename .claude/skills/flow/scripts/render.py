@@ -1066,7 +1066,7 @@ def feature_page(site, fid):
                   f'<table class="feat matrix"><thead><tr><th>기획 섹션</th>{head}</tr></thead><tbody>{"".join(mrows)}</tbody></table>')
     extra = ""
     for key, title, cols, fields in (
-            ("copy", "사용자 노출 문구", ["위치", "문구", "작업"], ["where", "text", "row"]),
+            ("copy", "사용자 노출 문구", ["화면", "언제", "형태", "문구", "작업"], ["where", "when", "kind", "text", "row"]),
             ("shared", "범위 간 공유물", ["항목", "쓰는 곳", "근거", "만드는 곳", "상태"], ["item", "usedBy", "evidence", "buildIn", "status"]),
             ("componentDiffs", "공유 컴포넌트 차이", ["컴포넌트", "차이", "보고한 곳", "판단"], ["component", "diff", "reportedBy", "decision"]),
             ("questions", "남은 질문", ["작업", "질문"], ["row", "text"]),
@@ -1076,8 +1076,10 @@ def feature_page(site, fid):
             continue
         def cell(v):
             return copy_marks(ctx.rich(", ".join(v) if isinstance(v, list) else v))
+        if key == "copy" and not any(it.get("when") or it.get("kind") for it in items):
+            cols, fields = ["위치", "문구", "작업"], ["where", "text", "row"]
         body = "".join("<tr>" + "".join(f"<td>{cell(it.get(x, ''))}</td>" for x in fields) + "</tr>" for it in items)
-        extra += f'<h2>{title}</h2><table class="tbl"><thead><tr>{"".join(f"<th>{c}</th>" for c in cols)}</tr></thead><tbody>{body}</tbody></table>'
+        extra += f'<h2>{title}</h2><table class="tbl wrap"><thead><tr>{"".join(f"<th>{c}</th>" for c in cols)}</tr></thead><tbody>{body}</tbody></table>'
     jpath = (f.get("jira") or {}).get("path") or []
     if jpath:
         steps = " → ".join(f'{"<b>" if s.get("mark") else ""}{esc(s["status"])}{"</b>" if s.get("mark") else ""}'

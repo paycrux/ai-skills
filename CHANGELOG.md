@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `flow`: `flow.py current` — 체크아웃한 브랜치의 flow 작업 요약 머리말(SessionStart 훅용)
 - `flow`: 생성물(페이지 · `share/` · `.receipts/`)을 커밋하지 않음. `build`가 `docs/.gitignore`에 블록을 관리하고, 이미 커밋된 생성물은 `migrate --apply`가 git에서 뺌. `flow.py open`은 build 후 엶
 - `flow`: 완료 단계에 `/code-review`(지적된 것만 수정), 후속 수정 한 줄 기록(`flow.py log`), 끝난 작업 정리(`flow.py prune`)
+- `flow`: 기능 문서의 사용자 노출 문구를 화면 · 언제 · 형태 · 문구 · 작업 5칸으로 정리. 언제는 사용자가 한 행동이나 처한 상태를 문장으로, 형태는 스낵바 · 확인 모달 등(모달은 버튼 이름까지), 여러 줄 모달은 한 항목, 같은 문구도 화면마다 한 줄, N 같은 치환값과 "~와 동일" 출처는 언제 칸에 적음. `[프론트]` 이슈 설명 템플릿의 문구 표도 같은 칸으로. 언제 · 형태가 없는 예전 문서는 위치 · 문구 · 작업 3칸 그대로 보이고, 첫 칸이 줄바꿈되지 않아 표가 깨지던 문제도 고침. 회귀 사례 `feature-copy-context` 추가
 - `flow`: SOT 맵에 들어오는 길, API → 정규화 함수 → 화면 요소 상자, 파라미터 → UI → API 요청 값 상자. `flow.py routes`가 작업이 건드리는 경로 · 시트를 뽑아 작업 경로 맵을 씀
 
 ### Removed

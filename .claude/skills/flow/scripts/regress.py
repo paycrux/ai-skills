@@ -42,6 +42,39 @@ def task_files(repo, domain=None):
     return sorted((repo / "docs").glob(f"{domain or '*'}/tasks/*.json"))
 
 
+def judge_copy(repo, expect):
+    """copy entries must say where, when and in what form each string appears (references/feature.md)."""
+    p = repo / expect["feature"]
+    if not p.is_file():
+        return [f"기능 문서가 없어요: {expect['feature']}"]
+    f = json.loads(p.read_text())
+    want, items, fails = expect["copy"], f.get("copy") or [], []
+    if len(items) < want.get("min", 1):
+        fails.append(f"copy {len(items)}개 (기대 {want.get('min', 1)}개 이상)")
+    for i, it in enumerate(items):
+        missing = [k for k in ("where", "when", "kind", "text", "row") if not str(it.get(k) or "").strip()]
+        if missing:
+            fails.append(f"copy[{i}] {str(it.get('text', ''))[:30]}: {', '.join(missing)} 없음")
+    if want.get("buttons") and not any("[" in str(it.get("kind", "")) for it in items if "모달" in str(it.get("kind", ""))):
+        fails.append("모달 copy의 kind에 버튼 이름이 없어요")
+    if want.get("multiLine") and not any("” / “" in str(it.get("text", "")) for it in items):
+        fails.append("여러 줄 모달을 “…” / “…” 한 항목으로 묶지 않았어요")
+    n = want.get("sameTextScreens")
+    if n:
+        screens = {}
+        for it in items:
+            screens.setdefault(it.get("text"), set()).add(it.get("where"))
+        if not any(len(w) >= n for w in screens.values()):
+            fails.append(f"같은 문구를 화면 {n}곳에 따로 적은 항목이 없어요")
+    header = expect.get("issueCopyHeader")
+    if header:
+        for r in f.get("rows", []):
+            body = p.parent / (r.get("issueBody") or "")
+            if not body.is_file() or header not in body.read_text():
+                fails.append(f"{r.get('id')} 이슈 설명에 문구 표 머리 '{header}'가 없어요")
+    return fails
+
+
 def judge(repo, fixture, expect):
     """Returns a list of failure lines; empty means the case passed."""
     fails = []
@@ -105,6 +138,8 @@ def judge(repo, fixture, expect):
     for key, want in (expect.get("anyTaskStatus") or {}).items():
         if not any(stage(json.loads(p.read_text()), key).get("status") == want for p in task_files(repo)):
             fails.append(f"{key} 상태가 {want}인 작업이 없어요")
+    if expect.get("copy"):
+        fails += judge_copy(repo, expect)
     if expect.get("srcUnchanged"):
         changed = sh(repo, "git", "status", "--porcelain", "--", "src").stdout.strip()
         if changed:
