@@ -1,0 +1,9 @@
+{
+  "name": "chat-answer-applied",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "typecheck": "tsc --noEmit"
+  }
+}
