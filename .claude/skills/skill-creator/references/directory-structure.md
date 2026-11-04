@@ -41,13 +41,13 @@
 ### Medium (SKILL.md + templates/)
 - Produces reports, documents, or structured files
 - Has file save policies
-- Example: `/flow`, `/study`
+- Example: `/tracker`, `/study`
 
 ### Full (all directories)
 - Multi-step workflow with parallel agents
 - Deep reference material needed conditionally
 - Automated scripts for data collection
-- Example: `/skill-creator`, `/flow`
+- Example: `/skill-creator`, `/task-plan`
 
 ## Progressive Loading Behavior
 

@@ -1,6 +1,6 @@
 # Writing Rules (documents and conversation)
 
-> The canonical version of the `## Communication Style` block that `/flow`
+> The canonical version of the `## Communication Style` block that `/task-plan`, `/implement`,
 > and `/skill-creator` each carry a one-paragraph summary of. Edit here first.
 
 Applies to prose written for a person to read — plan documents, progress notes, PR bodies, QA
