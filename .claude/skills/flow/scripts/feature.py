@@ -24,6 +24,7 @@ HEAD = re.compile(r"^\s*(#{1,6})\s+(.*)$")
 NUM = re.compile(r"^(\d+(?:[-.]\d+)*)\.?\s+(.+)$")
 TOKEN = re.compile(r"\d+(?:[-.]\d+)+")
 RANGE = re.compile(r"(\d+(?:[-.]\d+)+)\s*(?:~|–|—|부터)\s*(\d+(?:[-.]\d+)+)")
+TOP_RANGE = re.compile(r"(?<![\d.-])(\d+)\s*(?:~|–|—|부터)\s*(\d+)(?![\d.-])")
 ROW_STATE = {"new": "만들기 전", "wait": "대기", "legacy": "레거시", "plan": "계획", "build": "구현",
              "check": "확인", "done": "완료"}
 
@@ -77,6 +78,8 @@ def cited(text):
         pa, pb = a.rsplit("-", 1), b.rsplit("-", 1)
         if pa[0] == pb[0] and pa[1].isdigit() and pb[1].isdigit() and int(pa[1]) <= int(pb[1]):
             out += [f"{pa[0]}-{i}" for i in range(int(pa[1]), int(pb[1]) + 1)]
+    for a, b in TOP_RANGE.findall(s):
+        out += [str(i) for i in range(int(a), int(b) + 1)]
     out += [t.replace(".", "-") for t in TOKEN.findall(s)]
     if re.fullmatch(r"\s*\d+\s*", s):
         out.append(s.strip())
@@ -199,33 +202,61 @@ def row_progress(docs, row):
             "blockers": blockers(task), "next": nxt, "where": where, "task": task}
 
 
+def scoped(text, default=None):
+    """`"<snapshot>#1-1 ~ 1-3"` → ("<snapshot>", [nums]); without a prefix the snapshot is `default`."""
+    text = str(text or "")
+    snap, sep, rest = text.partition("#")
+    if sep and snap.strip().endswith(".md"):
+        return snap.strip(), cited(rest)
+    return default, cited(text)
+
+
 def section_matrix(docs, feature, progress):
-    """PRD sections × rows. → (sections [(num, title, leaf, owners)], missing [(num, owners)])."""
+    """PRD sections × rows, matched within one snapshot — PRD pages each restart their numbering.
+
+    → (sections [(snapshot, num, title, leaf, owners)], missing [(label, owners, why)]) where `why`
+    is "absent" (no such section) or "ambiguous" (several snapshots have it and the row names none).
+    """
     fdir = Path(docs) / FEATURES / feature["id"]
-    sections = []
+    snaps = {}
     for prd in feature.get("prd") or []:
         if prd.get("snapshot"):
-            sections += snapshot_sections(fdir / prd["snapshot"])
-    nums = [n for n, _ in sections]
-    cites = {}
+            snaps[prd["snapshot"]] = snapshot_sections(fdir / prd["snapshot"])
+    nums = {k: [n for n, _ in v] for k, v in snaps.items()}
+
+    def has(snap, num):
+        return num in nums.get(snap, ()) or any(n.startswith(num + "-") for n in nums.get(snap, ()))
+
+    cites, missing = {}, {}
     for row in feature.get("rows", []):
         key = row_key(row)
-        own = []
+        pairs = []
         for s in row.get("sections") or []:
-            own += cited(s)
-        own += task_citations(progress[key]["task"])
-        cites[key] = list(dict.fromkeys(own))
+            snap, cs = scoped(s, row.get("prd"))
+            pairs += [(snap, c) for c in cs]
+        pairs += [(row.get("prd"), c) for c in task_citations(progress[key]["task"])]
+        own = []
+        for snap, num in dict.fromkeys(pairs):
+            if snap is None:
+                hits = [k for k in snaps if has(k, num)] if len(snaps) > 1 else list(snaps)
+                if len(hits) > 1:
+                    missing.setdefault((num, "ambiguous"), []).append(key)
+                    continue
+                snap = hits[0] if hits else None
+            if snaps and (snap not in snaps or not has(snap, num)):
+                label = f"{snap}#{num}" if snap and len(snaps) > 1 else num
+                missing.setdefault((label, "absent"), []).append(key)
+                continue
+            own.append((snap, num))
+        cites[key] = own
     out = []
-    for num, title in sections:
-        leaf = not any(o.startswith(num + "-") for o in nums)
-        owners = [k for k, cs in cites.items() if any(covers(c, num) for c in cs)]
-        out.append((num, title, leaf, owners))
-    missing = {}
-    for k, cs in cites.items():
-        for c in cs:
-            if nums and c not in nums and not any(n.startswith(c + "-") for n in nums):
-                missing.setdefault(c, []).append(k)
-    return out, sorted(missing.items(), key=lambda x: [int(p) for p in x[0].split("-") if p.isdigit()])
+    for snap, sections in snaps.items():
+        for num, title in sections:
+            leaf = not any(o.startswith(num + "-") for o in nums[snap])
+            owners = [k for k, cs in cites.items() if any(s == snap and covers(c, num) for s, c in cs)]
+            out.append((snap, num, title, leaf, owners))
+    order = lambda x: [int(p) for p in x[0][0].rsplit("#", 1)[-1].split("-") if p.isdigit()]
+    return out, [(label, list(dict.fromkeys(ks)), why) for (label, why), ks in sorted(missing.items(), key=order)]
 
 
 # ---------------------------------------------------------------- shell helpers

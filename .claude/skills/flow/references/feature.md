@@ -39,7 +39,7 @@ screen → a plain `/flow` task, no feature document.
   "rows": [{
     "id": "gift-shop", "story": "COMP-358", "storyTitle": "[모바일오더] 선물하기",
     "title": "[프론트] 기프트샵·선물 결제", "sections": ["1-1 ~ 1-3"],
-    "domain": "gifting", "domainTitle": "선물하기", "stages": "plan,screen,tasks",
+    "prd": "prd.md", "domain": "gifting", "domainTitle": "선물하기", "stages": "plan,screen,tasks",
     "figma": [{"label": "기프트샵", "url": "…"}], "issueBody": "issues/gift-shop.md",
     "approved": false
   }],
@@ -57,8 +57,13 @@ screen → a plain `/flow` task, no feature document.
   Every story gets exactly one row; more only when the PRD itself separates the story into screens
   that ship independently — name that section in the row's `sections`. An existing `[개발]`
   sub-issue assigned to the user goes in `issue` and is reused.
-- `sections` — PRD section numbers the row owns (`"2-1"`, `"2-4 ~ 2-7"`). The page also reads each
-  task's `plan` quote sources, so a task that quotes a section owns it without editing this list.
+- `sections` — PRD section numbers the row owns (`"2-1"`, `"2-4 ~ 2-7"`, `"1 ~ 3"`). The page also
+  reads each task's `plan` quote sources, so a task that quotes a section owns it without editing
+  this list.
+- `prd` — the row's snapshot file, required when `prd[]` has more than one snapshot: PRD pages each
+  number from 1, so a bare `"1-1"` matches several. One entry can override it with
+  `"<snapshot>#1-1 ~ 1-3"`. A number found in several snapshots with no `prd` gets no dot; the
+  matrix lists it in amber instead.
 - `start` fills `issue`, `worktree`, `branch`, `base`, `task`, and the document's `home`. Never write
   progress, stage or checklist counts here — the page reads them from each row's task.
 - `jira.path` — the issue workflow, learned once (§ Jira). `mark: "start"` is where implementation
@@ -175,8 +180,9 @@ group:
   Jira status, and below it what a person has to do next (question, plan review, device check, a
   Jira move by hand). All read from the row's task: this checkout, else the row's worktree, else
   `git show <branch>:…`.
-- 기획 섹션 × 작업 — a dot where a row owns a section. 주인 없는 섹션 and 스냅샷에 없는 섹션 are
-  amber rows.
+- 기획 섹션 × 작업 — a dot where a row owns a section, grouped by snapshot when there are several.
+  주인 없는 섹션, 스냅샷에 없는 섹션 and a number several snapshots share are amber rows.
+- Table headers stay pinned while their table scrolls.
 - 사용자 노출 문구, 범위 간 공유물, 공유 컴포넌트 차이, 남은 질문, 기록, 지라 전환.
 
 ## After start

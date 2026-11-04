@@ -1054,14 +1054,23 @@ def feature_page(site, fid):
         keys = [feat.row_key(r) for r in rows]
         head = "".join(f"<th>{esc(k)}</th>" for k in keys)
         mrows = []
-        for num, title, leaf, owners in sections:
+        labels = {p.get("snapshot"): p.get("label", "기획서") for p in f.get("prd") or []}
+        group = len({s[0] for s in sections}) > 1
+        last = None
+        for snap, num, title, leaf, owners in sections:
+            if group and snap != last:
+                mrows.append(f'<tr class="grp"><td colspan="{len(keys) + 1}"><b>{esc(labels.get(snap, snap))}</b> '
+                             f'<span class="note">{esc(snap)}</span></td></tr>')
+                last = snap
             gap = leaf and not owners
             cells = "".join(f'<td class="mx">{"●" if k in owners else ""}</td>' for k in keys)
             label = f'{"" if leaf else "<b>"}{esc(num)}. {esc(title)}{"" if leaf else "</b>"}'
             mrows.append(f'<tr{" class=ask" if gap else ""}><td>{label}{"<div class=todo>주인 없는 섹션</div>" if gap else ""}</td>{cells}</tr>')
-        for num, owners in missing:
+        notes = {"absent": "스냅샷에 없는 섹션 — 기획서가 바뀌었거나 번호가 틀려요",
+                 "ambiguous": "기획서 여러 개에 같은 번호가 있어요 — sections에 <code>&lt;스냅샷&gt;#</code>을 붙이거나 줄에 <code>prd</code>를 적어 주세요"}
+        for num, owners, why in missing:
             cells = "".join(f'<td class="mx">{"●" if k in owners else ""}</td>' for k in keys)
-            mrows.append(f'<tr class="ask"><td>{esc(num)}<div class="todo">스냅샷에 없는 섹션 — 기획서가 바뀌었거나 번호가 틀려요</div></td>{cells}</tr>')
+            mrows.append(f'<tr class="ask"><td>{esc(num)}<div class="todo">{notes[why]}</div></td>{cells}</tr>')
         matrix = (f'<h2>기획 섹션 × 작업<small>줄의 sections와 각 작업 기획 인용의 출처에서 점을 찍어요</small></h2>'
                   f'<table class="feat matrix"><thead><tr><th>기획 섹션</th>{head}</tr></thead><tbody>{"".join(mrows)}</tbody></table>')
     extra = ""
