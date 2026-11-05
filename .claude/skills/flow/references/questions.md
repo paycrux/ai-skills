@@ -97,6 +97,11 @@ Where a question shows:
   with rows), or a Figma `shot` saved in the domain's `images/`. Copy goes in verbatim, `\n` for
   line breaks. Mark Figma captures with `"figma": true`; a reference capture that is not the answer
   takes `"dim": true`.
+- No Figma (a web app with no design file) → capture the running app headless (`/browse`), draw a
+  red box on what changes and insert the proposed element into the live DOM with a dashed outline,
+  then crop to the area. Save to the domain's `images/` and mark the shot `"wide": true` — a shot is
+  200px wide otherwise, which suits a phone frame and leaves a desktop capture unreadable; `wide`
+  fills the cell and opens the original on click.
 - A row waiting on a question carries `"ask": "R2-Q1"` and a status chip `{"q": "R2-Q1", "label":
   "위치 답 대기"}`; settled parts are `{"state": "done", "label": "문구 정리됨"}`; a row the server
   dropped is `"gone": true`.

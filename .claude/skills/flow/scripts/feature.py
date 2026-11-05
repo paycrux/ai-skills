@@ -403,10 +403,14 @@ def create_issue(f, row, fdir):
     out = run(["acli", "jira", "workitem", "create", "--project", project, "--type", jira.get("issueType", "[개발]"),
                "--parent", row["story"], "--summary", row["title"], "--assignee", "@me",
                "--description-file", str(adf), "--json"])
-    m = re.search(r"\b[A-Z][A-Z0-9]+-\d+\b", out)
-    if not m:
+    try:
+        data = json.loads(out)
+    except ValueError:
+        data = None
+    key = data.get("key") if isinstance(data, dict) else None
+    if not key:
         raise RuntimeError(f"만든 이슈 키를 읽지 못했어요: {out[:300]}")
-    return m.group(0)
+    return key
 
 
 def create_worktree(repo, key, branch, root, has_orca):

@@ -340,6 +340,9 @@ tr.gone td.sit { text-decoration: line-through; text-decoration-color: var(--fai
 .shot-img { margin: 6px 0 0; }
 .shot-img img { display: block; width: 200px; height: auto; border-radius: 12px; box-shadow: 0 0 0 1px var(--hair); }
 .shot-img.dim img { opacity: .55; }
+.shot-img.wide img { width: 100%; max-width: 760px; cursor: zoom-in; }
+.live .shot-img.wide { margin-top: 10px; }
+.live .shot-img.wide + .shot-img.wide { margin-top: 14px; }
 .bridge { background: var(--tint); border-radius: 8px; padding: 14px 18px; font-size: 15px; }
 .q-ctx { margin: 8px 0 14px; padding: 0; list-style: none; font-size: 14px; color: var(--muted); }
 .q-ctx li { display: grid; grid-template-columns: 72px 1fr; gap: 8px; }

@@ -311,7 +311,11 @@ def mock_html(ctx, m):
     if "shot" in m:
         x = m["shot"] if isinstance(m["shot"], dict) else {"src": m["shot"]}
         src = ctx.href(f"{ctx.domain}/{x['src']}") if ctx.domain else x["src"]
-        return f'<figure class="shot-img{" dim" if x.get("dim") else ""}"><img src="{esc(src)}" alt="{esc(x.get("alt", ""))}"></figure>'
+        cls = "shot-img" + (" dim" if x.get("dim") else "") + (" wide" if x.get("wide") else "")
+        img = f'<img src="{esc(src)}" alt="{esc(x.get("alt", ""))}">'
+        if x.get("wide"):
+            img = f'<a href="{esc(src)}" target="_blank" title="원본 크기로 열기">{img}</a>'
+        return f'<figure class="{cls}">{img}</figure>'
     return ""
 
 
@@ -879,13 +883,18 @@ def question_card(ctx, r, q):
     tpls = "".join(f'<template data-preview="{esc(k)}">{mocks_html(ctx, v if isinstance(v, list) else [v])}</template>'
                    for k, v in (q.get("preview") or {}).items())
     live = f'<div class="live" data-live>{tpls}</div>' if tpls else ""
+    # A wide capture beside the options squeezes them to one character per line; put it under them.
+    shots = [m for v in (q.get("preview") or {}).values() for m in (v if isinstance(v, list) else [v])]
+    wide_live = any(isinstance(m.get("shot"), dict) and m["shot"].get("wide") for m in shots if isinstance(m, dict))
+    below = live if wide_live else ""
+    live = "" if wide_live else live
     rs = q.get("reason") or {}
     reason = (f'<div class="reason"><b>고른 이유 · {esc(REASON_BY.get(rs.get("by"), rs.get("by", "")))}</b>{ctx.rich(rs.get("text", ""))}</div>'
               if rs.get("text") else "")
     decision = (f'<div class="decision"><b>결정</b>{ctx.rich(q["decision"])}{reason}<div class="applied">반영한 곳: {ctx.rich(q.get("appliedTo", ""))}</div></div>'
                 if q.get("decision") else "")
     form = (f'{said}{body}<div class="rec-line"><b>추천</b>{ctx.rich(q.get("recommendation", ""))}</div>'
-            f'<div class="q-grid{" has-live" if live else ""}"><div><div class="opts">{radios}</div>{copy_fld}'
+            f'<div class="q-grid{" has-live" if live else ""}"><div><div class="opts">{radios}</div>{below}{copy_fld}'
             f'<label class="fld"><span>이렇게 고른 이유</span><textarea data-f="why" placeholder="무엇을 지키고 싶어서 이 답을 골랐는지">{esc(a.get("why", ""))}</textarea></label>'
             f'<label class="fld"><span>메모</span><textarea data-f="note" placeholder="다르게 고르면 조건을 적어 주세요">{esc(a.get("note", ""))}</textarea></label>'
             f'<label class="fld"><span>되묻기</span><textarea data-f="followUp" placeholder="되묻고 싶은 것">{esc(a.get("followUp", ""))}</textarea></label></div>{live}</div>')
