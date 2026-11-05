@@ -1,0 +1,17 @@
+{
+  "from": "multi-agentic-dashboard agent-control — several tasks in one domain",
+  "branch": "feat/gift-price-format",
+  "prompt": "/flow 선물 목록(src/gift)의 가격을 천 단위 콤마로 보여 주고, 가격 포맷 함수를 types 옆에 두는 작업. 버그 아니고 기능 수정이야. 03 구현 계획까지 쓰고 승인 단계에서 멈춰.",
+  "expect": {
+    "domains": [
+      "gift"
+    ],
+    "newTasksIn": {
+      "gift": 1
+    },
+    "anyTaskStatus": {
+      "tasks": "ask"
+    },
+    "srcUnchanged": true
+  }
+}

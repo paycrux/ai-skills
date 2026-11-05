@@ -1,0 +1,15 @@
+{
+  "id": "gift-total-bug",
+  "title": "선물 합계에서 첫 선물이 빠짐",
+  "type": "버그 수정",
+  "branch": "fix/gift-total",
+  "links": [],
+  "stages": {
+    "tasks": {
+      "status": "wait",
+      "summary": "계획 작성 전",
+      "conclusion": [],
+      "blocks": []
+    }
+  }
+}

@@ -15,18 +15,25 @@ at the first hit.
 1. **Flags** — `--no-issue` in `$ARGUMENTS` → no prefix, skip the rest. `--issue <no>` → use that
    value verbatim.
 
-2. **`tasks.md` header** — the `> 이슈:` field written by `/task-plan`, the authoritative source
-   when the branch has a plan document. Locate it — prefer a `tasks.md` changed by this branch,
-   otherwise the `docs/*/plans/tasks.md` matching the branch topic:
+2. **Task id** — the `id` of a `/flow` task JSON changed by this branch, the authoritative source
+   when the branch has one. The file name is the id:
 
    ```bash
-   git diff origin/{PR_BASE}..{HEAD_BRANCH} --name-only -- '**/tasks.md'
+   git diff origin/{PR_BASE}..{HEAD_BRANCH} --name-only -- 'docs/*/tasks/*.json'
    ```
 
-   Then:
+   With no flow task, fall back to the `이슈:` header of a legacy plan document from the removed
+   `/task-plan` skill: `tasks.html`, or `tasks.md` for older plans. Locate it — prefer one changed by
+   this branch, otherwise the `docs/*/plans/tasks.*` matching the branch topic:
 
    ```bash
-   grep -m1 '^> 이슈:' {TASKS_MD}
+   git diff origin/{PR_BASE}..{HEAD_BRANCH} --name-only -- '**/tasks.html' '**/tasks.md'
+   ```
+
+   Then (`<li>이슈:` in HTML, `> 이슈:` in markdown):
+
+   ```bash
+   grep -m1 -E '^> 이슈:|<li>이슈:' {TASKS_FILE} | sed -E 's/^> 이슈:|<li>이슈:|<\/li>.*$//g; s/^ +| +$//g'
    ```
 
    Use the value unless it is `없음` or empty.
