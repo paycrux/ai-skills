@@ -3,8 +3,8 @@
 
     python3 regress.py [--case GLOB]... [-j N] [--model MODEL] [--keep]
 
-Each case is evals/<name>/: case.json (prompt, branch, expect) and fixture/ (a repository at the
-moment the request was made). The fixture is copied to a temp git repo on `branch`, `claude -p`
+Each case is evals/<name>/: case.json (prompt, branch, expect), fixture/ (a repository at the
+moment the request was made) and optionally branch/ (files committed on the branch on top of it). The fixture is copied to a temp git repo on `branch`, `claude -p`
 runs the prompt there, then the checks below run. No LLM grades anything. Exit 1 when any case fails.
 """
 import argparse
@@ -126,6 +126,19 @@ def judge(repo, fixture, expect):
                 fails.append(f"{tag}에 {key}가 없어요")
         if not (q.get("reason") or {}).get("text"):
             fails.append(f"{tag}에 reason이 없어요")
+    for tag, want in (expect.get("reasonBy") or {}).items():
+        rid, qid = tag.split("-")
+        q = next((q for rd in stage(task, "grill").get("rounds", []) if rd.get("id") == rid
+                  for q in rd.get("questions", []) if q.get("id") == qid), {})
+        got = (q.get("reason") or {}).get("by")
+        if got != want:
+            fails.append(f"{tag} reason.by {got} (기대 {want})")
+    if expect.get("maxRounds") is not None:
+        n = len(stage(task, "grill").get("rounds", []))
+        if n > expect["maxRounds"]:
+            fails.append(f"질문 라운드 {n}개 (기대 {expect['maxRounds']}개 이하) — 확인 질문을 또 열었어요")
+    if expect.get("pruned") and not task.get("pruned"):
+        fails.append("끝난 작업인데 prune하지 않았어요")
     if expect.get("domains") is not None:
         got = sorted(p.parent.name for p in (repo / "docs").glob("*/domain.json"))
         if got != sorted(expect["domains"]):
@@ -157,6 +170,10 @@ def run_case(case_dir, args):
                 ("git", "-c", "user.email=regress@local", "-c", "user.name=regress", "commit", "-qm", "fixture"),
                 ("git", "switch", "-q", "-c", case["branch"])):
         sh(repo, *cmd)
+    if (case_dir / "branch").is_dir():  # work already done on the branch, committed on top of the fixture
+        shutil.copytree(case_dir / "branch", repo, dirs_exist_ok=True)
+        sh(repo, "git", "add", "-A")
+        sh(repo, "git", "-c", "user.email=regress@local", "-c", "user.name=regress", "commit", "-qm", "branch work")
     cmd = ["claude", "-p", case["prompt"], "--output-format", "json", "--permission-mode", "bypassPermissions",
            "--no-session-persistence"]
     if args.model:

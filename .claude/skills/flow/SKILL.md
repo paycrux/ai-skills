@@ -264,21 +264,34 @@ off-screen state (`V3`: `[[X3]] …`), plus the screens' main states.
 
 ## Step 7: 05 완료
 
-With `done`, work its checklist; without it, do the same steps and record them in the `tasks` conclusion.
+Implementation alone does not finish a task. Every task that changed code goes through this step,
+so add the stage first when it is missing (`flow.py add <task.json> done`). Work its checklist in
+order — each item is ticked only when it actually happened:
 
-- Rewrite SOT evidence from plan-time guesses to real `file:line`, update `base` to the current
+- D1: rewrite SOT evidence from plan-time guesses to real `file:line`, update `base` to the current
   short SHAs.
-- List every remaining `calc` row and server or PRD request.
-- Run `/code-review` on the branch's changes. Refactor only what it flags; fix, re-check.
-- `flow.py check <docs>/<domain>` must pass.
+- D2: list every remaining `calc` row and server or PRD request.
+- D3: run `/code-review` on the branch's changes and fix what is critical. Refactor only what it
+  flags.
+- D4: after those fixes, run the deterministic commands again (typecheck, lint, tests) — only exit
+  codes count. With `verify`, that stage must be `done` too; a fix after it re-runs what it covers.
+  `flow.py check <docs>/<domain>` must pass.
 - Jira key with a recorded path → `flow.py jira <task.json> done`: the done comment, then the walk
   toward the done status. A transition with a precondition (a dev deploy) is not taken — it shows on
   the feature page as 사람이 옮길 것.
-- Then suggest `/git-pr`; never open the PR from this skill. The PR body links the task and copies
-  its conclusions — reviewers read the PR without opening the pages.
-- Once the PR is merged and the user confirms the task is over, `flow.py prune <task.json>`: the
-  question rounds keep only title, intent, decision and reason, checklist items only their `결정` and `파일` rows.
-  The full record stays in git history.
+- D5, the PR, comes only after D3 and D4. Ask whether to open one now. On yes, invoke
+  `/git-pr --mode pr` with the Skill tool — it links this task, skips the review D3 already ran, and
+  still shows the draft before creating anything. Add the PR URL it returns to the task's `links`
+  and tick D5. On no, tick D5 and say "PR 없음" in the stage conclusion. Never run `gh pr create`
+  from this skill.
+- Set `done` to `done` with its conclusion. Only now is the task finished — every stage done and
+  D1–D5 ticked; a merge is not waited for. In the same turn run `flow.py prune <task.json>`: the
+  question rounds keep only title, intent, decision and reason, checklist items only their `결정`,
+  `파일`, `테스트` and `실패 커밋` rows; it rebuilds the pages. The full record stays in git
+  history, and a later fix (PR review included) is a follow-up below, not a reopened task.
+- `prune` refuses a task that is not finished — no 05 stage, or an unticked D item. A task whose
+  other stages are all done but has no finished 05 shows as 진행 중, never 완료, and
+  `flow.py current` says what is left. `check` fails on a finished task without `pruned`.
 
 ## Follow-ups on a finished task
 

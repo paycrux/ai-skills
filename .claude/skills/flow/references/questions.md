@@ -25,18 +25,21 @@ question was protecting and what the person wanted when they picked an answer. T
 |---|---|---|
 | question `intent` | Claude, when writing the question | Why this question was chosen: what it decides for the end user, and what goes wrong on screen if we guess. One or two sentences. Required. |
 | `answer.why` | the person, in the page's 이렇게 고른 이유 field | Their reason, in their words. |
-| question `reason` | Claude, with the decision | `{"text": "…", "by": "user|plan|backend|inferred"}` — the chooser's intent, not Claude's rationale. |
+| question `reason` | Claude, with the decision | `{"text": "…", "by": "user|recommended|plan|backend|inferred"}` — the chooser's intent, not Claude's rationale. |
 | task `intent` | Claude | What the feature is for — the end of every round's reading. See below. |
 
 Reading intent out of an answer:
 
 - `answer.why` present → `reason.text` quotes it, `by: "user"` (or `plan` / `backend` when the
   answer came back from that thread).
-- No `why` → infer it from the choice, the note and earlier answers; write it as `by: "inferred"`
-  and open the next round with one question that confirms it ("이렇게 이해했어요 — 맞나요?"). On a
-  yes, change `by` to the confirmer.
-- A choice that differs from the recommendation is the strongest signal — the recommendation
-  modelled the wrong goal. Always get a `why` for it, inferred first if the person left it empty.
+- No `why` and the choice is the `recommended` option → the person took the recommendation's
+  reasoning. `reason.text` restates why the recommendation was made (from `recommendation`), as
+  what the person keeps by choosing it, with `by: "recommended"`. No confirmation question.
+- No `why` and the choice differs from the recommendation → the strongest signal: the
+  recommendation modelled the wrong goal. Infer the reason from the choice, the note and earlier
+  answers, write it as `by: "inferred"`, and open the next round with one question that asks for
+  it ("이렇게 이해했어요 — 맞나요?"). On a yes, change `by` to the confirmer.
+- `check` fails when `by: "recommended"` sits on an answer that is not the recommended option.
 - A pattern across answers (three answers all keeping the user on the same screen) is a feature
   intent, not a question's — write it into the task `intent`.
 
@@ -177,7 +180,8 @@ When the user says they answered ("답 썼어") or copied ("복사했어"):
 2. For each line:
    - **new answer** → write `decision` as sentences a person can read: what was decided, why, and
      what it costs. Never a dotted list of keywords (`A · B · C`) — that reads only to whoever wrote
-     it. Write `reason` from `answer.why`, or infer it (§ Intent). Then apply it where it belongs and
+     it. Write `reason` from `answer.why`, from the recommendation when the recommended option was
+     picked without one, or infer it (§ Intent). Then apply it where it belongs and
      record that in `appliedTo`:
      a SOT row → change `kind`, rewrite `rule`/`note` and cite the question (`[[APP-452#R1-Q2]]`);
      a case row → rewrite its cells to the settled outcome (the drawn UI, the copy, the button) and

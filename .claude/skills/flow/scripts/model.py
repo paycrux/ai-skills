@@ -39,6 +39,8 @@ REF = re.compile(r"\[\[([^\]\s]+)\]\]")
 RESERVED_TASK_IDS = {"tasks", "images", "diagrams", "verify", "index"}
 DEFAULT_OPTIONS = [{"value": "yes", "label": "추천대로"}, {"value": "no", "label": "다르게"}]
 UNSURE = {"value": "unsure", "label": "더 설명해줘"}
+REASON_BY = {"user": "본인 말", "recommended": "추천대로 고름 · 추천 이유", "plan": "기획 · 디자인", "backend": "백엔드",
+             "inferred": "추정 · 확인 전"}
 
 
 def read_json(path, default=None):
@@ -97,12 +99,13 @@ def stage_skeleton(key):
         return {"status": "wait", "summary": "검증 전", "conclusion": [],
                 "blocks": [{"type": "checklist", "title": "화면 밖 상태 확인", "items": []},
                            {"type": "checklist", "title": "버그", "items": []}]}
-    return {"status": "wait", "summary": "PR 전", "conclusion": [],
+    return {"status": "wait", "summary": "리뷰 전", "conclusion": [],
             "blocks": [{"type": "checklist", "title": "PR 전", "items": [
                 {"id": "D1", "title": "SOT 맵 근거를 실제 코드 파일:줄로 바꿈", "done": False},
                 {"id": "D2", "title": "남은 Computed · 계산 행을 서버 · 기획 요청으로 정리", "done": False},
-                {"id": "D3", "title": "<code>/code-review</code> — 지적된 것만 고침", "done": False},
-                {"id": "D4", "title": "PR 생성", "done": False}]},
+                {"id": "D3", "title": "<code>/code-review</code> — 크리티컬한 지적을 고침", "done": False},
+                {"id": "D4", "title": "고친 뒤 typecheck · lint · test 다시 통과 (04 검증이 있으면 그것도 완료)", "done": False},
+                {"id": "D5", "title": "PR — <code>/git-pr</code>로 만들거나, 안 만들면 결론에 기록", "done": False}]},
                 {"type": "text", "title": "서버 · 기획에 요청할 것", "html": "없어요"}]}
 
 
@@ -171,6 +174,24 @@ def page_state(task, keys):
 
 
 def task_state(task):
+    """A task is done only when it is finished (see finished) — every stage done is not enough."""
+    s = stages_state(task)
+    if s == "done" and not (task.get("pruned") or finished(task)):
+        return "now"
+    return s
+
+
+def finished(task):
+    """Over and ready to prune: every stage done, and a 05 완료 stage whose checklist — review,
+    the critical fixes, tests run again after them, the PR — is all ticked. Implementation alone is not."""
+    st = (task.get("stages") or {}).get("done")
+    if not st or stages_state(task) != "done":
+        return False
+    total, ticked = checklist_count(st)
+    return bool(total) and ticked == total
+
+
+def stages_state(task):
     states = [stage_state(task, k) for k in STAGE_KEYS]
     states = [s for s in states if s["status"] != "skip"]
     if not states:

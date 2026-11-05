@@ -1,8 +1,7 @@
 ---
 name: git-pr
-description: "Full Git PR workflow: choose git-only, PR-only, or both. Branch modes: create fresh branch from base, or commit/push current branch with optional suffix sub-branch and rebase. Handles staged and unstaged changes. Use /git-pr [--mode git|pr|both] [--new <name>] [--suffix <dev|stg>] [--base <branch>] [--no-rebase] [--also-pr <branch>] [--preview] [--issue <no>] [--no-issue] [--review|--no-review] [--shots <both|after|none>]"
+description: "Full Git PR workflow: choose git-only, PR-only, or both. Claude may invoke it itself when the user asks to push a branch or open a PR, and /flow invokes it at 05 완료 once the user agrees to a PR — the draft is always shown for confirmation before anything is created. Branch modes: create fresh branch from base, or commit/push current branch with optional suffix sub-branch and rebase. Handles staged and unstaged changes. Use /git-pr [--mode git|pr|both] [--new <name>] [--suffix <dev|stg>] [--base <branch>] [--no-rebase] [--also-pr <branch>] [--preview] [--issue <no>] [--no-issue] [--review|--no-review] [--shots <both|after|none>]"
 argument-hint: "[--mode git|pr|both] [--new <name>] [--suffix <dev|stg>] [--base <branch>] [--no-rebase] [--also-pr <branch>] [--preview] [--issue <no>] [--no-issue] [--review|--no-review] [--shots <both|after|none>]"
-disable-model-invocation: true
 allowed-tools: Bash, AskUserQuestion, Read, Write, Edit, Skill, Grep, Glob
 ---
 
@@ -226,6 +225,25 @@ gh auth status
 
 If not authenticated: tell the user in Korean to run `gh auth login`, then stop.
 
+### Flow task
+
+A branch worked with `/flow` changed a task JSON. Find it:
+
+```bash
+git diff origin/{PR_BASE}..{HEAD_BRANCH} --name-only -- 'docs/*/tasks/*.json'
+```
+
+When there is exactly one, set `FLOW_TASK` to it and read what the task already settled — nothing
+more:
+
+```bash
+python3 ~/.claude/skills/flow/scripts/flow.py brief {FLOW_TASK}
+```
+
+It feeds four steps below: the issue number (resolution.md), the body (R8), the pre-PR review, and
+the test rule. Several task files changed → ask which one the PR closes; none → skip everything
+marked `FLOW_TASK`.
+
 ### Draft the PR
 
 Analyze the branch changes:
@@ -292,6 +310,13 @@ The reviewer did not implement this and does not know the internals you just lea
 
 `## 구현 화면` trigger: the diff changes rendered UI. When [Capture screenshots] ran, fill every cell it produced; only cells whose capture failed stay blank. When it was skipped, keep the template's blank table for the user.
 
+**R8 — A flow task is linked, not retold.**
+When `FLOW_TASK` is set, the first line under `## 변경사항` is `flow 작업: \`{FLOW_TASK}\`` — the
+pages are generated and not committed, so the JSON path is the link. Use the task's stage
+conclusions to name the groups and to check that every bullet is in the diff; never copy its
+question rounds or decisions — they stay in the task. Requests still open for the server or the PRD
+(the 05 완료 text block) go in one closing bullet group `## 남은 요청` when there are any.
+
 ---
 
 ### Pre-PR review
@@ -302,7 +327,9 @@ Before showing the draft, offer a review of the branch changes:
 - options: `["리뷰 실행", "건너뛰기 — 바로 초안 확인"]`
 
 Skip this step entirely when `--no-review` is in `$ARGUMENTS`; run it without asking when
-`--review` is.
+`--review` is. Also skip it when `FLOW_TASK`'s 05 완료 checklist has D3 (`/code-review` and its critical fixes)
+and D4 (tests again after them) ticked — `/flow` already reviewed and re-tested this branch; say so
+in one line.
 
 **How to run it depends on the host.** The built-in reviews exist only in Claude Code, so they are
 an accelerator, not the mechanism:
@@ -318,7 +345,7 @@ Fallback checklist — one pass over the diff, reporting only what you can point
 - 사용자 입력이 검증 없이 쿼리·명령·렌더링까지 흘러가는 경로
 - 이 저장소의 기존 패턴을 두고 새 방식을 도입한 곳
 - 남은 디버그 로그, 죽은 코드, 커밋된 임시 파일이나 시크릿
-- `spec.html`(예전 계획은 `spec.md`)의 엣지 케이스 중 구현에 반영되지 않은 것
+- flow 작업의 화면 밖 상태(`X` 행)·04 검증 항목 중 구현에 반영되지 않은 것 (flow 작업이 없으면 예전 계획의 `spec.html`·`spec.md`)
 
 **What to do with the result:**
 
@@ -438,6 +465,9 @@ Summarize the completed work in Korean:
 - PR: list of URLs (when the PR Phase ran)
 - Screenshots: captured cells, and each blank cell with its reason (when screenshots were captured)
 - Preview file: deleted (when preview-file mode ran)
+- Flow task: when `FLOW_TASK` is set and `/flow` invoked this skill, hand the primary PR URL back —
+  `/flow` puts it in the task's `links` and ticks D5. Run on its own, say that the task can record
+  it with `/flow`.
 
 ---
 
@@ -460,6 +490,6 @@ Summarize the completed work in Korean:
 - Fill every `구현 화면` cell a capture produced; leave a cell blank only when its capture failed, and report why
 - Never publish a PR whose body still holds a local image path — keep it as a draft until the upload succeeds
 - Always return to `HEAD_BRANCH` after a Before capture, even when the capture failed
-- Never claim a test was run or a scenario was verified unless the plan's `tasks.html` (or legacy `tasks.md`) records it
+- Never claim a test was run or a scenario was verified unless `FLOW_TASK` records it — a ticked `P<n>-V` item, a ticked 04 검증 item, or a `pass` verdict in `docs/<domain>/verify/<task>.json` (legacy plans: `tasks.html` / `tasks.md`)
 - If `gh` is not installed, stop and tell the user in Korean
 - All user-facing messages and questions must be in Korean

@@ -18,7 +18,7 @@
     python3 flow.py current [<dir>]                         the flow task whose branch is the checked-out one (SessionStart hook)
     python3 flow.py log <docs> --file PATH... -m "..." [--sha SHA] [--task ID]   one follow-up line on the task that covers the files
     python3 flow.py verify <task.json> [--cmd CMD]... [--repo DIR]   a read-only checker in a fresh context writes <domain>/verify/<task>.json
-    python3 flow.py prune <task.json>                       a finished task keeps conclusions and decisions only
+    python3 flow.py prune <task.json>                       a finished task keeps conclusions and decisions only (run when its last stage turns done)
     python3 flow.py feature <docs> <feature-id> --title "..." --root BRANCH [--prd URL]   a feature document skeleton
     python3 flow.py start <docs>/features/<id>/feature.json [--row KEY]... [--approve] [--dry-run]
     python3 flow.py jira <task.json> start|done [--dry-run]  walk the Jira issue one transition at a time; done also comments
@@ -57,8 +57,8 @@ import feature as feat  # noqa: E402
 import migrate  # noqa: E402
 import render  # noqa: E402
 import share  # noqa: E402
-from model import (ITEM_ID, KINDS, RESERVED_TASK_IDS, STAGE_KEYS, STATUSES, domains_of, frame_boxes, git,  # noqa: E402
-                   parse_ref, plain, read_json, scope, stage_skeleton, task_files, task_items, task_state, walk_refs,
+from model import (ITEM_ID, KINDS, REASON_BY, RESERVED_TASK_IDS, STAGE_KEYS, STATUSES, domains_of, frame_boxes, git,  # noqa: E402
+                   finished, parse_ref, plain, read_json, scope, stage_skeleton, stages_state, task_files, task_items, task_state, walk_refs,
                    write_json)
 
 
@@ -303,7 +303,15 @@ def question_tag(trail):
     return f"{r}-{q}" if r and q else None
 
 
-def describe(trail, node):
+def find_question(data, tag):
+    rid, _, qid = (tag or "").partition("-")
+    for r in ((data.get("stages") or {}).get("grill") or {}).get("rounds", []):
+        if r.get("id") == rid:
+            return next((q for q in r.get("questions", []) if q.get("id") == qid), None)
+    return None
+
+
+def describe(trail, node, data=None):
     where = " ".join(str(t) for t in trail if t != "stages")
     if "choice" in node:
         tag = question_tag(trail) or where
@@ -314,8 +322,13 @@ def describe(trail, node):
             lines.append(f"{tag}: 사람이 답을 지움 — 결정을 되돌릴지 물어요")
         else:
             note = (f" · 문구 \"{node['copy']}\"" if node.get("copy") else "") + (f" · 메모 \"{node['note']}\"" if node.get("note") else "")
-            why = (f" · 이유 \"{node['why']}\" — reason에 by: user로 옮겨요" if node.get("why")
-                   else " · 이유 없음 — reason에 추정(by: inferred)을 쓰고 다음 라운드에서 확인받아요")
+            q = find_question(data or {}, tag) or {}
+            if node.get("why"):
+                why = f" · 이유 \"{node['why']}\" — reason에 by: user로 옮겨요"
+            elif node.get("choice") == q.get("recommended", "yes"):
+                why = " · 추천대로 고름 — 추천 이유를 reason에 by: recommended로 옮겨요 (확인 질문 없음)"
+            else:
+                why = " · 추천과 다르게 골랐는데 이유 없음 — reason에 추정(by: inferred)을 쓰고 다음 라운드에서 이유를 받아요"
             lines.append(f"{tag}: 답 '{node.get('choice')}'{note}{why} — 결정 문장을 쓰거나 고치고 반영한 곳(appliedTo)에 옮기고, 작업 intent를 다시 읽어요")
         if node.get("followUp"):
             lines.append(f"{tag}: 되물음 \"{node['followUp']}\" — 답해야 해요")
@@ -334,12 +347,13 @@ def cmd_changes(args):
         for f in [d / "domain.json", d / "screens.json", *task_files(d)]:
             if not f.exists():
                 continue
-            marks = list(user_marks(read_json(f)))
+            data = read_json(f)
+            marks = list(user_marks(data))
             if not marks:
                 continue
             print(f"{f.relative_to(docs)}")
             for trail, node in marks:
-                for line in describe(trail, node):
+                for line in describe(trail, node, data):
                     print(f"- {line}")
                     found += 1
     if not found:
@@ -472,7 +486,7 @@ def check_task(f, domain, index, problems):
             problems.append(f"{rel}: 없는 단계 {k}")
             continue
         if k == "grill":
-            live = task_state(t) != "done"
+            live = stages_state(t) != "done"
             for r in st.get("rounds", []):
                 for q in r.get("questions", []):
                     tag = f"{r.get('id')}-{q.get('id')}"
@@ -484,10 +498,12 @@ def check_task(f, domain, index, problems):
                     if live and not q.get("intent"):
                         problems.append(f"{rel} {tag}: 왜 묻는지(intent)가 없어요")
                     if live and q.get("decision") and not (q.get("reason") or {}).get("text"):
-                        problems.append(f"{rel} {tag}: 고른 이유(reason)가 없어요 — 사람 말이 없으면 추정(by: inferred)으로 써요")
+                        problems.append(f"{rel} {tag}: 고른 이유(reason)가 없어요 — 추천대로면 추천 이유(by: recommended), 아니면 추정(by: inferred)으로 써요")
                     rb = (q.get("reason") or {}).get("by")
-                    if rb and rb not in ("user", "plan", "backend", "inferred"):
-                        problems.append(f"{rel} {tag}: reason.by는 user/plan/backend/inferred 중 하나")
+                    if rb and rb not in REASON_BY:
+                        problems.append(f"{rel} {tag}: reason.by는 {'/'.join(REASON_BY)} 중 하나")
+                    if rb == "recommended" and a.get("choice") not in (None, "", q.get("recommended", "yes")):
+                        problems.append(f"{rel} {tag}: 추천과 다른 답인데 reason이 추천 이유(by: recommended)예요 — 고른 사람의 이유를 받아요")
             if live and st.get("rounds") and not t.get("intent"):
                 problems.append(f"{rel}: 질문이 있는데 작업 의도(intent)가 없어요 — 기획서에서 가설로 시작해요")
             continue
@@ -503,6 +519,8 @@ def check_task(f, domain, index, problems):
             problems.append(f"{rel} {k}: status는 {'/'.join(STATUSES)} 중 하나")
         if st.get("status") == "done" and not st.get("conclusion"):
             problems.append(f"{rel} {k}: 완료인데 결론 문장이 없어요")
+    if finished(t) and not t.get("pruned"):
+        problems.append(f"{rel}: 끝난 작업인데 정리하지 않았어요 — flow.py prune {f}")
     now = [k for k, st in stages.items() if k != "grill" and st.get("status") == "now"]
     if len(now) > 1:
         problems.append(f"{rel}: 진행 중(now) 단계가 둘 이상이에요: {', '.join(now)}")
@@ -682,6 +700,7 @@ def cmd_check(args):
         check_domain(d, index, problems)
     for fd in feat.feature_dirs(docs):
         check_feature(fd, problems)
+    problems += render.load_config(docs)[1]
     problems += [f"HTML: {s} — flow.py build {docs}" for s in render.stale(docs)]
     notes, drift = plan_drift(docs, doms)
     problems += drift + repro_problems(docs, doms)
@@ -912,6 +931,10 @@ def cmd_current(args):
             for line in brief_head(t):
                 print(line)
             print(f"  작업 파일: {f.relative_to(top)}")
+            if finished(t) and not t.get("pruned"):
+                print(f"  끝났는데 정리 전 — flow.py prune {f.relative_to(top)}")
+            elif stages_state(t) == "done" and not t.get("pruned"):
+                print("  구현만 끝남 — 05 완료(리뷰 · 크리티컬 수정 · 다시 테스트)가 남았어요")
     except Exception:  # noqa: BLE001 — a hook must never break session start
         return
 
@@ -942,13 +965,18 @@ def cmd_log(args):
 
 
 KEEP_Q = ("id", "title", "intent", "decision", "reason", "appliedTo", "to")
-KEEP_ROWS = ("결정", "파일")
+# 테스트 · 실패 커밋 stay so check can still hold a pruned bug fix to its reproduction test.
+KEEP_ROWS = ("결정", "파일", "테스트", "실패 커밋")
 
 
 def cmd_prune(args):
     task = read_json(args.task)
-    if task_state(task) != "done":
-        sys.exit(f"{task['id']}: 아직 끝나지 않은 작업이에요 — 모든 단계가 done일 때만 정리해요")
+    if not finished(task):
+        if "done" not in (task.get("stages") or {}):
+            sys.exit(f"{task['id']}: 05 완료 단계가 없어요 — 구현만으로는 끝난 작업이 아니에요. "
+                     f"flow.py add {args.task} done 뒤 리뷰 · 크리티컬 수정 · 다시 테스트를 마치고 정리해요")
+        sys.exit(f"{task['id']}: 아직 끝나지 않은 작업이에요 — 모든 단계가 done이고 05 완료 체크리스트"
+                 "(리뷰 · 수정 뒤 테스트 · PR)가 다 체크돼야 정리해요")
     stages = task.get("stages") or {}
     dropped = 0
     for r in (stages.get("grill") or {}).get("rounds", []):
@@ -972,8 +1000,11 @@ def cmd_prune(args):
     task.pop("pulledAt", None)
     task["pruned"] = date.today().isoformat()
     write_json(args.task, task)
+    domain = Path(args.task).resolve().parent.parent
+    docs = docs_above(args.task) or domain.parent
+    render.build(docs)
     print(f"{task['id']}: 세부 {dropped}개를 정리했어요 — 결론 · 결정 · 결정 행은 남김. 전체 기록은 git에 있어요")
-    print(f"다음: flow.py check {Path(args.task).resolve().parent.parent}")
+    print(f"다음: flow.py check {domain}")
 
 
 # ---------------------------------------------------------------- feature / start / jira

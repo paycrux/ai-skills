@@ -1,0 +1,13 @@
+{
+  "from": "flow prune timing — a task is finished only after 05 완료 (review, critical fixes, tests again), with or without a PR",
+  "branch": "feat/gift-sort",
+  "prompt": "/flow gift-sort — 구현 끝났어. PR은 올리지 않고 여기서 작업을 마무리해 줘.",
+  "expect": {
+    "task": "docs/gift/tasks/gift-sort.json",
+    "status": {
+      "tasks": "done",
+      "done": "done"
+    },
+    "pruned": true
+  }
+}

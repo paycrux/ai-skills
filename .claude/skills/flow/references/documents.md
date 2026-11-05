@@ -9,6 +9,7 @@ page · reading for tokens · legacy documents · earlier versions
 <repo>/docs/
   ├ index.html                 every feature and domain, open tasks                 (generated)
   ├ .gitignore                 flow keeps a "# flow:begin … # flow:end" block listing the generated files
+  ├ flow.config.json           optional: this repository's page style and what the pages hide — see § Customizing the pages
   ├ features/<id>/             a PRD across several stories — see feature.md
   │ ├ feature.json · prd.md · issues/*.md
   │ └ index.html               the feature page                                     (generated)
@@ -70,14 +71,16 @@ page · reading for tokens · legacy documents · earlier versions
     "verify": {"status": "wait", "summary": "검증 전", "conclusion": ["…"], "blocks": [
                 {"type": "checklist", "title": "화면 밖 상태 확인", "items": [{"id": "V1", "title": "[[X1]] …", "done": false}]},
                 {"type": "checklist", "title": "버그", "items": []}]},
-    "done":   { … PR-time checklist D1–D3 and a text block for server / PRD requests … }
+    "done":   { … checklist D1–D4 (D3 review and critical fixes, D4 tests again after them, D5 the PR through /git-pr or recorded as none) and a text block for server / PRD requests … }
   }
 }
 ```
 
 - `branch` is matched against the checked-out branch by `flow.py current` (the SessionStart hook), so
   it holds the exact branch name. `feature` exists when the task came from a feature document; the
-  task pages link up to it. `followUps` are written by `flow.py log`; `pruned` by `flow.py prune`.
+  task pages link up to it. `followUps` are written by `flow.py log`; `pruned` by `flow.py prune`. A task is finished only
+  when every stage is `done` and the `done` stage's checklist is all ticked — implementation alone
+  shows as 진행 중. A finished task without `pruned` fails `check` and is flagged by `flow.py current`.
 - A stage exists only if its key is present (`flow.py task --stages`, `flow.py add`). The pages
   show missing stages as 건너뜀.
 - `status`: `done` (green) · `now` (blue) · `ask` (amber — waiting on a person) · `wait` (grey).
@@ -168,6 +171,32 @@ What the person can do in a page, and how it reaches the JSON:
 - `pull` records the newest copy's time as the task's `pulledAt`. A page built after that drops the
   browser copy it already gave, so the page then shows what Claude wrote.
 - The person never edits conclusions or text in the page; changes to wording come through chat.
+
+## Customizing the pages
+
+Each repository can change how its pages look without touching the JSON or the skill:
+`<docs>/flow.config.json`, read by every `build`.
+
+```json
+{
+  "style": "flow.css",
+  "hide": ["page:verify", "block:서버 · 기획에 요청할 것", "block:diagram", "field:followUp"]
+}
+```
+
+- `style` — a CSS file path relative to `<docs>`, inlined after the skill's `assets/page.css`, so its
+  rules win. Override the custom properties on `:root` (colors, fonts) or any class. Commit it with
+  the config.
+- `hide` — only what the pages leave out; everything else shows. Listing what to hide instead of
+  what to show means a block or field flow adds later appears without editing the config.
+  - `page:<plan|grill|tasks|verify|done>` — the page is not written and leaves the nav and the task
+    cover. The stage still counts toward the task's state.
+  - `block:<type or title>` — every block of that `type` (`diagram`, `routes`, `quote`, …) or with
+    exactly that `title`.
+  - `field:<said|context|body|preview|note|followUp>` — that part of each question card. `why`
+    (이렇게 고른 이유) and `intent` cannot be hidden: they are the decision record.
+- Hiding changes only the HTML; the JSON keeps every field, and `brief` · `check` read it as before.
+  `check` fails on a missing style file or an unknown `hide` entry.
 
 ## Opening a page
 

@@ -6,7 +6,7 @@ import re
 from pathlib import Path
 
 import feature as feat
-from model import (DEFAULT_OPTIONS, KIND, PAGES, REF, STAGE_FILE, STAGE_TITLE, STATE_LABEL, UNSURE, domains_of,
+from model import (DEFAULT_OPTIONS, KIND, PAGES, REASON_BY, REF, STAGE_FILE, STAGE_TITLE, STATE_LABEL, UNSURE, domains_of,
                    frame_boxes, git, grill_state, page_state, parse_ref, place, plain, read_json, stage_state,
                    task_files, task_items, task_state, walk_refs)
 
@@ -16,6 +16,42 @@ FONTS = "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/vari
 GENERATOR = '<meta name="generator" content="flow">'
 LEGACY_EXT = {".md", ".html"}
 AUDIENCE = {"plan": "기획", "backend": "백엔드"}
+CONFIG = "flow.config.json"
+HIDE_PAGES = {page for page, _, _, _ in PAGES}
+HIDE_FIELDS = ("said", "context", "body", "preview", "note", "followUp")
+
+
+def load_config(docs):
+    """<docs>/flow.config.json → (config, problems). Pages stay renderable when it is broken."""
+    path = Path(docs) / CONFIG
+    if not path.exists():
+        return {"style": "", "hide": set()}, []
+    problems = []
+    try:
+        raw = json.loads(path.read_text())
+    except ValueError as e:
+        return {"style": "", "hide": set()}, [f"{CONFIG}: JSON을 읽지 못했어요 ({e})"]
+    style = ""
+    if raw.get("style"):
+        css = Path(docs) / raw["style"]
+        if css.is_file():
+            style = css.read_text()
+        else:
+            problems.append(f"{CONFIG}: style 파일이 없어요 ({raw['style']})")
+    hide = set()
+    for h in raw.get("hide") or []:
+        kind, _, name = str(h).partition(":")
+        ok = ((kind == "page" and name in HIDE_PAGES) or (kind == "field" and name in HIDE_FIELDS)
+              or (kind == "block" and name))
+        if ok:
+            hide.add(h)
+        else:
+            problems.append(f"{CONFIG}: hide '{h}' — page:<{'|'.join(sorted(HIDE_PAGES))}>, "
+                            f"field:<{'|'.join(HIDE_FIELDS)}>, block:<type 또는 제목> 중 하나")
+    unknown = sorted(set(raw) - {"style", "hide"})
+    if unknown:
+        problems.append(f"{CONFIG}: 모르는 키 {', '.join(unknown)} — style · hide만 읽어요")
+    return {"style": style, "hide": hide}, problems
 
 
 def esc(text):
@@ -58,11 +94,15 @@ class Site:
             f["id"] = fd.name
             self.features[fd.name] = f
         self._progress = {}
+        self.config, _ = load_config(self.docs)
         root = self.docs / "index.html"
         self.root = "index.html" if not root.exists() or is_generated(root) else "flow-index.html"
         remote = git(self.docs, "remote", "get-url", "origin")
         top = git(self.docs, "rev-parse", "--show-toplevel")
         self.repo = re.sub(r"\.git$", "", remote.rstrip("/").split("/")[-1].split(":")[-1]) if remote else Path(top or self.docs.parent).name
+
+    def hidden(self, kind, name):
+        return f"{kind}:{name}" in self.config["hide"]
 
     def domain_page(self, d):
         return f"{d}/index.html"
@@ -217,13 +257,18 @@ def mock_theme(ctx):
     return f"<style>:root{{{decls}}}</style>" if decls else ""
 
 
+def user_style(ctx):
+    css = ctx.site.config["style"].replace("</", "<\\/")
+    return f"<style data-flow-config>\n{css}</style>" if css else ""
+
+
 def shell(ctx, title, nav, body, wide=False, answers=None, shared=None):
     texts = {who: x["md"] for who, x in (shared or {}).items()}
     data = json.dumps({"refs": ctx.refs, "answers": answers, "share": texts}, ensure_ascii=False).replace("</", "<\\/")
     return (
         "<!doctype html>\n<html lang=\"ko\"><head><meta charset=\"utf-8\">"
         f'<meta name="viewport" content="width=device-width,initial-scale=1">{GENERATOR}'
-        f"<title>{esc(title)}</title><link rel=\"stylesheet\" href=\"{FONTS}\"><style>\n{asset('page.css')}</style>{mock_theme(ctx)}</head>\n<body>\n"
+        f"<title>{esc(title)}</title><link rel=\"stylesheet\" href=\"{FONTS}\"><style>\n{asset('page.css')}</style>{mock_theme(ctx)}{user_style(ctx)}</head>\n<body>\n"
         '<script>try{if(localStorage.getItem("flow-nav-collapsed")==="1")document.body.classList.add("collapsed")}catch(e){}</script>\n'
         '<button class="navtoggle" id="navtoggle" title="목록 접기/펴기 ([ 키)" aria-label="목록 접기/펴기">☰</button>\n'
         f'<aside class="nav">{nav}</aside>\n<main class="page{" wide" if wide else ""}">\n{body}\n</main>\n'
@@ -395,6 +440,8 @@ def blocks(ctx, stage, after=None):
     out = []
     for b in stage.get("blocks", []):
         t = b.get("type")
+        if ctx.site.hidden("block", t) or (b.get("title") and ctx.site.hidden("block", b["title"])):
+            continue
         if t == "cases":
             out.append((heading(b) if b.get("title") else "") + cases(ctx, b) + (after or {}).get(b.get("id"), ""))
         elif t == "diagram":
@@ -460,6 +507,8 @@ def nav_steps(ctx, d, t, current):
     task = ctx.site.domains[d]["tasks"][t]
     steps = []
     for n, (k, title, fname, keys) in enumerate(PAGES, 1):
+        if ctx.site.hidden("page", k):
+            continue
         s = page_state(task, keys)
         if s["status"] == "skip":
             steps.append(f'<span class="step skip" data-n="{n}"><b>{esc(title)}</b><span>건너뜀</span></span>')
@@ -768,6 +817,8 @@ def task_index(site, d, t, shared=None):
     ctx = Ctx(site, site.task_page(d, t), d, t)
     cards, skipped = [], []
     for n, (k, title, fname, keys) in enumerate(PAGES, 1):
+        if site.hidden("page", k):
+            continue
         s = page_state(task, keys)
         if s["status"] == "skip":
             skipped.append(f"{n} {title}")
@@ -837,7 +888,6 @@ def grill_conclusion(ctx, stage, s):
     return "".join(out)
 
 
-REASON_BY = {"user": "본인 말", "plan": "기획 · 디자인", "backend": "백엔드", "inferred": "추정 · 확인 전"}
 INTENT_STATE = {"guess": "가설", "confirmed": "확인됨"}
 
 
@@ -870,10 +920,10 @@ def question_card(ctx, r, q):
     else:
         badge = '<span class="k pend">답 대기</span>'
     ctxl = "".join(f'<li><b>{esc(k)}</b><span>{copy_marks(ctx.rich(v))}</span></li>' for k, v in q.get("context", []))
-    ctxl = f'<ul class="q-ctx">{ctxl}</ul>' if ctxl else ""
-    said = f'<div class="said">{ctx.rich(q["said"])}</div>' if q.get("said") else ""
+    ctxl = f'<ul class="q-ctx">{ctxl}</ul>' if ctxl and not ctx.site.hidden("field", "context") else ""
+    said = f'<div class="said">{ctx.rich(q["said"])}</div>' if q.get("said") and not ctx.site.hidden("field", "said") else ""
     intent = f'<div class="intent"><b>왜 묻나요</b>{ctx.rich(q["intent"])}</div>' if q.get("intent") else ""
-    body = f'<div>{ctx.rich(q["body"])}</div>' if q.get("body") else ""
+    body = f'<div>{ctx.rich(q["body"])}</div>' if q.get("body") and not ctx.site.hidden("field", "body") else ""
     to = q.get("to") or []
     to = [to] if isinstance(to, str) else to
     badge += "".join(f'<span class="k to">{esc(AUDIENCE.get(w, w))}</span>' for w in to)
@@ -881,13 +931,17 @@ def question_card(ctx, r, q):
     copy_fld = (f'<label class="fld"><span>{esc(cp.get("label", "문구"))} · 줄바꿈 그대로</span><textarea data-f="copy" '
                 f'placeholder="{esc(cp.get("placeholder", "화면에 보일 문구 그대로"))}">{esc(a.get("copy", ""))}</textarea></label>') if cp else ""
     tpls = "".join(f'<template data-preview="{esc(k)}">{mocks_html(ctx, v if isinstance(v, list) else [v])}</template>'
-                   for k, v in (q.get("preview") or {}).items())
+                   for k, v in (q.get("preview") or {}).items()) if not ctx.site.hidden("field", "preview") else ""
     live = f'<div class="live" data-live>{tpls}</div>' if tpls else ""
     # A wide capture beside the options squeezes them to one character per line; put it under them.
     shots = [m for v in (q.get("preview") or {}).values() for m in (v if isinstance(v, list) else [v])]
     wide_live = any(isinstance(m.get("shot"), dict) and m["shot"].get("wide") for m in shots if isinstance(m, dict))
     below = live if wide_live else ""
     live = "" if wide_live else live
+    note_fld = ("" if ctx.site.hidden("field", "note") else
+                f'<label class="fld"><span>메모</span><textarea data-f="note" placeholder="다르게 고르면 조건을 적어 주세요">{esc(a.get("note", ""))}</textarea></label>')
+    follow_fld = ("" if ctx.site.hidden("field", "followUp") else
+                  f'<label class="fld"><span>되묻기</span><textarea data-f="followUp" placeholder="되묻고 싶은 것">{esc(a.get("followUp", ""))}</textarea></label>')
     rs = q.get("reason") or {}
     reason = (f'<div class="reason"><b>고른 이유 · {esc(REASON_BY.get(rs.get("by"), rs.get("by", "")))}</b>{ctx.rich(rs.get("text", ""))}</div>'
               if rs.get("text") else "")
@@ -896,8 +950,7 @@ def question_card(ctx, r, q):
     form = (f'{said}{body}<div class="rec-line"><b>추천</b>{ctx.rich(q.get("recommendation", ""))}</div>'
             f'<div class="q-grid{" has-live" if live else ""}"><div><div class="opts">{radios}</div>{below}{copy_fld}'
             f'<label class="fld"><span>이렇게 고른 이유</span><textarea data-f="why" placeholder="무엇을 지키고 싶어서 이 답을 골랐는지">{esc(a.get("why", ""))}</textarea></label>'
-            f'<label class="fld"><span>메모</span><textarea data-f="note" placeholder="다르게 고르면 조건을 적어 주세요">{esc(a.get("note", ""))}</textarea></label>'
-            f'<label class="fld"><span>되묻기</span><textarea data-f="followUp" placeholder="되묻고 싶은 것">{esc(a.get("followUp", ""))}</textarea></label></div>{live}</div>')
+            f'{note_fld}{follow_fld}</div>{live}</div>')
     if needs_answer(q):
         inner = f"{intent}{ctxl}{form}{decision}"
     else:
@@ -1126,7 +1179,7 @@ def render_all(docs):
                 pages.update(copies)
             pages[site.task_page(d, t)] = task_index(site, d, t, shared)
             for n, (page, _, _, keys) in enumerate(PAGES, 1):
-                if any(k in (task.get("stages") or {}) for k in keys):
+                if any(k in (task.get("stages") or {}) for k in keys) and not site.hidden("page", page):
                     pages[site.task_page(d, t, page)] = stage_page(site, d, t, page, n, shared)
     return site, pages
 

@@ -1,0 +1,9 @@
+{
+  "name": "finish-without-pr",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test src/gift/",
+    "typecheck": "node --check src/gift/sort.js"
+  }
+}
