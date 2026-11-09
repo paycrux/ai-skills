@@ -9,7 +9,7 @@ import feature as feat
 import workflow
 from model import (CORE_PAGES, DEFAULT_OPTIONS, ENABLED, KIND, PAGES, REASON_BY, REF, STAGE_TITLE, STATE_LABEL, UNSURE, domains_of,
                    frame_boxes, git, grill_state, page_file, page_state, parse_ref, place, plain, read_json, stage_state,
-                   task_files, task_items, task_pages, task_state, walk_refs)
+                   task_files, task_items, task_pages, task_state, unconfirmed, walk_refs)
 
 SKILL = Path(__file__).resolve().parent.parent
 ASSETS = SKILL / "assets"
@@ -319,6 +319,10 @@ def checklist(ctx, block):
     for it in block.get("items", []):
         rows = "".join(f'<li><span class="label">{esc(a)}:</span> {ctx.rich(b)}</li>' for a, b in it.get("rows", []))
         srv = '<span class="k ans srv">사람이 체크 · 반영 전</span>' if it.get("by") == "user" else ""
+        if it.get("by") == "inferred":
+            srv += '<span class="k pend">추정 · 사람 확인 전</span>'
+        if it.get("unknown"):
+            srv += f'<span class="k out">모름 · {esc(it["unknown"])}</span>'
         items.append(f'<li id="{esc(it["id"])}" class="{"done" if it.get("done") else ""}"><label>'
                      f'<input type="checkbox" data-check="{esc(it["id"])}"{" checked" if it.get("done") else ""}> '
                      f'<span><b>{ctx.rich(it.get("title", ""))}</b></span></label>{srv}{f"<ul>{rows}</ul>" if rows else ""}</li>')
@@ -851,7 +855,7 @@ def task_index(site, d, t, shared=None):
         note += (f'<h2>후속 수정<small>작업이 끝난 뒤 이 작업의 파일을 고친 기록</small></h2><table class="tbl"><thead><tr>'
                  f'<th>날짜</th><th>내용</th><th>파일</th><th>커밋</th></tr></thead><tbody>{rows}</tbody></table>')
     body = (f'<div class="head">{export_menu(ctx, d, t, shared)}<h1>{esc(task.get("title", t))}</h1><p class="meta">{meta}</p></div>{link_list(task.get("links"))}'
-            f'{intent_section(ctx, task)}{"".join(cards)}{note}')
+            f'{intent_section(ctx, task)}{unconfirmed_section(ctx, task)}{"".join(cards)}{note}')
     return shell(ctx, f"{t} {task.get('title', '')} · flow", nav_tree(ctx, d, t), body, shared=shared)
 
 
@@ -1031,6 +1035,20 @@ def screen_refs(ctx, task):
 def page_conclusion(task, keys):
     stages = task.get("stages") or {}
     return [c for k in keys if k in stages for c in stages[k].get("conclusion") or []]
+
+
+def unconfirmed_section(ctx, task):
+    """What went in without a person — kept in the record so anyone can tell it apart from what was confirmed."""
+    u = unconfirmed(task)
+    if not any(u.values()):
+        return ""
+    lis = [f'<li><span class="k out">건너뛴 멈춤</span> {esc(STAGE_TITLE.get(x.get("stage"), x.get("stage", "")))} · '
+           f'{esc(x.get("stop", ""))}{(" — " + esc(x["why"])) if x.get("why") else ""}</li>' for x in u["skipped"]]
+    if u["inferred"]:
+        lis.append(f'<li><span class="k pend">추정</span> {" ".join(ctx.rich(f"[[{i}]]") for i in u["inferred"])}</li>')
+    lis += [f'<li><span class="k out">모름</span> {ctx.rich(f"[[{i}]]")} — {esc(why)}</li>' for i, why in u["unknown"]]
+    return (f'<h2>사람 확인 없이 남은 것<small>꺼진 단계에서 Claude가 대화 · 코드로 채운 것과, 아무도 알 수 없어 비운 것</small></h2>'
+            f'<ul class="check">{"".join(lis)}</ul>')
 
 
 def stage_page(site, d, t, page, n, shared=None):

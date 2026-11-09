@@ -208,14 +208,43 @@ def grill_state(stage):
 
 
 def checklist_count(stage):
+    """(items, resolved). An item nobody can collect (`unknown`) counts as resolved: it is reported,
+    never invented, and it does not hold the stage or the task open."""
     total = done = 0
     for b in (stage or {}).get("blocks", []):
         if b.get("type") != "checklist":
             continue
         for it in b.get("items", []):
             total += 1
-            done += 1 if it.get("done") else 0
+            done += 1 if it.get("done") or it.get("unknown") else 0
     return total, done
+
+
+def unconfirmed(task):
+    """What went in without a person: inferred decisions and items, stops skipped, values nobody could collect."""
+    out = {"inferred": [], "skipped": list(task.get("skipped") or []), "unknown": []}
+    for key in task_keys(task):
+        st = task["stages"][key]
+        if key == "grill":
+            for r in st.get("rounds", []):
+                for q in r.get("questions", []):
+                    if (q.get("reason") or {}).get("by") == "inferred":
+                        out["inferred"].append(f"{r['id']}-{q['id']}")
+            continue
+        for b in st.get("blocks", []):
+            for it in b.get("items", []) if b.get("type") == "checklist" else []:
+                if it.get("by") == "inferred":
+                    out["inferred"].append(it.get("id", ""))
+                if it.get("unknown"):
+                    out["unknown"].append((it.get("id", ""), str(it["unknown"])))
+    return out
+
+
+def unconfirmed_line(task):
+    u = unconfirmed(task)
+    parts = [f"{label} {len(u[k])}건" for k, label in
+             (("inferred", "사람 확인 안 된 추정"), ("skipped", "건너뛴 멈춤"), ("unknown", "모르는 값")) if u[k]]
+    return " · ".join(parts)
 
 
 def stage_state(task, key):

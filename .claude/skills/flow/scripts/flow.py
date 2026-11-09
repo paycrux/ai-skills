@@ -60,7 +60,7 @@ import migrate  # noqa: E402
 import render  # noqa: E402
 import share  # noqa: E402
 import workflow  # noqa: E402
-from model import (CORE_KEYS, ITEM_ID, KINDS, REASON_BY, RESERVED_TASK_IDS, STAGE_KEYS, STAGE_TITLE, STATUSES,  # noqa: E402
+from model import (CORE_KEYS, unconfirmed, unconfirmed_line, ITEM_ID, KINDS, REASON_BY, RESERVED_TASK_IDS, STAGE_KEYS, STAGE_TITLE, STATUSES,  # noqa: E402
                    domains_of, finished, frame_boxes, git, is_plugin_key, parse_ref, plain, read_json, scope, stage_skeleton, stages_state,
                    task_files, task_items, task_keys, task_state, walk_refs, write_json)
 
@@ -250,6 +250,8 @@ def brief_head(t):
     stages = t.get("stages", {})
     lines = [f"{t['id']} {t['title']} · {t.get('type', '')} · {t.get('branch', '')}"]
     lines += ["  " + stage_line(k, stages[k]) for k in task_keys(t)]
+    if unconfirmed_line(t):
+        lines.append(f"  {unconfirmed_line(t)}")
     return lines
 
 
@@ -550,6 +552,7 @@ def check_task(f, domain, index, problems):
 
     gather({k: v for k, v in stages.items() if k != "grill"})
     ext_problems(t, rel, problems)
+    record_problems(t, rel, problems)
     custom_checks(f, t, rel, problems)
     dup = sorted({i for i in ids if ids.count(i) > 1})
     if dup:
@@ -558,6 +561,36 @@ def check_task(f, domain, index, problems):
     marks = list(user_marks(t))
     if marks:
         problems.append(f"{rel}: 사람이 바꾼 것 {len(marks)}건을 아직 처리하지 않았어요 — flow.py changes")
+
+
+ITEM_BY = ("user", "inferred")
+
+
+def record_problems(t, rel, problems):
+    """skipped · item by · unknown — how a stage the person turned off still leaves a full record."""
+    sk = t.get("skipped", [])
+    if not isinstance(sk, list):
+        problems.append(f"{rel}: skipped는 목록이에요 — [{{\"stage\", \"stop\", \"why\"}}]")
+        sk = []
+    for i, x in enumerate(sk):
+        if not isinstance(x, dict) or not x.get("stop") or not (x.get("stage") in STAGE_KEYS or is_plugin_key(x.get("stage"))):
+            problems.append(f"{rel} skipped[{i}]: stage(단계 키)와 stop(건너뛴 멈춤)이 있어야 해요")
+    for key, st in (t.get("stages") or {}).items():
+        for b in st.get("blocks", []) if isinstance(st, dict) else []:
+            for it in b.get("items", []) if b.get("type") == "checklist" else []:
+                if it.get("by") not in (None, *ITEM_BY):
+                    problems.append(f"{rel} {it.get('id')}: by는 {'/'.join(ITEM_BY)} 중 하나")
+                if "unknown" in it and not str(it.get("unknown") or "").strip():
+                    problems.append(f"{rel} {it.get('id')}: unknown에는 무엇이 없어서 모르는지 적어요")
+
+
+def unknown_notes(doms):
+    notes = []
+    for d in doms:
+        for f in task_files(d):
+            for iid, why in unconfirmed(read_json(f))["unknown"]:
+                notes.append(f"{d.name}/tasks/{f.name} {iid}: 모르는 값 — {why}")
+    return notes
 
 
 def ext_problems(t, rel, problems):
@@ -758,6 +791,11 @@ def cmd_check(args):
     problems += [f"HTML: {s} — flow.py build {docs}" for s in render.stale(docs)]
     notes, drift = plan_drift(docs, doms)
     problems += drift + repro_problems(docs, doms)
+    unknown = unknown_notes(doms)
+    if unknown:
+        print(f"모르는 값 {len(unknown)}건 (수집할 수 없어 비워 둔 칸 — 실패로 치지 않아요)")
+        for n in unknown:
+            print(f"- {n}")
     if notes:
         print(f"계획과 다른 변경 {len(notes)}건 (구현 중이라 실패로 치지 않아요)")
         for n in notes:

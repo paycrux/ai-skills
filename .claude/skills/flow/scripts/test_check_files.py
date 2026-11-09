@@ -431,6 +431,49 @@ class WorkflowTest(unittest.TestCase):
         self.assertEqual(t["stages"]["grill"]["rounds"][0]["questions"][0]["ext"], {"mine": {"seen": True}})
         self.assertNotIn("body", t["stages"]["grill"]["rounds"][0]["questions"][0])
 
+    def test_unconfirmed_record_is_counted_shown_and_does_not_block(self):
+        set_plugins(mine={"stages": {"use": ["tasks"]}})
+        flow(self.fx.root, "add", str(self.fx.task), "grill")
+        t = json.loads(self.fx.task.read_text())
+        t["intent"] = [{"text": "i", "state": "guess", "basis": "대화"}]
+        t["skipped"] = [{"stage": "tasks", "stop": "계획 승인", "why": "꺼짐"}]
+        t["stages"]["grill"] = {"rounds": [{"id": "R1", "title": "r", "questions": [
+            {"id": "Q1", "title": "q", "intent": "i", "recommended": "yes", "answer": {"choice": "yes"},
+             "decision": "d", "reason": {"text": "대화에서 유추", "by": "inferred"}, "appliedTo": "[[P1-1]]"}]}]}
+        t["stages"]["tasks"] = {"status": "done", "summary": "s", "conclusion": ["c"], "blocks": [
+            {"type": "checklist", "id": "P1", "title": "P1", "items": [
+                {"id": "P1-1", "title": "a", "done": True, "by": "inferred", "rows": [["파일", "<code>src/a.ts</code>"]]}]}]}
+        self.fx.task.write_text(json.dumps(t, ensure_ascii=False))
+        finish(self.fx)
+        t = json.loads(self.fx.task.read_text())
+        d5 = t["stages"]["done"]["blocks"][0]["items"][4]
+        d5.update({"done": False, "unknown": "PR을 물을 수 없음 — 05 꺼짐"})
+        self.fx.task.write_text(json.dumps(t, ensure_ascii=False))
+        flow(self.fx.root, "build", str(self.fx.docs))
+        brief = flow(self.fx.root, "brief", str(self.fx.task)).stdout
+        self.assertIn("사람 확인 안 된 추정 2건 · 건너뛴 멈춤 1건 · 모르는 값 1건", brief)
+        cover = (self.fx.docs / "d" / "t" / "index.html").read_text()
+        self.assertIn("사람 확인 없이 남은 것", cover)
+        self.assertIn("계획 승인", cover)
+        r = self.fx.check()
+        self.assertIn("모르는 값 1건", r.stdout)
+        self.assertNotIn("skipped", r.stdout)
+        self.assertEqual(flow(self.fx.root, "prune", str(self.fx.task)).returncode, 0)
+        t = json.loads(self.fx.task.read_text())
+        self.assertEqual(t["skipped"][0]["stop"], "계획 승인")
+
+    def test_bad_record_entries_fail(self):
+        t = json.loads(self.fx.task.read_text())
+        t["skipped"] = [{"stage": "nope"}]
+        t["stages"]["tasks"] = {"status": "now", "summary": "s", "conclusion": [], "blocks": [
+            {"type": "checklist", "id": "P1", "title": "P1", "items": [{"id": "P1-1", "title": "a", "by": "ai", "unknown": " "}]}]}
+        self.fx.task.write_text(json.dumps(t, ensure_ascii=False))
+        flow(self.fx.root, "build", str(self.fx.docs))
+        r = self.fx.check()
+        self.assertEqual(r.returncode, 1)
+        for word in ("skipped[0]", "by는", "unknown에는"):
+            self.assertIn(word, r.stdout)
+
     def test_plugin_new_creates_and_enables(self):
         r = flow(self.fx.root, "plugin", "new", "my-flow")
         self.assertEqual(r.returncode, 0, r.stderr)

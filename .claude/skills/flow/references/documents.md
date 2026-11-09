@@ -79,7 +79,16 @@ page · reading for tokens · legacy documents · earlier versions
 - `branch` is matched against the checked-out branch by `flow.py current` (the SessionStart hook), so
   it holds the exact branch name. `base` (optional, a short SHA) is the commit the task started from
   on a branch that already carries other work; `check` then compares the plan's 파일 rows with the
-  changes since `base` instead of since the branch left its root. `feature` exists when the task came from a feature document; the
+  changes since `base` instead of since the branch left its root.
+- What went in without a person is recorded, never left implicit (a stage the person turned off is
+  still filled — `plugin.md`):
+  - `skipped` on the task: `[{"stage": "tasks", "stop": "계획 승인", "why": "05 꺼짐"}]` — one entry
+    per stop Claude went past instead of waiting.
+  - `"by": "inferred"` on a checklist item ticked from the conversation or the code without the
+    person's look; a decision inferred the same way has `reason.by: "inferred"`.
+  - `"unknown": "<what is missing>"` on an item nobody could collect. It counts as resolved — the
+    stage and the task can finish — and `check` lists it as a note, never as a failure.
+  - `brief`, `current` and the task cover show the counts (사람 확인 안 된 추정 · 건너뛴 멈춤 · 모르는 값). `feature` exists when the task came from a feature document; the
   task pages link up to it. `followUps` are written by `flow.py log`; `pruned` by `flow.py prune`. A task is finished only
   when every stage is `done` and the `done` stage's checklist is all ticked — implementation alone
   shows as 진행 중. A finished task without `pruned` fails `check` and is flagged by `flow.py current`.

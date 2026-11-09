@@ -67,12 +67,17 @@ data for everyone, so the team, the next session and any later tool read one com
   rule — the 05 checklist before `prune`, the reproduction test of a `버그 수정`, decisions with
   `reason` and `appliedTo`.
 - **Different for this person:** its page leaves their pages (nav, task cover), and Claude does not
-  stop for them there. Where a stop would have asked them, Claude decides from the conversation and
-  the code and records it as inferred — a question gets the recommended choice with
-  `reason.by: "inferred"`; 05 runs the review and tests, and asks nothing about a PR (D5 records
-  "PR 없음 — 05 꺼짐, 묻지 않음").
-- **Not collectable:** what neither the conversation nor the code shows stays empty or `pending`.
-  Off never licenses invented values.
+  stop for them there. Every stop it goes past is one `skipped` entry on the task
+  (`{"stage", "stop", "why"}` — `documents.md` § Task JSON).
+- **Filled from the conversation and the code, marked as such:** a question gets the answer the
+  conversation supports, or the recommended choice, with `reason.by: "inferred"`; a checklist item
+  ticked without the person's look gets `"by": "inferred"` (a V item seen in a headless browser, D1–D4
+  run by Claude).
+- **Not collectable:** an item neither the conversation nor the code can settle gets
+  `"unknown": "<what is missing>"` instead of a guess — D5 when nobody could be asked about a PR,
+  L1 when no deploy is visible. It does not hold the task open; `check` lists it.
+- The task cover, `brief` and `current` show how many inferred, skipped and unknown entries there
+  are, so what went in without a person stays visible even though its page is gone.
 - `flow.py workflow` prints such a stage as 꺼짐 · 안 멈추고 기록만.
 
 ## Plugin stages

@@ -386,9 +386,10 @@ Chat messages at a stop are two or three lines plus what the user should do; the
 - **`flow.py check` passes before reporting a stage done**
 - **Create a stage only when the task needs it** — `add` it at the moment the need appears, never "just in case"
 - **A stage that is off still collects its data** — it leaves only the person's pages and stops. At
-  an off stage, write what the conversation and the code tell you, mark what you inferred
-  (`reason.by: "inferred"`, `intent` `guess`), and leave empty what nobody said — never invent it.
-  A stage the team requires cannot be turned off
+  an off stage, write what the conversation and the code tell you and mark it (`reason.by` or item
+  `by: "inferred"`, `intent` `guess`); record each stop you go past in `skipped`; give an item nobody
+  can settle `unknown` with what is missing — never invent it (`references/plugin.md`). A stage the
+  team requires cannot be turned off
 - **Open a page only at a stop** — `flow.py open <file>` builds, then opens the OS default browser; elsewhere print the path
 - **Generated files are never committed** — pages, `share/`, `.receipts/`; JSON, `prd.md`, Figma images and structure XML are
 - **A feature document only shows and records** — progress is read from each row's task; work is never sent to another session
