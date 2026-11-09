@@ -474,6 +474,42 @@ class WorkflowTest(unittest.TestCase):
         for word in ("skipped[0]", "by는", "unknown에는"):
             self.assertIn(word, r.stdout)
 
+    def test_attached_plugin_collects_more_data_on_a_core_stage(self):
+        set_plugins(mine={"attach": [{"stage": "verify", "title": "성능 측정", "instructions": "perf.md",
+                                      "fields": ["score", "lcp"]}], "files": {"perf.md": "# perf"}})
+        flow(self.fx.root, "add", str(self.fx.task), "verify")
+        self.assertIn("perf.md", flow(self.fx.root, "brief", str(self.fx.task), "--stage", "verify").stdout)
+        self.assertIn("성능 측정", flow(self.fx.root, "workflow", str(self.fx.docs)).stdout)
+
+        def verify(ext):
+            t = json.loads(self.fx.task.read_text())
+            t["stages"]["verify"].update({"status": "done", "conclusion": ["확인함"]})
+            if ext is not None:
+                t["stages"]["verify"]["ext"] = {"mine": ext}
+            self.fx.task.write_text(json.dumps(t, ensure_ascii=False))
+            flow(self.fx.root, "build", str(self.fx.docs))
+
+        verify(None)
+        r = self.fx.check()
+        self.assertIn("score, lcp", r.stdout)
+        verify({"score": 92, "inferred": ["score"], "unknown": {"lcp": "실기기 측정 불가"}})
+        self.assertNotIn("값이 없어요", self.fx.check().stdout)
+        page = (self.fx.docs / "d" / "t" / "04-verify.html").read_text()
+        self.assertIn("플러그인 · 성능 측정", page)
+        self.assertIn("실기기 측정 불가", page)
+        self.assertIn("사람 확인 안 된 추정 1건 · 모르는 값 1건", flow(self.fx.root, "brief", str(self.fx.task)).stdout)
+        set_plugins()
+        flow(self.fx.root, "build", str(self.fx.docs))
+        self.assertNotIn("플러그인 · 성능 측정", (self.fx.docs / "d" / "t" / "04-verify.html").read_text())
+        self.assertEqual(json.loads(self.fx.task.read_text())["stages"]["verify"]["ext"]["mine"]["score"], 92)
+
+    def test_bad_attach_entries_fail(self):
+        set_plugins(mine={"attach": [{"stage": "nope"}, {"stage": "verify", "fields": ["unknown"], "extra": 1}]})
+        r = flow(self.fx.root, "plugin", "check", str(self.fx.docs))
+        self.assertEqual(r.returncode, 1)
+        for word in ("'nope'", "unknown · inferred", "extra", "instructions"):
+            self.assertIn(word, r.stdout)
+
     def test_plugin_new_creates_and_enables(self):
         r = flow(self.fx.root, "plugin", "new", "my-flow")
         self.assertEqual(r.returncode, 0, r.stderr)

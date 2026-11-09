@@ -1,8 +1,8 @@
 # Workflow and personal plugins
 
 Read when the person asks to change how *they* work with flow — turn a stage off, rename a stage,
-add a stage of their own, restyle their pages, keep data only they use — or when `flow.py workflow`
-shows a plugin stage on the task at hand.
+add a stage of their own, collect more on an existing stage, restyle their pages, keep data only they
+use — or when `flow.py workflow` shows a plugin stage or an attached plugin on the task at hand.
 
 ## The three layers
 
@@ -45,6 +45,13 @@ Core catalog, in order: `plan` · `screen` · `grill` · `tasks` · `verify` · 
     "after": "verify",                // a core key or an earlier custom key; default done
     "instructions": "stages/perf.md", // what Claude does in this stage — required
     "check": "node scripts/lighthouse-gate.mjs"  // optional; must exit 0 for the stage to count as done
+  }],
+  "attach": [{                        // extend a core stage instead of adding one
+    "stage": "verify",
+    "title": "성능 측정",
+    "instructions": "attach/verify-perf.md",   // what Claude also does in that stage — required
+    "fields": ["score", "lcp"],                // values to collect into stages.verify.ext.my-flow
+    "check": "node scripts/lighthouse-gate.mjs" // optional; must exit 0 once the stage is done
   }],
   "style": "my.css"                   // inlined after the team style, in this person's builds only
 }
@@ -92,6 +99,32 @@ data for everyone, so the team, the next session and any later tool read one com
   the repository root, with `FLOW_TASK` (task JSON path), `FLOW_STAGE` and `FLOW_PLUGIN_DIR` set. A
   non-zero exit fails `check` and blocks `prune`.
 
+## Attaching to a core stage
+
+A plugin can leave a stage as it is and collect more there. Three ways a plugin shapes a stage:
+
+| Way | The stage | Its data |
+|---|---|---|
+| `custom` | a new stage `<plugin>:<key>` | inside that stage |
+| out of `stages.use` | stays; leaves this person's pages and stops | core data + `skipped` · inferred · `unknown` |
+| `attach` | stays as it is (on or off) | core data + `stages.<stage>.ext.<plugin>` |
+
+- Attach works whether the stage is in the person's workflow or not. Off + attach is how a plugin
+  takes over a stop: grill off, and a plugin attached to grill that asks in a Slack thread — the
+  questions and decisions still go into grill in the core shape, and the thread, who answered and
+  when go into `stages.grill.ext.<plugin>`.
+- Before working the stage, read each attached `instructions` file — `flow.py brief <task.json>
+  --stage <stage>` prints them with the fields to collect.
+- Collect each field into `stages.<stage>.ext.<plugin>.<field>`. Same rules as an off stage: a value
+  taken from the conversation or the code without the person's look is listed in
+  `ext.<plugin>.inferred`; a value nobody can collect goes into `ext.<plugin>.unknown` as
+  `{"<field>": "<what is missing>"}` — never a guess. `inferred` and `unknown` are the only names
+  flow reads inside a plugin's `ext`; they count on the task cover and in `brief`.
+- Where the plugin is installed, `check` fails a stage marked `done` while a field is neither set nor
+  `unknown`, and runs the attach `check` command (same environment as a plugin stage's).
+- The person's own pages show the fields under that stage as 플러그인 · <title>; a teammate without
+  the plugin sees nothing extra, and the data stays in the JSON.
+
 ## Plugin data — `ext`
 
 A plugin keeps its own data under `"ext": {"<plugin id>": {...}}` on the task, a question or a
@@ -112,6 +145,9 @@ They speak plainly ("질문 단계는 안 쓸래", "검증 다음에 성능 측�
      the stop go. A team-required stage is not removed: tell them in chat it is a 팀 필수
      단계 (`flow.config.json` `workflow.required`) and stays on.
    - rename → `stages.labels`.
+   - more data on an existing stage ("검증 단계에 Lighthouse 점수 모으는 거 붙여줘") → an `attach`
+     entry with `fields` and its `instructions` file. Prefer it over a new stage when the work
+     belongs to a stage that already exists.
    - own stage → a `custom` entry, its `instructions` file written with them (what to do, what
      evidence to leave in the stage), and a `check` command when "통과" has a measurable meaning.
    - own look → `style` CSS overriding the `:root` custom properties of `assets/page.css`.

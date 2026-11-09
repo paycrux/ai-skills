@@ -231,6 +231,12 @@ def unconfirmed(task):
                     if (q.get("reason") or {}).get("by") == "inferred":
                         out["inferred"].append(f"{r['id']}-{q['id']}")
             continue
+        for pid, ext in (st.get("ext") or {}).items():
+            # unknown / inferred are the two names flow reads inside a plugin's ext (see plugin.md).
+            if isinstance(ext, dict):
+                out["inferred"] += [f"{key} · {pid}.{f}" for f in ext.get("inferred") or [] if isinstance(f, str)]
+                if isinstance(ext.get("unknown"), dict):
+                    out["unknown"] += [(f"{key} · {pid}.{f}", str(why)) for f, why in ext["unknown"].items()]
         for b in st.get("blocks", []):
             for it in b.get("items", []) if b.get("type") == "checklist" else []:
                 if it.get("by") == "inferred":

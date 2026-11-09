@@ -269,6 +269,10 @@ def cmd_brief(args):
         print(f"\n[{k}]" + (f" {STAGE_TITLE[k]}" if STAGE_TITLE.get(k, k) != k and k not in CORE_KEYS else ""))
         if custom.get(k, {}).get("instructions"):
             print(f"절차: {custom[k]['instructions']}")
+        for a in workflow.current()["attach"]:
+            if a["stage"] == k:
+                print(f"붙은 플러그인 {a['plugin']} · {a['title']}: 절차 {a['instructions']}"
+                      + (f" · 모을 값 {', '.join(a['fields'])} → stages.{k}.ext.{a['plugin']}" if a["fields"] else ""))
         if k == "grill":
             for r in st.get("rounds", []):
                 for q in r.get("questions", []):
@@ -610,21 +614,43 @@ def ext_problems(t, rel, problems):
     walk(t, "작업")
 
 
+def run_gate(cmd, task_file, stage, plugin_dir):
+    """A plugin's check command, from the repository root → (exit code, last output line)."""
+    top = git(Path(task_file).parent, "rev-parse", "--show-toplevel") or str(Path(task_file).parent)
+    env = {**os.environ, "FLOW_TASK": str(Path(task_file).resolve()), "FLOW_STAGE": stage, "FLOW_PLUGIN_DIR": plugin_dir}
+    try:
+        r = subprocess.run(cmd, shell=True, cwd=top, env=env, capture_output=True, text=True, timeout=600)
+        return r.returncode, ((r.stdout + r.stderr).strip().splitlines()[-1:] or [""])[0]
+    except subprocess.TimeoutExpired:
+        return "timeout", ""
+
+
 def custom_checks(task_file, t, rel, problems):
-    """A plugin stage marked done passes only when its check command exits 0 — run where the plugin is installed."""
+    """Where the plugin is installed: a plugin stage marked done passes only when its check exits 0, and a
+    core stage marked done carries every field its attached plugins collect (or says why it is unknown)."""
+    stages = t.get("stages") or {}
     for c in workflow.current()["custom"]:
-        st = (t.get("stages") or {}).get(c["key"])
+        st = stages.get(c["key"])
         if not st or st.get("status") != "done" or not c["check"]:
             continue
-        top = git(Path(task_file).parent, "rev-parse", "--show-toplevel") or str(Path(task_file).parent)
-        env = {**os.environ, "FLOW_TASK": str(Path(task_file).resolve()), "FLOW_STAGE": c["key"], "FLOW_PLUGIN_DIR": c["dir"]}
-        try:
-            r = subprocess.run(c["check"], shell=True, cwd=top, env=env, capture_output=True, text=True, timeout=600)
-            code, tail = r.returncode, (r.stdout + r.stderr).strip().splitlines()[-1:] or [""]
-        except subprocess.TimeoutExpired:
-            code, tail = "timeout", [""]
+        code, tail = run_gate(c["check"], task_file, c["key"], c["dir"])
         if code != 0:
-            problems.append(f"{rel} {c['key']}: 완료인데 통과 명령이 실패했어요 ({code}) — {c['check']}" + (f" · {tail[0]}" if tail[0] else ""))
+            problems.append(f"{rel} {c['key']}: 완료인데 통과 명령이 실패했어요 ({code}) — {c['check']}" + (f" · {tail}" if tail else ""))
+    for a in workflow.current()["attach"]:
+        st = stages.get(a["stage"])
+        if not st or st.get("status") != "done":
+            continue
+        ext = (st.get("ext") or {}).get(a["plugin"]) or {}
+        unknown = ext.get("unknown") if isinstance(ext.get("unknown"), dict) else {}
+        missing = [f for f in a["fields"] if f not in ext and f not in unknown]
+        if missing:
+            problems.append(f"{rel} {a['stage']}: 붙은 플러그인 {a['plugin']}({a['title']})의 값이 없어요 — {', '.join(missing)}. "
+                            f"모르면 ext.{a['plugin']}.unknown에 이유를 적어요")
+        if a["check"]:
+            code, tail = run_gate(a["check"], task_file, a["stage"], a["dir"])
+            if code != 0:
+                problems.append(f"{rel} {a['stage']}: 붙은 플러그인 {a['plugin']}의 통과 명령이 실패했어요 ({code}) — {a['check']}"
+                                + (f" · {tail}" if tail else ""))
 
 
 def check_feature(fd, problems):
@@ -822,12 +848,15 @@ def cmd_workflow(args):
         line = f"  {k:<16} {on} · {wf['source'].get(k, '코어')} · {name}"
         if k in custom:
             line += f"\n  {'':<16} 절차 {custom[k]['instructions'] or '없음'}" + (f" · 통과 명령 {custom[k]['check']}" if custom[k]["check"] else "")
+        for a in wf["attach"]:
+            if a["stage"] == k:
+                line += f"\n  {'':<16} + 플러그인 {a['plugin']}({a['title']}) 붙음" + (f" · 모을 값 {', '.join(a['fields'])}" if a["fields"] else "")
         print(line)
     for x in wf["problems"]:
         print(f"- {x}")
 
 
-PLUGIN_SKELETON = {"stages": {"use": [k for k in CORE_KEYS], "labels": {}}, "custom": [], "style": ""}
+PLUGIN_SKELETON = {"stages": {"use": [k for k in CORE_KEYS], "labels": {}}, "custom": [], "attach": [], "style": ""}
 
 
 def cmd_plugin(args):

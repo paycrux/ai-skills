@@ -317,9 +317,11 @@ then `prune` as in Step 7; `prune` waits for every stage, this one included.
 
 A task stage keyed `<plugin>:<key>` belongs to a personal plugin. Read its instructions file first
 (`flow.py brief <task.json> --stage <key>` prints the path), work it like any stage, and set it
-`done` only when its `check` command passes — `flow.py check` runs it. When the person asks to change
-how they work with flow (turn a stage off, rename, add a stage, restyle their pages, keep their own
-data), follow `references/plugin.md`: edit their plugin, never the team's `flow.config.json`, unless
+`done` only when its `check` command passes — `flow.py check` runs it. A plugin can also attach to a
+core stage: `flow.py brief --stage <key>` then prints its instructions and the fields to collect into
+`stages.<key>.ext.<plugin>` — collect them like any data (inferred marked, `unknown` when nobody can
+say). When the person asks to change how they work with flow (turn a stage off, rename, add a stage,
+collect more on a stage, restyle their pages, keep their own data), follow `references/plugin.md`: edit their plugin, never the team's `flow.config.json`, unless
 they say the change is for the whole team. A stage the team requires stays on; say so.
 
 ## Follow-ups on a finished task

@@ -6,8 +6,9 @@ personal plugins layered on top.
   personal  $FLOW_HOME/config.json   {"plugins": ["<id>", ...]}                          (not committed)
             $FLOW_HOME/plugins/<id>/plugin.json
 
-A personal plugin may narrow the optional stages, rename any stage and add its own stages, but never
-turn off a stage the team requires. $FLOW_HOME defaults to $XDG_CONFIG_HOME/flow or ~/.config/flow.
+A personal plugin may take optional stages out of the person's workflow, rename any stage, add its own
+stages and attach to a core stage to collect more data there, but never turn off a stage the team
+requires. A stage out of the workflow is still created and filled; only its page and stops go. $FLOW_HOME defaults to $XDG_CONFIG_HOME/flow or ~/.config/flow.
 """
 import json
 import os
@@ -17,8 +18,9 @@ from pathlib import Path
 import model
 
 CONFIG = "flow.config.json"
-PLUGIN_KEYS = {"id", "stages", "custom", "style"}
+PLUGIN_KEYS = {"id", "stages", "custom", "attach", "style"}
 CUSTOM_KEYS = {"key", "title", "after", "instructions", "check"}
+ATTACH_KEYS = {"stage", "title", "instructions", "fields", "check"}
 SHORT_KEY = re.compile(r"[a-z][a-z0-9-]*")
 
 
@@ -109,7 +111,7 @@ def plugin(pid, problems):
         problems.append(f"{label}: 모르는 키 {', '.join(unknown)} — {' · '.join(sorted(PLUGIN_KEYS))}만 읽어요")
     if raw.get("id", pid) != pid:
         problems.append(f"{label}: id({raw.get('id')})가 폴더 이름과 달라요")
-    out = {"id": pid, "dir": folder, "use": None, "labels": {}, "custom": [], "style": ""}
+    out = {"id": pid, "dir": folder, "use": None, "labels": {}, "custom": [], "attach": [], "style": ""}
     for c in raw.get("custom") or []:
         if not isinstance(c, dict):
             problems.append(f"{label} custom: 단계마다 객체여야 해요")
@@ -137,6 +139,31 @@ def plugin(pid, problems):
         out["custom"].append({"key": key, "title": str(c.get("title") or short), "after": after, "plugin": pid,
                               "instructions": str(folder / ins) if ins else "", "check": c.get("check") or "",
                               "dir": str(folder)})
+    for a in raw.get("attach") or []:
+        if not isinstance(a, dict):
+            problems.append(f"{label} attach: 붙일 단계마다 객체여야 해요")
+            continue
+        stage = a.get("stage")
+        if stage not in model.CORE_KEYS:
+            problems.append(f"{label} attach: stage '{stage}'는 {' · '.join(model.CORE_KEYS)} 중 하나")
+            continue
+        bad = sorted(set(a) - ATTACH_KEYS)
+        if bad:
+            problems.append(f"{label} attach {stage}: 모르는 키 {', '.join(bad)} — {' · '.join(sorted(ATTACH_KEYS))}")
+        fields = a.get("fields") or []
+        if not isinstance(fields, list) or not all(isinstance(x, str) and x for x in fields):
+            problems.append(f"{label} attach {stage}: fields는 모을 값 이름의 목록이에요")
+            fields = []
+        if set(fields) & {"unknown", "inferred"}:
+            problems.append(f"{label} attach {stage}: unknown · inferred는 flow가 쓰는 이름이라 fields에 못 써요")
+        ins = a.get("instructions")
+        if not ins:
+            problems.append(f"{label} attach {stage}: instructions(이 단계에서 Claude가 더 할 일)가 없어요")
+        elif not (folder / ins).is_file():
+            problems.append(f"{label} attach {stage}: instructions 파일이 없어요 ({folder / ins})")
+        out["attach"].append({"stage": stage, "plugin": pid, "title": str(a.get("title") or pid),
+                              "instructions": str(folder / ins) if ins else "", "fields": fields,
+                              "check": a.get("check") or "", "dir": str(folder)})
     known = model.CORE_KEYS + [c["key"] for c in out["custom"]]
     st = raw.get("stages") or {}
     if not isinstance(st, dict):
@@ -210,6 +237,7 @@ def load(docs=None):
             label_from[k] = f"플러그인 {p['id']}"
     return {"docs": str(docs) if docs else "", "required": required, "enabled": enabled, "labels": labels,
             "label_from": label_from, "source": source, "custom": custom, "plugins": plugins,
+            "attach": [a for p in plugins for a in p["attach"]],
             "styles": [p["style"] for p in plugins if p["style"]], "problems": problems, "home": str(home())}
 
 

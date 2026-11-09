@@ -84,19 +84,24 @@ def judge_plugin(repo, env, want):
     ids = json.loads(cfg.read_text()).get("plugins", []) if cfg.is_file() else []
     if not ids:
         return ["켜진 플러그인이 없어요 ($FLOW_HOME/config.json plugins)"]
-    fails, uses, labels = [], [], {}
+    fails, uses, labels, attached = [], [], {}, []
     for pid in ids:
         pj = home / "plugins" / pid / "plugin.json"
         if not pj.is_file():
             fails.append(f"플러그인 {pid}의 plugin.json이 없어요")
             continue
-        st = json.loads(pj.read_text()).get("stages") or {}
+        body = json.loads(pj.read_text())
+        attached += [x.get("stage") for x in body.get("attach") or [] if isinstance(x, dict)]
+        st = body.get("stages") or {}
         if "use" in st:
             uses.append(set(st["use"]))
         labels.update(st.get("labels") or {})
     for k in want.get("useLacks") or []:
         if not uses or any(k in u for u in uses):
             fails.append(f"플러그인이 {k} 단계를 끄지 않았어요")
+    for k in want.get("attachTo") or []:
+        if k not in attached:
+            fails.append(f"플러그인이 {k} 단계에 붙지(attach) 않았어요 — 붙은 단계 {attached}")
     for k, v in (want.get("labels") or {}).items():
         if labels.get(k) != v:
             fails.append(f"{k} 단계 이름 {labels.get(k)} (기대 {v})")

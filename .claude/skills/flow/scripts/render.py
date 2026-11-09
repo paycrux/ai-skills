@@ -7,7 +7,7 @@ from pathlib import Path
 
 import feature as feat
 import workflow
-from model import (CORE_PAGES, DEFAULT_OPTIONS, ENABLED, KIND, PAGES, REASON_BY, REF, STAGE_TITLE, STATE_LABEL, UNSURE, domains_of,
+from model import (CORE_PAGES, DEFAULT_OPTIONS, ENABLED, ITEM_ID, KIND, PAGES, REASON_BY, REF, STAGE_TITLE, STATE_LABEL, UNSURE, domains_of,
                    frame_boxes, git, grill_state, page_file, page_state, parse_ref, place, plain, read_json, stage_state,
                    task_files, task_items, task_pages, task_state, unconfirmed, walk_refs)
 
@@ -1044,11 +1044,39 @@ def unconfirmed_section(ctx, task):
         return ""
     lis = [f'<li><span class="k out">건너뛴 멈춤</span> {esc(STAGE_TITLE.get(x.get("stage"), x.get("stage", "")))} · '
            f'{esc(x.get("stop", ""))}{(" — " + esc(x["why"])) if x.get("why") else ""}</li>' for x in u["skipped"]]
+    def ref(i):
+        return ctx.rich(f"[[{i}]]") if ITEM_ID.match(i) else f"<code>{esc(i)}</code>"
     if u["inferred"]:
-        lis.append(f'<li><span class="k pend">추정</span> {" ".join(ctx.rich(f"[[{i}]]") for i in u["inferred"])}</li>')
-    lis += [f'<li><span class="k out">모름</span> {ctx.rich(f"[[{i}]]")} — {esc(why)}</li>' for i, why in u["unknown"]]
+        lis.append(f'<li><span class="k pend">추정</span> {" ".join(ref(i) for i in u["inferred"])}</li>')
+    lis += [f'<li><span class="k out">모름</span> {ref(i)} — {esc(why)}</li>' for i, why in u["unknown"]]
     return (f'<h2>사람 확인 없이 남은 것<small>꺼진 단계에서 Claude가 대화 · 코드로 채운 것과, 아무도 알 수 없어 비운 것</small></h2>'
             f'<ul class="check">{"".join(lis)}</ul>')
+
+
+def attached(ctx, key, st):
+    """What this person's plugins attached to a core stage collected — stages.<key>.ext.<plugin>."""
+    out = ""
+    for a in ctx.site.workflow["attach"]:
+        if a["stage"] != key:
+            continue
+        ext = (st.get("ext") or {}).get(a["plugin"]) or {}
+        unknown = ext.get("unknown") if isinstance(ext.get("unknown"), dict) else {}
+        inferred = set(ext.get("inferred") or [])
+        names = list(dict.fromkeys(a["fields"] + [k for k in ext if k not in ("unknown", "inferred")]))
+        rows = []
+        for f in names:
+            if f in ext:
+                v = ext[f]
+                val = esc(v) if isinstance(v, (str, int, float)) else f"<code>{esc(json.dumps(v, ensure_ascii=False))}</code>"
+                tag = ' <span class="k pend">추정</span>' if f in inferred else ""
+            elif f in unknown:
+                val, tag = "", f' <span class="k out">모름 · {esc(unknown[f])}</span>'
+            else:
+                val, tag = '<span class="note">아직 없어요</span>', ""
+            rows.append(f"<tr><td><code>{esc(f)}</code></td><td>{val}{tag}</td></tr>")
+        out += (f'<h2>플러그인 · {esc(a["title"])}<small>{esc(a["plugin"])} · stages.{esc(key)}.ext.{esc(a["plugin"])}</small></h2>'
+                f'<table class="tbl"><tbody>{"".join(rows) or "<tr><td>아직 없어요</td></tr>"}</tbody></table>')
+    return out
 
 
 def stage_page(site, d, t, page, n, shared=None):
@@ -1058,10 +1086,10 @@ def stage_page(site, d, t, page, n, shared=None):
     stages = task["stages"]
     s = page_state(task, keys)
     if page == "grill":
-        body = grill_body(ctx, stages["grill"], s)
+        body = grill_body(ctx, stages["grill"], s) + attached(ctx, "grill", stages["grill"])
     else:
         body = conclusion(ctx, s["status"], page_conclusion(task, keys))
-        body += "".join(blocks(ctx, stages[k]) for k in keys if k in stages)
+        body += "".join(blocks(ctx, stages[k]) + attached(ctx, k, stages[k]) for k in keys if k in stages)
         if "screen" in stages and "screen" in keys:
             part = f'<h2 class="part">{esc(STAGE_TITLE["screen"])}</h2>' if any(k in stages for k in keys if k != "screen") else ""
             body += part + screen_refs(ctx, task)
