@@ -434,6 +434,16 @@
         ".claude/skills/flow/references/plugin.md"
       ],
       "sha": "4766343"
+    },
+    {
+      "date": "2026-11-09",
+      "text": "꺼진 단계의 건너뛴 멈춤 · 추정 · 모르는 값을 기록하고 건수를 보여 줌",
+      "files": [
+        ".claude/skills/flow/scripts/model.py",
+        ".claude/skills/flow/scripts/flow.py",
+        ".claude/skills/flow/scripts/render.py"
+      ],
+      "sha": "21694a9"
     }
   ]
 }
