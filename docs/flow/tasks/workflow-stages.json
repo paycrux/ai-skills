@@ -422,5 +422,18 @@
     }
   ],
   "base": "d1e16e9",
-  "pruned": "2026-11-09"
+  "pruned": "2026-11-09",
+  "followUps": [
+    {
+      "date": "2026-11-09",
+      "text": "끈 단계도 데이터는 만들고 채우도록 되돌림 — 끄기는 내 페이지 숨김과 멈춤 생략만",
+      "files": [
+        ".claude/skills/flow/scripts/model.py",
+        ".claude/skills/flow/scripts/flow.py",
+        ".claude/skills/flow/scripts/render.py",
+        ".claude/skills/flow/references/plugin.md"
+      ],
+      "sha": "4766343"
+    }
+  ]
 }
