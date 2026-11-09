@@ -4,7 +4,9 @@
     python3 regress.py [--case GLOB]... [-j N] [--model MODEL] [--keep]
 
 Each case is evals/<name>/: case.json (prompt, branch, expect), fixture/ (a repository at the
-moment the request was made) and optionally branch/ (files committed on the branch on top of it). The fixture is copied to a temp git repo on `branch`, `claude -p`
+moment the request was made), optionally branch/ (files committed on the branch on top of it) and
+optionally home/ (the personal $FLOW_HOME — plugins; without it the case runs with an empty one, so
+this machine's own plugins never leak in). The fixture is copied to a temp git repo on `branch`, `claude -p`
 runs the prompt there, then the checks below run. No LLM grades anything. Exit 1 when any case fails.
 """
 import argparse
@@ -75,10 +77,40 @@ def judge_copy(repo, expect):
     return fails
 
 
-def judge(repo, fixture, expect):
+def judge_plugin(repo, env, want):
+    """The personal plugins Claude wrote: which stages they use and what they rename."""
+    home = Path(env["FLOW_HOME"])
+    cfg = home / "config.json"
+    ids = json.loads(cfg.read_text()).get("plugins", []) if cfg.is_file() else []
+    if not ids:
+        return ["켜진 플러그인이 없어요 ($FLOW_HOME/config.json plugins)"]
+    fails, uses, labels = [], [], {}
+    for pid in ids:
+        pj = home / "plugins" / pid / "plugin.json"
+        if not pj.is_file():
+            fails.append(f"플러그인 {pid}의 plugin.json이 없어요")
+            continue
+        st = json.loads(pj.read_text()).get("stages") or {}
+        if "use" in st:
+            uses.append(set(st["use"]))
+        labels.update(st.get("labels") or {})
+    for k in want.get("useLacks") or []:
+        if not uses or any(k in u for u in uses):
+            fails.append(f"플러그인이 {k} 단계를 끄지 않았어요")
+    for k, v in (want.get("labels") or {}).items():
+        if labels.get(k) != v:
+            fails.append(f"{k} 단계 이름 {labels.get(k)} (기대 {v})")
+    r = sh(repo, sys.executable, str(FLOW), "plugin", "check", "docs", env=env)
+    if r.returncode:
+        fails.append(f"flow.py plugin check exit {r.returncode}: {r.stdout.strip()[-300:]}")
+    return fails
+
+
+def judge(repo, fixture, expect, env=None, result=""):
     """Returns a list of failure lines; empty means the case passed."""
     fails = []
-    r = sh(repo, sys.executable, str(FLOW), "check", "docs")
+    env = env or dict(os.environ)
+    r = sh(repo, sys.executable, str(FLOW), "check", "docs", env=env)
     if r.returncode:
         fails.append(f"flow.py check exit {r.returncode}: {r.stdout.strip()[-400:]}")
     task = None
@@ -153,6 +185,11 @@ def judge(repo, fixture, expect):
             fails.append(f"{key} 상태가 {want}인 작업이 없어요")
     if expect.get("copy"):
         fails += judge_copy(repo, expect)
+    if expect.get("plugin"):
+        fails += judge_plugin(repo, env, expect["plugin"])
+    for word in expect.get("resultMentions") or []:
+        if word not in result:
+            fails.append(f"마지막 답에 '{word}'가 없어요")
     if expect.get("srcUnchanged"):
         changed = sh(repo, "git", "status", "--porcelain", "--", "src").stdout.strip()
         if changed:
@@ -179,21 +216,26 @@ def run_case(case_dir, args):
     if args.model:
         cmd += ["--model", args.model]
     started = time.time()
-    env = {**os.environ, "FLOW_NO_OPEN": "1"}
+    home = tmp / "flow-home"
+    if (case_dir / "home").is_dir():
+        shutil.copytree(case_dir / "home", home)
+    else:
+        home.mkdir()
+    env = {**os.environ, "FLOW_NO_OPEN": "1", "FLOW_HOME": str(home)}
     try:
         proc = sh(repo, *cmd, env=env, timeout=args.timeout)
         out, code = proc.stdout, proc.returncode
     except subprocess.TimeoutExpired:
         out, code = "", "timeout"
-    cost = None
+    cost, result = None, ""
     try:
         data = json.loads(out)
         res = next((m for m in reversed(data) if m.get("type") == "result"), {}) if isinstance(data, list) else data
-        cost = res.get("total_cost_usd")
+        cost, result = res.get("total_cost_usd"), str(res.get("result") or "")
     except ValueError:
         pass
     fails = [f"claude -p exit {code}"] if code else []
-    fails += judge(repo, fixture, case.get("expect") or {})
+    fails += judge(repo, fixture, case.get("expect") or {}, env, result)
     if not args.keep and not fails:
         shutil.rmtree(tmp, ignore_errors=True)
     return {"case": case_dir.name, "ok": not fails, "fails": fails, "seconds": round(time.time() - started),

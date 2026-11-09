@@ -22,6 +22,8 @@
     python3 flow.py feature <docs> <feature-id> --title "..." --root BRANCH [--prd URL]   a feature document skeleton
     python3 flow.py start <docs>/features/<id>/feature.json [--row KEY]... [--approve] [--dry-run]
     python3 flow.py jira <task.json> start|done [--dry-run]  walk the Jira issue one transition at a time; done also comments
+    python3 flow.py workflow [<docs>]                       the stages this person works with, and where each comes from
+    python3 flow.py plugin new <id> | plugin check [<docs>]  a personal plugin under $FLOW_HOME (default ~/.config/flow)
 
 Layout:
 
@@ -30,7 +32,7 @@ Layout:
     <docs>/<domain>/
       domain.json                title, figma, nodes, paths, links
       screens.json               SOT map of the domain's screens (markers S1…, off-screen states X1…)
-      tasks/<task-id>.json       one per task: stages plan · screen · grill · tasks · verify · done
+      tasks/<task-id>.json       one per task: stages plan · screen · grill · tasks · verify · done · release · <plugin>:<key>
       images/                    Figma screenshots and structure XML
       diagrams/                  Archify flow diagrams (<task>-<slug>.json + .html), shown by "diagram" blocks
       index.html                 domain page: tasks + SOT map (generated)
@@ -57,9 +59,10 @@ import feature as feat  # noqa: E402
 import migrate  # noqa: E402
 import render  # noqa: E402
 import share  # noqa: E402
-from model import (ITEM_ID, KINDS, REASON_BY, RESERVED_TASK_IDS, STAGE_KEYS, STATUSES, domains_of, frame_boxes, git,  # noqa: E402
-                   finished, parse_ref, plain, read_json, scope, stage_skeleton, stages_state, task_files, task_items, task_state, walk_refs,
-                   write_json)
+import workflow  # noqa: E402
+from model import (CORE_KEYS, ENABLED, ITEM_ID, KINDS, REASON_BY, RESERVED_TASK_IDS, STAGE_KEYS, STAGE_TITLE, STATUSES,  # noqa: E402
+                   domains_of, finished, frame_boxes, git, is_plugin_key, parse_ref, plain, read_json, scope, stage_skeleton, stages_state,
+                   task_files, task_items, task_keys, task_state, walk_refs, write_json)
 
 
 def parse_stages(text):
@@ -67,7 +70,16 @@ def parse_stages(text):
     bad = [k for k in keys if k not in STAGE_KEYS]
     if bad:
         sys.exit(f"없는 단계: {', '.join(bad)} — {' · '.join(STAGE_KEYS)} 중에서")
+    off = [k for k in keys if k not in ENABLED]
+    if off:
+        sys.exit(f"꺼진 단계: {', '.join(off)} — 이 워크플로에서 쓰지 않는 단계예요 (flow.py workflow로 확인). "
+                 "쓰려면 플러그인 stages.use에 넣어요")
     return keys
+
+
+def ordered(stages):
+    """Stages in catalog order; a plugin stage whose plugin is not active here keeps its place at the end."""
+    return {k: stages[k] for k in task_keys({"stages": stages})}
 
 
 def docs_of(target):
@@ -156,7 +168,7 @@ def cmd_add(args):
         if k not in task["stages"]:
             task["stages"][k] = stage_skeleton(k)
             made.append(k)
-    task["stages"] = {k: task["stages"][k] for k in STAGE_KEYS if k in task["stages"]}
+    task["stages"] = ordered(task["stages"])
     write_json(args.task, task)
     print(f"추가했어요: {', '.join(made) if made else '이미 다 있어요'}")
 
@@ -241,7 +253,7 @@ def stage_line(key, st):
 def brief_head(t):
     stages = t.get("stages", {})
     lines = [f"{t['id']} {t['title']} · {t.get('type', '')} · {t.get('branch', '')}"]
-    lines += ["  " + stage_line(k, stages[k]) for k in STAGE_KEYS if k in stages]
+    lines += ["  " + stage_line(k, stages[k]) for k in task_keys(t)]
     return lines
 
 
@@ -250,12 +262,15 @@ def cmd_brief(args):
     stages = t.get("stages", {})
     for line in brief_head(t):
         print(line)
-    keys = [args.stage] if args.stage else [k for k in STAGE_KEYS if k in stages]
+    keys = [args.stage] if args.stage else task_keys(t)
+    custom = {c["key"]: c for c in workflow.current()["custom"]}
     for k in keys:
         st = stages.get(k)
         if not st:
             continue
-        print(f"\n[{k}]")
+        print(f"\n[{k}]" + (f" {STAGE_TITLE[k]}" if STAGE_TITLE.get(k, k) != k and k not in CORE_KEYS else ""))
+        if custom.get(k, {}).get("instructions"):
+            print(f"절차: {custom[k]['instructions']}")
         if k == "grill":
             for r in st.get("rounds", []):
                 for q in r.get("questions", []):
@@ -482,7 +497,7 @@ def check_task(f, domain, index, problems):
     if not stages:
         problems.append(f"{rel}: 단계가 하나도 없어요 — flow.py add로 만들어요")
     for k, st in stages.items():
-        if k not in STAGE_KEYS:
+        if k not in STAGE_KEYS and not is_plugin_key(k):
             problems.append(f"{rel}: 없는 단계 {k}")
             continue
         if k == "grill":
@@ -530,13 +545,16 @@ def check_task(f, domain, index, problems):
         if isinstance(node, dict):
             if isinstance(node.get("id"), str) and ITEM_ID.match(node["id"]):
                 ids.append(node["id"])
-            for v in node.values():
-                gather(v)
+            for k, v in node.items():
+                if k != "ext":
+                    gather(v)
         elif isinstance(node, list):
             for v in node:
                 gather(v)
 
     gather({k: v for k, v in stages.items() if k != "grill"})
+    ext_problems(t, rel, problems)
+    custom_checks(f, t, rel, problems)
     dup = sorted({i for i in ids if ids.count(i) > 1})
     if dup:
         problems.append(f"{rel}: ID가 겹쳐요: {', '.join(dup)}")
@@ -544,6 +562,40 @@ def check_task(f, domain, index, problems):
     marks = list(user_marks(t))
     if marks:
         problems.append(f"{rel}: 사람이 바꾼 것 {len(marks)}건을 아직 처리하지 않았어요 — flow.py changes")
+
+
+def ext_problems(t, rel, problems):
+    """ext holds plugin data: {"<plugin id>": {...}} anywhere in a task. flow never reads inside it."""
+    def walk(node, where):
+        if isinstance(node, dict):
+            if "ext" in node:
+                e = node["ext"]
+                if not isinstance(e, dict) or any(not isinstance(v, dict) for v in e.values()):
+                    problems.append(f"{rel} {where}: ext는 {{\"<플러그인 id>\": {{...}}}} 모양이어야 해요")
+            for k, v in node.items():
+                if k != "ext":
+                    walk(v, node.get("id") or where)
+        elif isinstance(node, list):
+            for v in node:
+                walk(v, where)
+    walk(t, "작업")
+
+
+def custom_checks(task_file, t, rel, problems):
+    """A plugin stage marked done passes only when its check command exits 0 — run where the plugin is installed."""
+    for c in workflow.current()["custom"]:
+        st = (t.get("stages") or {}).get(c["key"])
+        if not st or st.get("status") != "done" or not c["check"]:
+            continue
+        top = git(Path(task_file).parent, "rev-parse", "--show-toplevel") or str(Path(task_file).parent)
+        env = {**os.environ, "FLOW_TASK": str(Path(task_file).resolve()), "FLOW_STAGE": c["key"], "FLOW_PLUGIN_DIR": c["dir"]}
+        try:
+            r = subprocess.run(c["check"], shell=True, cwd=top, env=env, capture_output=True, text=True, timeout=600)
+            code, tail = r.returncode, (r.stdout + r.stderr).strip().splitlines()[-1:] or [""]
+        except subprocess.TimeoutExpired:
+            code, tail = "timeout", [""]
+        if code != 0:
+            problems.append(f"{rel} {c['key']}: 완료인데 통과 명령이 실패했어요 ({code}) — {c['check']}" + (f" · {tail[0]}" if tail[0] else ""))
 
 
 def check_feature(fd, problems):
@@ -598,12 +650,15 @@ def planned_files(task, top):
     return out
 
 
-def changed_files(top, docs):
+def changed_files(top, docs, since=None):
+    """Files changed on this branch — from `since` (a task's own base commit) when given, else from
+    where the branch left its root."""
     branch = git(top, "branch", "--show-current")
     root = next((r for r in ROOTS if git(top, "rev-parse", "--verify", "-q", r)), None)
     if not root or branch in (root, root.split("/")[-1]):
         return None
-    base = git(top, "merge-base", "HEAD", root)
+    base = git(top, "rev-parse", "--verify", "-q", f"{since}^{{commit}}") if since else ""
+    base = base or git(top, "merge-base", "HEAD", root)
     files = set(git(top, "diff", "--name-only", base, "HEAD").splitlines())
     files |= set(git(top, "diff", "--name-only", "HEAD").splitlines())
     files |= set(git(top, "ls-files", "--others", "--exclude-standard").splitlines())
@@ -625,7 +680,7 @@ def plan_drift(docs, doms):
         return notes, problems
     top = Path(top_s).resolve()
     branch = git(top, "branch", "--show-current")
-    changed = None
+    changed = {}
     for d in doms:
         for f in task_files(d):
             t = read_json(f)
@@ -635,12 +690,14 @@ def plan_drift(docs, doms):
             planned = planned_files(t, top)
             if not planned:
                 continue
-            if changed is None:
-                changed = changed_files(top, docs)
-                if changed is None:
-                    return notes, problems
-            extra = sorted(c for c in changed if not covers(planned, c))
-            untouched = sorted(p for p in planned if not any(covers({p}, c) for c in changed))
+            since = t.get("base") or None
+            if since not in changed:
+                changed[since] = changed_files(top, docs, since)
+            files = changed[since]
+            if files is None:
+                return notes, problems
+            extra = sorted(c for c in files if not covers(planned, c))
+            untouched = sorted(p for p in planned if not any(covers({p}, c) for c in files))
             out = problems if st.get("status") == "done" else notes
             rel = f"{d.name}/tasks/{f.name}"
             if extra:
@@ -685,7 +742,10 @@ def repro_problems(docs, doms):
                     if touched:
                         problems.append(f"{rel} {item.get('id')}: 재현 테스트가 실패 커밋 {sha} 뒤에 바뀌었어요 — {', '.join(touched)}")
             if t.get("type") == "버그 수정" and st.get("status") == "done" and not found and "verify" not in stages:
-                problems.append(f"{rel}: 버그 수정인데 재현 테스트(테스트 · 실패 커밋 행)도 verify 단계도 없어요")
+                if "verify" in ENABLED:
+                    problems.append(f"{rel}: 버그 수정인데 재현 테스트(테스트 · 실패 커밋 행)도 verify 단계도 없어요")
+                else:
+                    problems.append(f"{rel}: 버그 수정인데 재현 테스트(테스트 · 실패 커밋 행)가 없어요 — 이 워크플로는 verify를 쓰지 않아서 재현 테스트만 인정해요")
     return problems
 
 
@@ -701,6 +761,7 @@ def cmd_check(args):
     for fd in feat.feature_dirs(docs):
         check_feature(fd, problems)
     problems += render.load_config(docs)[1]
+    problems += workflow.use(docs)["problems"]
     problems += [f"HTML: {s} — flow.py build {docs}" for s in render.stale(docs)]
     notes, drift = plan_drift(docs, doms)
     problems += drift + repro_problems(docs, doms)
@@ -714,6 +775,65 @@ def cmd_check(args):
             print(f"- {p}")
         sys.exit(1)
     print(f"문제 없음 — 도메인 {len(doms)}")
+
+
+# ---------------------------------------------------------------- workflow / plugin
+
+def cmd_workflow(args):
+    wf = workflow.use(locate_docs(args.docs))
+    print(f"개인 설정: {wf['home']}/config.json" + (f" · 플러그인 {', '.join(p['id'] for p in wf['plugins'])}" if wf["plugins"] else " · 플러그인 없음"))
+    print(f"팀 설정: {Path(wf['docs']) / workflow.CONFIG if wf['docs'] else '(docs를 못 찾았어요)'}"
+          + (f" · 필수 {', '.join(wf['required'])}" if wf["required"] else " · 필수 단계 없음"))
+    custom = {c["key"]: c for c in wf["custom"]}
+    for k in STAGE_KEYS:
+        on = "켜짐" if k in wf["enabled"] else "꺼짐"
+        name = STAGE_TITLE[k] + (f" (이름: {wf['label_from'][k]})" if k in wf["label_from"] else "")
+        line = f"  {k:<16} {on} · {wf['source'].get(k, '코어')} · {name}"
+        if k in custom:
+            line += f"\n  {'':<16} 절차 {custom[k]['instructions'] or '없음'}" + (f" · 통과 명령 {custom[k]['check']}" if custom[k]["check"] else "")
+        print(line)
+    for x in wf["problems"]:
+        print(f"- {x}")
+
+
+PLUGIN_SKELETON = {"stages": {"use": [k for k in CORE_KEYS], "labels": {}}, "custom": [], "style": ""}
+
+
+def cmd_plugin(args):
+    if args.action == "new":
+        if not args.id or not workflow.SHORT_KEY.fullmatch(args.id):
+            sys.exit("플러그인 id는 영어 소문자 · 숫자 · -로 (예: my-flow)")
+        folder = workflow.home() / "plugins" / args.id
+        if (folder / "plugin.json").exists():
+            sys.exit(f"이미 있는 플러그인이에요: {folder / 'plugin.json'}")
+        folder.mkdir(parents=True, exist_ok=True)
+        write_json(folder / "plugin.json", {"id": args.id, **json.loads(json.dumps(PLUGIN_SKELETON))})
+        cfg_path = workflow.home() / "config.json"
+        cfg = read_json(cfg_path, {})
+        if args.id not in cfg.setdefault("plugins", []):
+            cfg["plugins"].append(args.id)
+        write_json(cfg_path, cfg)
+        print(f"플러그인을 만들고 켰어요: {folder / 'plugin.json'}")
+        return
+    wf = workflow.use(locate_docs(args.id))
+    if not wf["plugins"] and not wf["problems"]:
+        print(f"켜진 플러그인이 없어요 — {wf['home']}/config.json의 plugins")
+        return
+    if wf["problems"]:
+        print(f"문제 {len(wf['problems'])}건")
+        for x in wf["problems"]:
+            print(f"- {x}")
+        sys.exit(1)
+    print(f"문제 없음 — 플러그인 {', '.join(p['id'] for p in wf['plugins'])}")
+
+
+def locate_docs(path):
+    """A docs folder for the workflow: the path's docs tree, or ./docs, or none."""
+    for cand in (path, Path(path or ".") / "docs"):
+        d = workflow.docs_for(cand) if cand else None
+        if d:
+            return d
+    return None
 
 
 # ---------------------------------------------------------------- migrate
@@ -964,7 +1084,7 @@ def cmd_log(args):
     print(f"{name}/{task['id']}에 후속 수정 한 줄을 남겼어요 ({sha})")
 
 
-KEEP_Q = ("id", "title", "intent", "decision", "reason", "appliedTo", "to")
+KEEP_Q = ("id", "title", "intent", "decision", "reason", "appliedTo", "to", "ext")
 # 테스트 · 실패 커밋 stay so check can still hold a pruned bug fix to its reproduction test.
 KEEP_ROWS = ("결정", "파일", "테스트", "실패 커밋")
 
@@ -972,11 +1092,15 @@ KEEP_ROWS = ("결정", "파일", "테스트", "실패 커밋")
 def cmd_prune(args):
     task = read_json(args.task)
     if not finished(task):
-        if "done" not in (task.get("stages") or {}):
+        if "done" not in (task.get("stages") or {}) and "done" in ENABLED:
             sys.exit(f"{task['id']}: 05 완료 단계가 없어요 — 구현만으로는 끝난 작업이 아니에요. "
                      f"flow.py add {args.task} done 뒤 리뷰 · 크리티컬 수정 · 다시 테스트를 마치고 정리해요")
         sys.exit(f"{task['id']}: 아직 끝나지 않은 작업이에요 — 모든 단계가 done이고 05 완료 체크리스트"
                  "(리뷰 · 수정 뒤 테스트 · PR)가 다 체크돼야 정리해요")
+    gate = []
+    custom_checks(args.task, task, task["id"], gate)
+    if gate:
+        sys.exit("\n".join(gate))
     stages = task.get("stages") or {}
     dropped = 0
     for r in (stages.get("grill") or {}).get("rounds", []):
@@ -1172,7 +1296,7 @@ def main():
     p.set_defaults(fn=cmd_pull)
     p = sub.add_parser("brief")
     p.add_argument("task")
-    p.add_argument("--stage", choices=STAGE_KEYS)
+    p.add_argument("--stage")
     p.set_defaults(fn=cmd_brief)
     for name, fn in (("changes", cmd_changes), ("check", cmd_check)):
         p = sub.add_parser(name)
@@ -1246,7 +1370,18 @@ def main():
     p.add_argument("expanded", nargs="+")
     p.add_argument("-o", "--out", required=True)
     p.set_defaults(fn=cmd_merge_xml)
+    p = sub.add_parser("workflow")
+    p.add_argument("docs", nargs="?")
+    p.set_defaults(fn=cmd_workflow)
+    p = sub.add_parser("plugin")
+    p.add_argument("action", choices=["new", "check"])
+    p.add_argument("id", nargs="?", help="new: the plugin id · check: a docs folder for the team's required stages")
+    p.set_defaults(fn=cmd_plugin)
     args = ap.parse_args()
+    if args.fn not in (cmd_workflow, cmd_plugin):
+        here = next((getattr(args, a) for a in ("target", "docs", "task", "domain", "page", "file", "feature", "dir", "base")
+                     if isinstance(getattr(args, a, None), str)), None)
+        workflow.use(locate_docs(here))
     args.fn(args)
 
 

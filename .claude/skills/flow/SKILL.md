@@ -1,6 +1,6 @@
 ---
 name: flow
-description: "Run a frontend task from PRD to PR as JSON documents under docs/<domain>/, rendered to linked static HTML pages that open from disk with no server — Figma SOT map per domain, question rounds answered in the page, plan, build, verify. A PRD spanning several Jira stories gets a feature document that cuts it into [프론트] issues, worktrees and flow tasks. Use when the user runs /flow, hands over PRD + Figma links for a screen, or hands over a PRD with several Jira story links."
+description: "Run a frontend task from PRD to PR as JSON documents under docs/<domain>/, rendered to linked static HTML pages that open from disk with no server — Figma SOT map per domain, question rounds answered in the page, plan, build, verify, release. A PRD spanning several Jira stories gets a feature document that cuts it into [프론트] issues, worktrees and flow tasks. Each person can layer a personal plugin on top: turn optional stages off, rename stages, add their own stages, restyle their pages. Use when the user runs /flow, hands over PRD + Figma links for a screen, hands over a PRD with several Jira story links, or asks to change their own flow workflow (내 플러그인, 단계 끄기, 단계 이름 바꾸기, 단계 추가)."
 argument-hint: "<PRD link or text> [figma links] [Jira key(s)] — or a task ID to resume"
 ---
 
@@ -14,8 +14,13 @@ browser's localStorage, and `flow.py pull` reads it back into the JSON. Claude r
 JSON, then rebuilds — the HTML is always the finished version Claude wrote.
 
 ```
-01 기획 · 화면 → 02 질문 ⇄ (01 · 03 · 04) → 03 구현 계획 · 구현 → 04 검증 → 05 완료
+01 기획 · 화면 → 02 질문 ⇄ (01 · 03 · 04) → 03 구현 계획 · 구현 → 04 검증 → 05 완료 → 06 배포
 ```
+
+That is the core catalog. The team's `flow.config.json` can require stages, and each person's
+plugins can turn the optional ones off, rename them and add their own. `flow.py workflow <docs>`
+prints the stages this person works with — a stage it shows as off is skipped everywhere below,
+and a plugin stage is worked from its own instructions file (`references/plugin.md`).
 
 The user acts in four places only: answering questions, approving the plan, unblocking an item,
 confirming completion. Everywhere else, keep going.
@@ -26,6 +31,7 @@ Read before starting:
 - `${CLAUDE_SKILL_DIR}/references/sot-map.md` — the `screen` stage, when the task has a screen
 - `${CLAUDE_SKILL_DIR}/references/questions.md` — the `grill` stage, every time a round opens or answers arrive
 - `${CLAUDE_SKILL_DIR}/references/feature.md` — when the request carries a PRD and several Jira stories
+- `${CLAUDE_SKILL_DIR}/references/plugin.md` — when the person asks to change their own workflow, or a task has a plugin stage
 
 `flow.py` below means `python3 ${CLAUDE_SKILL_DIR}/scripts/flow.py`. `<docs>` is the repository's
 `docs/` folder. Write the full command each time — `F="python3 …"; $F build` fails in zsh, which
@@ -105,6 +111,8 @@ flow.py add <docs>/<domain>/tasks/<id>.json grill        # later, when a questio
 | A PRD section turns out to cover the task | `plan` |
 | The result has to be checked on a real screen, state by state | `verify` |
 | Requests to the server or PRD remain to hand over at the end | `done` |
+| The work has to be confirmed on a deployed environment, or the Jira issue moved after it | `release` |
+| A plugin stage applies (`flow.py workflow` lists it) | `<plugin>:<key>` |
 
 Add PRD / Figma / Jira URLs to the task's `links` as `{"label", "url"}`.
 
@@ -231,7 +239,9 @@ first — it walks the issue to 작업 중 one transition at a time.
 - Decisions made while building go on the item as a `결정` row and stay after it is checked.
 - Update the conclusion at each Phase boundary, in sentences.
 
-**A `버그 수정` task fixes test-first.** Phase 1 is the reproduction, and the fix is code only:
+**A `버그 수정` task fixes test-first.** Phase 1 is the reproduction, and the fix is code only.
+Already in the 03 plan, the reproduction item carries `["테스트", "<code>src/foo.test.ts</code>"]`
+naming the test file it will write — not only a `파일` row; `실패 커밋` is added once committed:
 
 1. Write a test that reproduces the bug. Run it and see it fail for the reported reason.
 2. Commit the test alone. Put `["테스트", "<code>src/foo.test.ts</code>"]` and
@@ -264,8 +274,9 @@ off-screen state (`V3`: `[[X3]] …`), plus the screens' main states.
 
 ## Step 7: 05 완료
 
-Implementation alone does not finish a task. Every task that changed code goes through this step,
-so add the stage first when it is missing (`flow.py add <task.json> done`). Work its checklist in
+Implementation alone does not finish a task. Every task that changed code goes through this step
+— unless `flow.py workflow` shows `done` off, in which case the task is finished when every stage it
+has is `done` and the review and retest below are not tracked. Add the stage first when it is missing (`flow.py add <task.json> done`). Work its checklist in
 order — each item is ticked only when it actually happened:
 
 - D1: rewrite SOT evidence from plan-time guesses to real `file:line`, update `base` to the current
@@ -292,6 +303,23 @@ order — each item is ticked only when it actually happened:
 - `prune` refuses a task that is not finished — no 05 stage, or an unticked D item. A task whose
   other stages are all done but has no finished 05 shows as 진행 중, never 완료, and
   `flow.py current` says what is left. `check` fails on a finished task without `pruned`.
+
+## Step 8: 06 배포 — when `release` exists
+
+Only when the result has to be confirmed on a deployed environment, or the Jira issue moves only
+after a deploy. L1: the change is on dev or stg (name the build or deploy). L2: the main states seen
+on that environment. L3: the Jira issue walked to its done status — a transition only a person can
+take is written in the conclusion as 사람이 옮길 것. Set `release` to `done` with its conclusion,
+then `prune` as in Step 7; `prune` waits for every stage, this one included.
+
+## Plugin stages and the person's own workflow
+
+A task stage keyed `<plugin>:<key>` belongs to a personal plugin. Read its instructions file first
+(`flow.py brief <task.json> --stage <key>` prints the path), work it like any stage, and set it
+`done` only when its `check` command passes — `flow.py check` runs it. When the person asks to change
+how they work with flow (turn a stage off, rename, add a stage, restyle their pages, keep their own
+data), follow `references/plugin.md`: edit their plugin, never the team's `flow.config.json`, unless
+they say the change is for the whole team. A stage the team requires stays on; say so.
 
 ## Follow-ups on a finished task
 
@@ -356,6 +384,8 @@ Chat messages at a stop are two or three lines plus what the user should do; the
 - **Never write legacy documents** — anything under `docs/` outside a domain folder is read only
 - **`flow.py check` passes before reporting a stage done**
 - **Create a stage only when the task needs it** — `add` it at the moment the need appears, never "just in case"
+- **The workflow decides which stages exist** — `flow.py workflow`; never add a stage it shows as off,
+  and never turn off a stage the team requires
 - **Open a page only at a stop** — `flow.py open <file>` builds, then opens the OS default browser; elsewhere print the path
 - **Generated files are never committed** — pages, `share/`, `.receipts/`; JSON, `prd.md`, Figma images and structure XML are
 - **A feature document only shows and records** — progress is read from each row's task; work is never sent to another session

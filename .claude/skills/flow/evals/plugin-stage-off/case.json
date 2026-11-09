@@ -1,0 +1,13 @@
+{
+  "from": "personal plugin — a teammate turns optional stages off and renames one in plain words; a team-required stage stays on",
+  "branch": "feat/gift-price-format",
+  "prompt": "/flow 내 플러그인 만들어줘. 질문 단계는 안 쓸 거고 05 완료 단계도 끌래. '구현 계획 · 구현'은 '작업 쪼개기'로 이름 바꿔줘.",
+  "expect": {
+    "plugin": {
+      "useLacks": ["grill"],
+      "labels": {"tasks": "작업 쪼개기"}
+    },
+    "resultMentions": ["필수"],
+    "srcUnchanged": true
+  }
+}

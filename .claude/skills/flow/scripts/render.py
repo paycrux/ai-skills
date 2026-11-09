@@ -6,9 +6,10 @@ import re
 from pathlib import Path
 
 import feature as feat
-from model import (DEFAULT_OPTIONS, KIND, PAGES, REASON_BY, REF, STAGE_FILE, STAGE_TITLE, STATE_LABEL, UNSURE, domains_of,
-                   frame_boxes, git, grill_state, page_state, parse_ref, place, plain, read_json, stage_state,
-                   task_files, task_items, task_state, walk_refs)
+import workflow
+from model import (CORE_PAGES, DEFAULT_OPTIONS, KIND, REASON_BY, REF, STAGE_TITLE, STATE_LABEL, UNSURE, domains_of,
+                   frame_boxes, git, grill_state, page_file, page_state, parse_ref, place, plain, read_json, stage_state,
+                   task_files, task_items, task_pages, task_state, walk_refs)
 
 SKILL = Path(__file__).resolve().parent.parent
 ASSETS = SKILL / "assets"
@@ -17,7 +18,7 @@ GENERATOR = '<meta name="generator" content="flow">'
 LEGACY_EXT = {".md", ".html"}
 AUDIENCE = {"plan": "기획", "backend": "백엔드"}
 CONFIG = "flow.config.json"
-HIDE_PAGES = {page for page, _, _, _ in PAGES}
+HIDE_PAGES = {page for page, _, _, _ in CORE_PAGES}
 HIDE_FIELDS = ("said", "context", "body", "preview", "note", "followUp")
 
 
@@ -48,9 +49,9 @@ def load_config(docs):
         else:
             problems.append(f"{CONFIG}: hide '{h}' — page:<{'|'.join(sorted(HIDE_PAGES))}>, "
                             f"field:<{'|'.join(HIDE_FIELDS)}>, block:<type 또는 제목> 중 하나")
-    unknown = sorted(set(raw) - {"style", "hide"})
+    unknown = sorted(set(raw) - {"style", "hide", "workflow"})
     if unknown:
-        problems.append(f"{CONFIG}: 모르는 키 {', '.join(unknown)} — style · hide만 읽어요")
+        problems.append(f"{CONFIG}: 모르는 키 {', '.join(unknown)} — style · hide · workflow만 읽어요")
     return {"style": style, "hide": hide}, problems
 
 
@@ -75,6 +76,7 @@ def is_generated(path):
 class Site:
     def __init__(self, docs):
         self.docs = Path(docs)
+        self.workflow = workflow.use(self.docs)
         self.domains = {}
         for d in domains_of(self.docs):
             info = read_json(d / "domain.json")
@@ -128,7 +130,7 @@ class Site:
         return "done" if all(x == "done" for x in states) else ("now" if "done" in states else "wait")
 
     def task_page(self, d, t, key=None):
-        return f"{d}/{t}/{STAGE_FILE[key] if key else 'index.html'}"
+        return f"{d}/{t}/{page_file(key) if key else 'index.html'}"
 
     def sot(self, d, item):
         dom = self.domains.get(d)
@@ -258,8 +260,12 @@ def mock_theme(ctx):
 
 
 def user_style(ctx):
-    css = ctx.site.config["style"].replace("</", "<\\/")
-    return f"<style data-flow-config>\n{css}</style>" if css else ""
+    out = ""
+    for attr, css in [("data-flow-config", ctx.site.config["style"])] + [("data-flow-plugin", c) for c in ctx.site.workflow["styles"]]:
+        if css:
+            css = css.replace("</", "<\\/")
+            out += f"<style {attr}>\n{css}</style>"
+    return out
 
 
 def shell(ctx, title, nav, body, wide=False, answers=None, shared=None):
@@ -506,7 +512,7 @@ def domain_state(dom):
 def nav_steps(ctx, d, t, current):
     task = ctx.site.domains[d]["tasks"][t]
     steps = []
-    for n, (k, title, fname, keys) in enumerate(PAGES, 1):
+    for n, (k, title, fname, keys) in enumerate(task_pages(task), 1):
         if ctx.site.hidden("page", k):
             continue
         s = page_state(task, keys)
@@ -816,7 +822,7 @@ def task_index(site, d, t, shared=None):
     task = dom["tasks"][t]
     ctx = Ctx(site, site.task_page(d, t), d, t)
     cards, skipped = [], []
-    for n, (k, title, fname, keys) in enumerate(PAGES, 1):
+    for n, (k, title, fname, keys) in enumerate(task_pages(task), 1):
         if site.hidden("page", k):
             continue
         s = page_state(task, keys)
@@ -1024,7 +1030,7 @@ def page_conclusion(task, keys):
 def stage_page(site, d, t, page, n, shared=None):
     task = site.domains[d]["tasks"][t]
     ctx = Ctx(site, site.task_page(d, t, page), d, t)
-    _, title, _, keys = next(x for x in PAGES if x[0] == page)
+    _, title, _, keys = next(x for x in task_pages(task) if x[0] == page)
     stages = task["stages"]
     s = page_state(task, keys)
     if page == "grill":
@@ -1178,7 +1184,7 @@ def render_all(docs):
                 copies, shared = share.pages(site, d, t)
                 pages.update(copies)
             pages[site.task_page(d, t)] = task_index(site, d, t, shared)
-            for n, (page, _, _, keys) in enumerate(PAGES, 1):
+            for n, (page, _, _, keys) in enumerate(task_pages(task), 1):
                 if any(k in (task.get("stages") or {}) for k in keys) and not site.hidden("page", page):
                     pages[site.task_page(d, t, page)] = stage_page(site, d, t, page, n, shared)
     return site, pages

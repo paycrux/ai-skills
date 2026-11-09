@@ -6,25 +6,88 @@ import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-STAGES = [
+CORE_STAGES = [
     ("plan", "기획"),
     ("screen", "화면 · SOT 맵"),
     ("grill", "질문"),
     ("tasks", "구현 계획 · 구현"),
     ("verify", "검증"),
     ("done", "완료"),
+    ("release", "배포"),
 ]
-PAGES = [
+CORE_PAGES = [
     ("plan", "기획 · 화면", "01-plan.html", ("plan", "screen")),
     ("grill", "질문", "02-grill.html", ("grill",)),
     ("tasks", "구현 계획 · 구현", "03-tasks.html", ("tasks",)),
     ("verify", "검증", "04-verify.html", ("verify",)),
     ("done", "완료", "05-done.html", ("done",)),
+    ("release", "배포", "06-release.html", ("release",)),
 ]
-STAGE_KEYS = [k for k, _ in STAGES]
-STAGE_TITLE = dict(STAGES)
-STAGE_FILE = {k: f for _, _, f, keys in PAGES for k in keys}
-PAGE_OF = {k: page for page, _, _, keys in PAGES for k in keys}
+CORE_KEYS = [k for k, _ in CORE_STAGES]
+# The live catalog: the core stages plus the active plugins' own stages, with labels applied.
+# workflow.use(docs) refreshes these in place, so every module that imported them sees the change.
+STAGES = list(CORE_STAGES)
+PAGES = list(CORE_PAGES)
+STAGE_KEYS = list(CORE_KEYS)
+STAGE_TITLE = dict(CORE_STAGES)
+STAGE_FILE = {k: f for _, _, f, keys in CORE_PAGES for k in keys}
+PAGE_OF = {k: page for page, _, _, keys in CORE_PAGES for k in keys}
+ENABLED = set(CORE_KEYS)
+CUSTOM = {}
+
+
+def apply_workflow(custom=(), labels=None, enabled=None):
+    """Rebuild the live catalog. custom: [{"key", "title", "after"}] in plugin order."""
+    labels = labels or {}
+    stages, pages = list(CORE_STAGES), list(CORE_PAGES)
+    for c in custom:
+        at = next((i for i, (k, _) in enumerate(stages) if k == c["after"]), len(stages) - 1)
+        while at + 1 < len(stages) and ":" in stages[at + 1][0]:
+            at += 1
+        stages.insert(at + 1, (c["key"], c["title"]))
+        pat = next((i for i, (_, _, _, keys) in enumerate(pages) if stages[at][0] in keys), len(pages) - 1)
+        pages.insert(pat + 1, (c["key"], c["title"], foreign_file(c["key"]), (c["key"],)))
+    titles = {k: labels.get(k, t) for k, t in stages}
+    STAGES[:] = [(k, titles[k]) for k, _ in stages]
+    PAGES[:] = [(page, " · ".join(titles[k] for k in keys) if any(k in labels for k in keys) else title, f, keys)
+                for page, title, f, keys in pages]
+    STAGE_KEYS[:] = [k for k, _ in stages]
+    STAGE_TITLE.clear()
+    STAGE_TITLE.update(titles)
+    STAGE_FILE.clear()
+    STAGE_FILE.update({k: f for _, _, f, keys in PAGES for k in keys})
+    PAGE_OF.clear()
+    PAGE_OF.update({k: page for page, _, _, keys in PAGES for k in keys})
+    ENABLED.clear()
+    ENABLED.update(STAGE_KEYS if enabled is None else enabled)
+    CUSTOM.clear()
+    CUSTOM.update({c["key"]: c for c in custom})
+
+
+def foreign_file(key):
+    return f"x-{key.replace(':', '-')}.html"
+
+
+def is_plugin_key(key):
+    return bool(re.fullmatch(r"[a-z][a-z0-9-]*:[a-z][a-z0-9-]*", str(key)))
+
+
+def task_keys(task):
+    """The task's stage keys in catalog order; a plugin stage whose plugin is not active here goes last."""
+    stages = task.get("stages") or {}
+    return [k for k in STAGE_KEYS if k in stages] + [k for k in stages if k not in STAGE_KEYS and is_plugin_key(k)]
+
+
+def task_pages(task):
+    """PAGES plus a plain page for each plugin stage of this task whose plugin is not active here."""
+    extra = [(k, k, foreign_file(k), (k,)) for k in task_keys(task) if k not in STAGE_KEYS]
+    return PAGES + extra
+
+
+def page_file(key):
+    return STAGE_FILE.get(key) or foreign_file(key)
+
+
 STATUSES = ("done", "now", "ask", "wait")
 STATE_LABEL = {"done": "완료", "now": "진행 중", "ask": "질문 · 결정 대기", "wait": "시작 전", "skip": "건너뜀"}
 KINDS = {"screens": ("server", "format", "calc", "action", "pending", "out"),
@@ -34,7 +97,7 @@ KIND = {
     "action": ("Action", "act"), "pending": ("확인 필요", "pend"), "out": ("범위 제외", "out"),
     "prop": ("Prop", "data"), "slot": ("Slot", "comp"), "state": ("State", "act"), "token": ("Token", "comp"),
 }
-ITEM_ID = re.compile(r"^(S\d+|X\d+|R\d+(-Q\d+)?|P\d+(-[A-Za-z0-9]+)?|C\d+(-\d+)?|[BVD]\d+)$")
+ITEM_ID = re.compile(r"^(S\d+|X\d+|R\d+(-Q\d+)?|P\d+(-[A-Za-z0-9]+)?|C\d+(-\d+)?|[BVDLE]\d+)$")
 REF = re.compile(r"\[\[([^\]\s]+)\]\]")
 RESERVED_TASK_IDS = {"tasks", "images", "diagrams", "verify", "index"}
 DEFAULT_OPTIONS = [{"value": "yes", "label": "추천대로"}, {"value": "no", "label": "다르게"}]
@@ -99,6 +162,14 @@ def stage_skeleton(key):
         return {"status": "wait", "summary": "검증 전", "conclusion": [],
                 "blocks": [{"type": "checklist", "title": "화면 밖 상태 확인", "items": []},
                            {"type": "checklist", "title": "버그", "items": []}]}
+    if key == "release":
+        return {"status": "wait", "summary": "배포 전", "conclusion": [],
+                "blocks": [{"type": "checklist", "title": "배포", "items": [
+                    {"id": "L1", "title": "배포 환경(dev · stg)에 반영됨", "done": False},
+                    {"id": "L2", "title": "배포된 화면에서 주요 상태를 확인함", "done": False},
+                    {"id": "L3", "title": "Jira 이슈를 완료 상태로 옮김 — 사람이 옮길 것이면 결론에 기록", "done": False}]}]}
+    if key != "done":
+        return {"status": "wait", "summary": "시작 전", "conclusion": [], "blocks": []}
     return {"status": "wait", "summary": "리뷰 전", "conclusion": [],
             "blocks": [{"type": "checklist", "title": "PR 전", "items": [
                 {"id": "D1", "title": "SOT 맵 근거를 실제 코드 파일:줄로 바꿈", "done": False},
@@ -183,16 +254,19 @@ def task_state(task):
 
 def finished(task):
     """Over and ready to prune: every stage done, and a 05 완료 stage whose checklist — review,
-    the critical fixes, tests run again after them, the PR — is all ticked. Implementation alone is not."""
+    the critical fixes, tests run again after them, the PR — is all ticked. Implementation alone is not.
+    Where the workflow turns 05 완료 off, every stage done is enough."""
     st = (task.get("stages") or {}).get("done")
-    if not st or stages_state(task) != "done":
+    if stages_state(task) != "done":
         return False
+    if not st:
+        return "done" not in ENABLED
     total, ticked = checklist_count(st)
     return bool(total) and ticked == total
 
 
 def stages_state(task):
-    states = [stage_state(task, k) for k in STAGE_KEYS]
+    states = [stage_state(task, k) for k in task_keys(task)]
     states = [s for s in states if s["status"] != "skip"]
     if not states:
         return "wait"
@@ -223,7 +297,7 @@ def walk_refs(node, owner, visit):
         elif isinstance(node.get("id"), str) and re.fullmatch(r"Q\d+", node["id"]) and re.fullmatch(r"R\d+", owner or ""):
             here = f"{owner}-{node['id']}"
         for k, v in node.items():
-            if k != "id":
+            if k not in ("id", "ext"):
                 walk_refs(v, here, visit)
 
 
@@ -250,8 +324,9 @@ def task_items(task):
         if isinstance(node, dict):
             if isinstance(node.get("id"), str) and ITEM_ID.match(node["id"]):
                 out.setdefault(node["id"], (key, node))
-            for v in node.values():
-                visit(v, key)
+            for k, v in node.items():
+                if k != "ext":
+                    visit(v, key)
         elif isinstance(node, list):
             for v in node:
                 visit(v, key)

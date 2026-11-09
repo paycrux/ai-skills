@@ -1,0 +1,11 @@
+# flow:begin — flow.py build writes these; never committed
+/index.html
+/flow/index.html
+/flow/*/
+!/flow/tasks/
+!/flow/images/
+!/flow/diagrams/
+!/flow/verify/
+/flow/diagrams/.receipts/
+/features/*/index.html
+# flow:end

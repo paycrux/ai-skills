@@ -1,4 +1,6 @@
 import json
+import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -6,6 +8,12 @@ import unittest
 from pathlib import Path
 
 FLOW = Path(__file__).with_name("flow.py")
+
+
+# Personal plugins live under $FLOW_HOME; point it at an empty folder so this machine's own
+# plugins never leak into a test. A test that needs a plugin sets HOME_DIR's contents itself.
+HOME_DIR = tempfile.TemporaryDirectory()
+os.environ["FLOW_HOME"] = HOME_DIR.name
 
 
 def run(cwd, *args):
@@ -252,6 +260,22 @@ class RecommendedReasonTest(unittest.TestCase):
         self.assertIn("by: inferred", flow(self.fx.root, "changes", str(self.fx.docs)).stdout)
 
 
+class TaskBaseTest(unittest.TestCase):
+    def test_base_limits_drift_to_the_tasks_own_commits(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            fx = Fixture(tmp)
+            (fx.root / "src" / "a.ts").write_text("export const earlier = 1\n")
+            base = fx.commit("an earlier task on this branch")
+            fx.plan("done", [dict(item("P1-1", "src/b.ts"), done=True)])
+            (fx.root / "src" / "b.ts").write_text("export const mine = 1\n")
+            self.assertIn("src/a.ts", fx.check().stdout)
+            t = json.loads(fx.task.read_text())
+            t["base"] = base
+            fx.task.write_text(json.dumps(t, ensure_ascii=False))
+            flow(fx.root, "build", str(fx.docs))
+            self.assertNotIn("src/a.ts", fx.check().stdout)
+
+
 class ConfigTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -285,6 +309,128 @@ class ConfigTest(unittest.TestCase):
         self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
         for word in ("missing.css", "field:why", "page:nope", "theme"):
             self.assertIn(word, r.stdout)
+
+
+def set_plugins(**plugins):
+    """Write $FLOW_HOME: plugin id → plugin.json body (plus "files": {name: text}); none clears it."""
+    home = Path(os.environ["FLOW_HOME"])
+    shutil.rmtree(home, ignore_errors=True)
+    home.mkdir(parents=True)
+    for pid, body in plugins.items():
+        folder = home / "plugins" / pid
+        folder.mkdir(parents=True)
+        for name, text in (body.pop("files", None) or {}).items():
+            (folder / name).write_text(text)
+        (folder / "plugin.json").write_text(json.dumps({"id": pid, **body}, ensure_ascii=False))
+    (home / "config.json").write_text(json.dumps({"plugins": list(plugins)}))
+
+
+class WorkflowTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.fx = Fixture(self.tmp.name)
+        set_plugins()
+
+    def tearDown(self):
+        set_plugins()
+        self.tmp.cleanup()
+
+    def team(self, wf):
+        (self.fx.docs / "flow.config.json").write_text(json.dumps({"workflow": wf}, ensure_ascii=False))
+
+    def test_release_stage_has_its_page_and_checklist(self):
+        r = flow(self.fx.root, "add", str(self.fx.task), "release")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        t = json.loads(self.fx.task.read_text())
+        self.assertEqual([i["id"] for i in t["stages"]["release"]["blocks"][0]["items"]], ["L1", "L2", "L3"])
+        flow(self.fx.root, "build", str(self.fx.docs))
+        self.assertTrue((self.fx.docs / "d" / "t" / "06-release.html").exists())
+
+    def test_plugin_turns_a_stage_off_and_renames_one(self):
+        set_plugins(mine={"stages": {"use": ["tasks", "done"], "labels": {"tasks": "작업 쪼개기"}}})
+        r = flow(self.fx.root, "add", str(self.fx.task), "grill")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("꺼진 단계", r.stderr)
+        flow(self.fx.root, "build", str(self.fx.docs))
+        self.assertIn("작업 쪼개기", (self.fx.docs / "d" / "t" / "03-tasks.html").read_text())
+        self.assertEqual(flow(self.fx.root, "plugin", "check", str(self.fx.docs)).returncode, 0)
+
+    def test_team_required_stage_cannot_be_turned_off(self):
+        self.team({"required": ["verify"]})
+        set_plugins(mine={"stages": {"use": ["tasks"]}})
+        r = flow(self.fx.root, "plugin", "check", str(self.fx.docs))
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("팀 필수 단계 verify", r.stdout)
+        self.assertEqual(flow(self.fx.root, "add", str(self.fx.task), "verify").returncode, 0)
+        self.assertIn("팀 필수", flow(self.fx.root, "workflow", str(self.fx.docs)).stdout)
+
+    def test_bad_team_and_plugin_entries_fail(self):
+        self.team({"required": ["nope"], "order": 1})
+        set_plugins(mine={"stages": {"use": ["tasks"], "labels": {"zzz": "x"}}, "custom": [{"key": "Bad Key"}], "theme": 1})
+        r = flow(self.fx.root, "plugin", "check", str(self.fx.docs))
+        self.assertEqual(r.returncode, 1)
+        for word in ("nope", "order", "zzz", "Bad Key", "theme"):
+            self.assertIn(word, r.stdout)
+
+    def test_without_done_every_stage_done_finishes_the_task(self):
+        set_plugins(mine={"stages": {"use": ["tasks"]}})
+        self.fx.plan("done", [dict(item("P1-1", "src/a.ts"), done=True)])
+        r = flow(self.fx.root, "prune", str(self.fx.task))
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        set_plugins()
+        r = flow(self.fx.root, "prune", str(self.fx.task))
+        self.assertIn("정리", r.stdout + r.stderr)
+
+    def test_plugin_stage_runs_its_check_and_teammates_see_a_plain_page(self):
+        set_plugins(mine={"custom": [{"key": "perf", "title": "성능 측정", "after": "verify", "instructions": "perf.md",
+                                      "check": "test -f perf-ok"}], "files": {"perf.md": "# perf"}})
+        self.assertEqual(flow(self.fx.root, "add", str(self.fx.task), "mine:perf").returncode, 0)
+        t = json.loads(self.fx.task.read_text())
+        t["stages"]["mine:perf"].update({"status": "done", "conclusion": ["측정함"]})
+        self.fx.task.write_text(json.dumps(t, ensure_ascii=False))
+        flow(self.fx.root, "build", str(self.fx.docs))
+        self.assertTrue((self.fx.docs / "d" / "t" / "x-mine-perf.html").exists())
+        self.assertIn("성능 측정", (self.fx.docs / "d" / "t" / "index.html").read_text())
+        self.assertIn("perf.md", flow(self.fx.root, "brief", str(self.fx.task), "--stage", "mine:perf").stdout)
+        r = self.fx.check()
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("test -f perf-ok", r.stdout)
+        (self.fx.root / "perf-ok").write_text("")
+        self.assertNotIn("mine:perf", self.fx.check().stdout)
+        set_plugins()
+        flow(self.fx.root, "build", str(self.fx.docs))
+        r = self.fx.check()
+        self.assertNotIn("없는 단계", r.stdout)
+        self.assertTrue((self.fx.docs / "d" / "t" / "x-mine-perf.html").exists())
+
+    def test_ext_is_kept_by_prune_and_its_ids_are_ignored(self):
+        flow(self.fx.root, "add", str(self.fx.task), "grill")
+        t = json.loads(self.fx.task.read_text())
+        t["ext"] = {"mine": {"minutes": 30}}
+        t["stages"]["tasks"] = {"status": "done", "summary": "s", "conclusion": ["c"], "blocks": [
+            {"type": "checklist", "id": "P1", "title": "P1", "items": [
+                {"id": "P1-1", "title": "a", "done": True, "rows": [["메모", "x"]], "ext": {"mine": {"id": "P1-1"}}}]}]}
+        t["intent"] = [{"text": "i", "state": "confirmed", "basis": "b"}]
+        t["stages"]["grill"] = {"rounds": [{"id": "R1", "title": "r", "questions": [
+            {"id": "Q1", "title": "q", "intent": "i", "decision": "d", "reason": {"text": "r", "by": "user"},
+             "appliedTo": "[[P1-1]]", "body": "x", "ext": {"mine": {"seen": True}}}]}]}
+        self.fx.task.write_text(json.dumps(t, ensure_ascii=False))
+        finish(self.fx)
+        self.assertNotIn("겹쳐요", self.fx.check().stdout)
+        self.assertEqual(flow(self.fx.root, "prune", str(self.fx.task)).returncode, 0)
+        t = json.loads(self.fx.task.read_text())
+        self.assertEqual(t["ext"], {"mine": {"minutes": 30}})
+        self.assertEqual(t["stages"]["tasks"]["blocks"][0]["items"][0]["ext"], {"mine": {"id": "P1-1"}})
+        self.assertEqual(t["stages"]["grill"]["rounds"][0]["questions"][0]["ext"], {"mine": {"seen": True}})
+        self.assertNotIn("body", t["stages"]["grill"]["rounds"][0]["questions"][0])
+
+    def test_plugin_new_creates_and_enables(self):
+        r = flow(self.fx.root, "plugin", "new", "my-flow")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        home = Path(os.environ["FLOW_HOME"])
+        self.assertIn("my-flow", json.loads((home / "config.json").read_text())["plugins"])
+        self.assertEqual(flow(self.fx.root, "plugin", "check", str(self.fx.docs)).returncode, 0)
+        self.assertNotEqual(flow(self.fx.root, "plugin", "new", "my-flow").returncode, 0)
 
 
 if __name__ == "__main__":

@@ -9,7 +9,7 @@ page · reading for tokens · legacy documents · earlier versions
 <repo>/docs/
   ├ index.html                 every feature and domain, open tasks                 (generated)
   ├ .gitignore                 flow keeps a "# flow:begin … # flow:end" block listing the generated files
-  ├ flow.config.json           optional: this repository's page style and what the pages hide — see § Customizing the pages
+  ├ flow.config.json           optional: the team's required stages, page style and what the pages hide — see § Customizing the pages
   ├ features/<id>/             a PRD across several stories — see feature.md
   │ ├ feature.json · prd.md · issues/*.md
   │ └ index.html               the feature page                                     (generated)
@@ -22,7 +22,7 @@ page · reading for tokens · legacy documents · earlier versions
   │ ├ verify/<task-id>.json    the fresh-context verifier's verdicts — `flow.py verify`
   │ ├ prd.md                   PRD snapshot when one was fetched
   │ ├ index.html               the domain's tasks and SOT map                       (generated)
-  │ └ <task-id>/               index.html (every stage's conclusion) + 01-plan.html … 05-done.html (generated)
+  │ └ <task-id>/               index.html (every stage's conclusion) + 01-plan.html … 06-release.html, x-<plugin>-<key>.html (generated)
   │   └ share/                 plan.html · plan.md · backend.html · backend.md — copies to send outside (generated)
   └ <anything else>            legacy — listed on the root page, never written
 ```
@@ -77,7 +77,9 @@ page · reading for tokens · legacy documents · earlier versions
 ```
 
 - `branch` is matched against the checked-out branch by `flow.py current` (the SessionStart hook), so
-  it holds the exact branch name. `feature` exists when the task came from a feature document; the
+  it holds the exact branch name. `base` (optional, a short SHA) is the commit the task started from
+  on a branch that already carries other work; `check` then compares the plan's 파일 rows with the
+  changes since `base` instead of since the branch left its root. `feature` exists when the task came from a feature document; the
   task pages link up to it. `followUps` are written by `flow.py log`; `pruned` by `flow.py prune`. A task is finished only
   when every stage is `done` and the `done` stage's checklist is all ticked — implementation alone
   shows as 진행 중. A finished task without `pruned` fails `check` and is flagged by `flow.py current`.
@@ -175,7 +177,8 @@ What the person can do in a page, and how it reaches the JSON:
 ## Customizing the pages
 
 Each repository can change how its pages look without touching the JSON or the skill:
-`<docs>/flow.config.json`, read by every `build`.
+`<docs>/flow.config.json`, read by every `build`. Its `workflow` key (stages the team requires,
+shared stage names) and each person's own plugins are in `plugin.md`.
 
 ```json
 {
