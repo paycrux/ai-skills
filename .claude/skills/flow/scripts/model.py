@@ -32,6 +32,8 @@ STAGE_KEYS = list(CORE_KEYS)
 STAGE_TITLE = dict(CORE_STAGES)
 STAGE_FILE = {k: f for _, _, f, keys in CORE_PAGES for k in keys}
 PAGE_OF = {k: page for page, _, _, keys in CORE_PAGES for k in keys}
+# Stages the person is involved in: shown in their pages, and Claude stops for them there. A stage
+# outside this set is still created, filled and checked like any other — turning it off never stops data.
 ENABLED = set(CORE_KEYS)
 CUSTOM = {}
 
@@ -255,12 +257,10 @@ def task_state(task):
 def finished(task):
     """Over and ready to prune: every stage done, and a 05 완료 stage whose checklist — review,
     the critical fixes, tests run again after them, the PR — is all ticked. Implementation alone is not.
-    Where the workflow turns 05 완료 off, every stage done is enough."""
+    A workflow that turns 05 완료 off changes none of this: off only means the person is not stopped there."""
     st = (task.get("stages") or {}).get("done")
-    if stages_state(task) != "done":
+    if not st or stages_state(task) != "done":
         return False
-    if not st:
-        return "done" not in ENABLED
     total, ticked = checklist_count(st)
     return bool(total) and ticked == total
 

@@ -13,7 +13,7 @@ and what only one person sees or does is theirs to change.
 |---|---|---|
 | Core | the skill (`model.py` `CORE_STAGES`) | JSON shapes, IDs, statuses, what each stage means, every `check` rule |
 | Team | `<docs>/flow.config.json` (committed) | `workflow.required` — stages nobody may turn off; `workflow.labels`; shared `style` and `hide` |
-| Personal | `$FLOW_HOME/config.json` + `$FLOW_HOME/plugins/<id>/plugin.json` (not committed) | the optional stages used, stage names, own stages, own page style, own data |
+| Personal | `$FLOW_HOME/config.json` + `$FLOW_HOME/plugins/<id>/plugin.json` (not committed) | which optional stages are in their workflow, stage names, own stages, own page style, own data |
 
 `$FLOW_HOME` defaults to `$XDG_CONFIG_HOME/flow` or `~/.config/flow`.
 
@@ -36,7 +36,7 @@ Core catalog, in order: `plan` · `screen` · `grill` · `tasks` · `verify` · 
 {
   "id": "my-flow",
   "stages": {
-    "use": ["plan", "tasks", "verify", "done", "release"],  // optional; omitted = every core stage
+    "use": ["plan", "tasks", "verify", "done", "release"],  // the stages in my workflow; omitted = every core stage
     "labels": { "tasks": "작업 쪼개기", "my-flow:perf": "성능" }
   },
   "custom": [{
@@ -52,7 +52,7 @@ Core catalog, in order: `plan` · `screen` · `grill` · `tasks` · `verify` · 
 
 Merge rules:
 
-- Enabled stages = team `required` ∪ the union of every plugin's `stages.use` (every core stage when
+- Stages in the workflow = team `required` ∪ the union of every plugin's `stages.use` (every core stage when
   no plugin sets `use`) ∪ every plugin's `custom` stages.
 - Names: plugin `labels` over team `labels` over the core title. Two plugins naming one stage
   differently is reported; the later plugin wins.
@@ -60,11 +60,20 @@ Merge rules:
 
 ## What turning a stage off does
 
-- `flow.py task --stages` and `flow.py add` refuse it.
-- With `done` off, a task is finished when every stage it has is `done`; `prune` needs no 05
-  checklist. With `verify` off, a `버그 수정` task needs its reproduction test rows.
-- A stage already in a task's JSON (a teammate's workflow made it) stays, shows and counts — data is
-  never dropped because one person's workflow lacks it.
+Off takes the stage out of the person's workflow, never out of the data. flow collects the same
+data for everyone, so the team, the next session and any later tool read one complete record.
+
+- **Still the same:** the stage is created when the task needs it, filled, and held to every `check`
+  rule — the 05 checklist before `prune`, the reproduction test of a `버그 수정`, decisions with
+  `reason` and `appliedTo`.
+- **Different for this person:** its page leaves their pages (nav, task cover), and Claude does not
+  stop for them there. Where a stop would have asked them, Claude decides from the conversation and
+  the code and records it as inferred — a question gets the recommended choice with
+  `reason.by: "inferred"`; 05 runs the review and tests, and asks nothing about a PR (D5 records
+  "PR 없음 — 05 꺼짐, 묻지 않음").
+- **Not collectable:** what neither the conversation nor the code shows stays empty or `pending`.
+  Off never licenses invented values.
+- `flow.py workflow` prints such a stage as 꺼짐 · 안 멈추고 기록만.
 
 ## Plugin stages
 
@@ -94,8 +103,9 @@ They speak plainly ("질문 단계는 안 쓸래", "검증 다음에 성능 측�
 2. No plugin yet → `flow.py plugin new <id>` (an id they gave, or their name in kebab-case); it
    writes a `plugin.json` listing every core stage in `use` and turns it on.
 3. Edit `plugin.json`:
-   - off → remove from `stages.use`. A team-required stage is not removed: say it is required by the
-     team (`flow.config.json` `workflow.required`) and stays on.
+   - off → remove from `stages.use`, and tell them its data is still collected — only the page and
+     the stop go. A team-required stage is not removed: tell them in chat it is a 팀 필수
+     단계 (`flow.config.json` `workflow.required`) and stays on.
    - rename → `stages.labels`.
    - own stage → a `custom` entry, its `instructions` file written with them (what to do, what
      evidence to leave in the stage), and a `check` command when "통과" has a measurable meaning.

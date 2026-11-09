@@ -7,7 +7,7 @@ from pathlib import Path
 
 import feature as feat
 import workflow
-from model import (CORE_PAGES, DEFAULT_OPTIONS, KIND, REASON_BY, REF, STAGE_TITLE, STATE_LABEL, UNSURE, domains_of,
+from model import (CORE_PAGES, DEFAULT_OPTIONS, ENABLED, KIND, PAGES, REASON_BY, REF, STAGE_TITLE, STATE_LABEL, UNSURE, domains_of,
                    frame_boxes, git, grill_state, page_file, page_state, parse_ref, place, plain, read_json, stage_state,
                    task_files, task_items, task_pages, task_state, walk_refs)
 
@@ -104,7 +104,13 @@ class Site:
         self.repo = re.sub(r"\.git$", "", remote.rstrip("/").split("/")[-1].split(":")[-1]) if remote else Path(top or self.docs.parent).name
 
     def hidden(self, kind, name):
-        return f"{kind}:{name}" in self.config["hide"]
+        if f"{kind}:{name}" in self.config["hide"]:
+            return True
+        if kind == "page":
+            # A page whose stages this person turned off leaves their pages; its data stays in the JSON.
+            keys = next((keys for page, _, _, keys in PAGES if page == name), ())
+            return bool(keys) and not any(k in ENABLED for k in keys)
+        return False
 
     def domain_page(self, d):
         return f"{d}/index.html"

@@ -60,7 +60,7 @@ import migrate  # noqa: E402
 import render  # noqa: E402
 import share  # noqa: E402
 import workflow  # noqa: E402
-from model import (CORE_KEYS, ENABLED, ITEM_ID, KINDS, REASON_BY, RESERVED_TASK_IDS, STAGE_KEYS, STAGE_TITLE, STATUSES,  # noqa: E402
+from model import (CORE_KEYS, ITEM_ID, KINDS, REASON_BY, RESERVED_TASK_IDS, STAGE_KEYS, STAGE_TITLE, STATUSES,  # noqa: E402
                    domains_of, finished, frame_boxes, git, is_plugin_key, parse_ref, plain, read_json, scope, stage_skeleton, stages_state,
                    task_files, task_items, task_keys, task_state, walk_refs, write_json)
 
@@ -70,10 +70,6 @@ def parse_stages(text):
     bad = [k for k in keys if k not in STAGE_KEYS]
     if bad:
         sys.exit(f"없는 단계: {', '.join(bad)} — {' · '.join(STAGE_KEYS)} 중에서")
-    off = [k for k in keys if k not in ENABLED]
-    if off:
-        sys.exit(f"꺼진 단계: {', '.join(off)} — 이 워크플로에서 쓰지 않는 단계예요 (flow.py workflow로 확인). "
-                 "쓰려면 플러그인 stages.use에 넣어요")
     return keys
 
 
@@ -742,10 +738,7 @@ def repro_problems(docs, doms):
                     if touched:
                         problems.append(f"{rel} {item.get('id')}: 재현 테스트가 실패 커밋 {sha} 뒤에 바뀌었어요 — {', '.join(touched)}")
             if t.get("type") == "버그 수정" and st.get("status") == "done" and not found and "verify" not in stages:
-                if "verify" in ENABLED:
-                    problems.append(f"{rel}: 버그 수정인데 재현 테스트(테스트 · 실패 커밋 행)도 verify 단계도 없어요")
-                else:
-                    problems.append(f"{rel}: 버그 수정인데 재현 테스트(테스트 · 실패 커밋 행)가 없어요 — 이 워크플로는 verify를 쓰지 않아서 재현 테스트만 인정해요")
+                problems.append(f"{rel}: 버그 수정인데 재현 테스트(테스트 · 실패 커밋 행)도 verify 단계도 없어요")
     return problems
 
 
@@ -786,7 +779,7 @@ def cmd_workflow(args):
           + (f" · 필수 {', '.join(wf['required'])}" if wf["required"] else " · 필수 단계 없음"))
     custom = {c["key"]: c for c in wf["custom"]}
     for k in STAGE_KEYS:
-        on = "켜짐" if k in wf["enabled"] else "꺼짐"
+        on = "켜짐" if k in wf["enabled"] else "꺼짐 · 안 멈추고 기록만"
         name = STAGE_TITLE[k] + (f" (이름: {wf['label_from'][k]})" if k in wf["label_from"] else "")
         line = f"  {k:<16} {on} · {wf['source'].get(k, '코어')} · {name}"
         if k in custom:
@@ -1092,7 +1085,7 @@ KEEP_ROWS = ("결정", "파일", "테스트", "실패 커밋")
 def cmd_prune(args):
     task = read_json(args.task)
     if not finished(task):
-        if "done" not in (task.get("stages") or {}) and "done" in ENABLED:
+        if "done" not in (task.get("stages") or {}):
             sys.exit(f"{task['id']}: 05 완료 단계가 없어요 — 구현만으로는 끝난 작업이 아니에요. "
                      f"flow.py add {args.task} done 뒤 리뷰 · 크리티컬 수정 · 다시 테스트를 마치고 정리해요")
         sys.exit(f"{task['id']}: 아직 끝나지 않은 작업이에요 — 모든 단계가 done이고 05 완료 체크리스트"

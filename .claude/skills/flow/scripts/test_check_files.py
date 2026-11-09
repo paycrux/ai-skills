@@ -346,14 +346,21 @@ class WorkflowTest(unittest.TestCase):
         flow(self.fx.root, "build", str(self.fx.docs))
         self.assertTrue((self.fx.docs / "d" / "t" / "06-release.html").exists())
 
-    def test_plugin_turns_a_stage_off_and_renames_one(self):
+    def test_a_stage_turned_off_still_collects_data_and_only_leaves_the_pages(self):
         set_plugins(mine={"stages": {"use": ["tasks", "done"], "labels": {"tasks": "작업 쪼개기"}}})
         r = flow(self.fx.root, "add", str(self.fx.task), "grill")
-        self.assertNotEqual(r.returncode, 0)
-        self.assertIn("꺼진 단계", r.stderr)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("grill", json.loads(self.fx.task.read_text())["stages"])
         flow(self.fx.root, "build", str(self.fx.docs))
-        self.assertIn("작업 쪼개기", (self.fx.docs / "d" / "t" / "03-tasks.html").read_text())
+        page = self.fx.docs / "d" / "t"
+        self.assertIn("작업 쪼개기", (page / "03-tasks.html").read_text())
+        self.assertFalse((page / "02-grill.html").exists())
+        self.assertNotIn("02-grill.html", (page / "index.html").read_text())
+        self.assertIn("안 멈추고 기록만", flow(self.fx.root, "workflow", str(self.fx.docs)).stdout)
         self.assertEqual(flow(self.fx.root, "plugin", "check", str(self.fx.docs)).returncode, 0)
+        set_plugins()
+        flow(self.fx.root, "build", str(self.fx.docs))
+        self.assertTrue((page / "02-grill.html").exists())
 
     def test_team_required_stage_cannot_be_turned_off(self):
         self.team({"required": ["verify"]})
@@ -372,14 +379,14 @@ class WorkflowTest(unittest.TestCase):
         for word in ("nope", "order", "zzz", "Bad Key", "theme"):
             self.assertIn(word, r.stdout)
 
-    def test_without_done_every_stage_done_finishes_the_task(self):
+    def test_done_turned_off_still_needs_its_record_to_finish(self):
         set_plugins(mine={"stages": {"use": ["tasks"]}})
         self.fx.plan("done", [dict(item("P1-1", "src/a.ts"), done=True)])
         r = flow(self.fx.root, "prune", str(self.fx.task))
-        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-        set_plugins()
-        r = flow(self.fx.root, "prune", str(self.fx.task))
-        self.assertIn("정리", r.stdout + r.stderr)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("05 완료 단계가 없어요", r.stderr)
+        finish(self.fx)
+        self.assertEqual(flow(self.fx.root, "prune", str(self.fx.task)).returncode, 0)
 
     def test_plugin_stage_runs_its_check_and_teammates_see_a_plain_page(self):
         set_plugins(mine={"custom": [{"key": "perf", "title": "성능 측정", "after": "verify", "instructions": "perf.md",

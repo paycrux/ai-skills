@@ -189,7 +189,7 @@ def judge(repo, fixture, expect, env=None, result=""):
         fails += judge_plugin(repo, env, expect["plugin"])
     for word in expect.get("resultMentions") or []:
         if word not in result:
-            fails.append(f"마지막 답에 '{word}'가 없어요")
+            fails.append(f"마지막 답에 '{word}'가 없어요 — 답 끝: {result.strip()[-300:]}")
     if expect.get("srcUnchanged"):
         changed = sh(repo, "git", "status", "--porcelain", "--", "src").stdout.strip()
         if changed:

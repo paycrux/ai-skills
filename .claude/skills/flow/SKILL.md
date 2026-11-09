@@ -18,9 +18,11 @@ JSON, then rebuilds — the HTML is always the finished version Claude wrote.
 ```
 
 That is the core catalog. The team's `flow.config.json` can require stages, and each person's
-plugins can turn the optional ones off, rename them and add their own. `flow.py workflow <docs>`
-prints the stages this person works with — a stage it shows as off is skipped everywhere below,
-and a plugin stage is worked from its own instructions file (`references/plugin.md`).
+plugins can take the optional ones out of their workflow, rename them and add their own.
+`flow.py workflow <docs>` prints the stages this person works with. **A stage that is off is still
+created and filled exactly as below — only its page leaves the person's pages and Claude does not
+stop for them there.** Data is never dropped because a stage is off. A plugin stage is worked from
+its own instructions file (`references/plugin.md`).
 
 The user acts in four places only: answering questions, approving the plan, unblocking an item,
 confirming completion. Everywhere else, keep going.
@@ -274,9 +276,8 @@ off-screen state (`V3`: `[[X3]] …`), plus the screens' main states.
 
 ## Step 7: 05 완료
 
-Implementation alone does not finish a task. Every task that changed code goes through this step
-— unless `flow.py workflow` shows `done` off, in which case the task is finished when every stage it
-has is `done` and the review and retest below are not tracked. Add the stage first when it is missing (`flow.py add <task.json> done`). Work its checklist in
+Implementation alone does not finish a task. Every task that changed code goes through this step,
+`done` off included. Add the stage first when it is missing (`flow.py add <task.json> done`). Work its checklist in
 order — each item is ticked only when it actually happened:
 
 - D1: rewrite SOT evidence from plan-time guesses to real `file:line`, update `base` to the current
@@ -384,8 +385,10 @@ Chat messages at a stop are two or three lines plus what the user should do; the
 - **Never write legacy documents** — anything under `docs/` outside a domain folder is read only
 - **`flow.py check` passes before reporting a stage done**
 - **Create a stage only when the task needs it** — `add` it at the moment the need appears, never "just in case"
-- **The workflow decides which stages exist** — `flow.py workflow`; never add a stage it shows as off,
-  and never turn off a stage the team requires
+- **A stage that is off still collects its data** — it leaves only the person's pages and stops. At
+  an off stage, write what the conversation and the code tell you, mark what you inferred
+  (`reason.by: "inferred"`, `intent` `guess`), and leave empty what nobody said — never invent it.
+  A stage the team requires cannot be turned off
 - **Open a page only at a stop** — `flow.py open <file>` builds, then opens the OS default browser; elsewhere print the path
 - **Generated files are never committed** — pages, `share/`, `.receipts/`; JSON, `prd.md`, Figma images and structure XML are
 - **A feature document only shows and records** — progress is read from each row's task; work is never sent to another session
