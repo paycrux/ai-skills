@@ -444,6 +444,16 @@
         ".claude/skills/flow/scripts/render.py"
       ],
       "sha": "21694a9"
+    },
+    {
+      "date": "2026-11-09",
+      "text": "플러그인 attach — 코어 단계에 붙어 ext 데이터를 더 모음",
+      "files": [
+        ".claude/skills/flow/scripts/workflow.py",
+        ".claude/skills/flow/scripts/flow.py",
+        ".claude/skills/flow/scripts/render.py"
+      ],
+      "sha": "2b877f8"
     }
   ]
 }
