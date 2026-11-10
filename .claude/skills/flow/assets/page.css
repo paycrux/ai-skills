@@ -45,7 +45,12 @@ ul { max-width: 72ch; }
 .meta { color: var(--muted); font-size: 13px; margin: 0 0 40px; max-width: none; }
 .note { color: var(--muted); font-size: 14px; }
 .label { font-weight: 600; color: var(--fg); }
-.links { list-style: none; padding: 0; margin: -24px 0 40px; display: flex; gap: 20px; flex-wrap: wrap; font-size: 14px; }
+/* sits over the bottom margin of .head, so it must stack above it to stay clickable */
+.links { position: relative; z-index: 1; list-style: none; padding: 0; margin: -24px 0 40px; display: grid; gap: 6px; font-size: 14px; max-width: none; }
+.lk { display: grid; grid-template-columns: 112px minmax(0, 1fr); align-items: baseline; gap: 16px; }
+.lk-k { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; font-weight: 600; }
+.lk-i { width: 16px; height: 16px; flex: none; color: var(--fg); position: relative; top: 1px; }
+.lk-v { display: flex; flex-wrap: wrap; column-gap: 20px; row-gap: 2px; }
 
 /* conclusion: the block every later stage reads */
 .conclusion { grid-column: 1 / 13 !important; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: var(--gutter); border-top: 2px solid var(--fg); padding: 16px 0 0; margin: 0; }

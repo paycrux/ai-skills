@@ -479,9 +479,57 @@ def blocks(ctx, stage, after=None):
     return "".join(out)
 
 
+_SVG = '<svg class="lk-i" viewBox="0 0 16 16" aria-hidden="true">{}</svg>'
+LINK_KINDS = [
+    # (kind, label, host or label match, label prefixes stripped inside the group, icon)
+    ("prd", "기획서", ("기획서", "prd", "notion.so", "notion.site"), ("기획서 · ", "기획서 ", "PRD · ", "PRD "),
+     '<path d="M4 1.5h5.5L12.5 4.5V14.5H4z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>'
+     '<path d="M6 8h4.5M6 10.5h4.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>'),
+    ("jira", "Jira", ("atlassian.net/browse", "jira", "지라"), ("Jira · ", "Jira ", "지라 · ", "지라 "),
+     '<path d="M8 1.5 14.5 8 8 14.5 1.5 8z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>'
+     '<path d="M8 5.2 10.8 8 8 10.8 5.2 8z" fill="currentColor"/>'),
+    ("figma", "Figma", ("figma.com", "figma"), ("Figma · ", "Figma "),
+     '<rect x="4" y="1.5" width="4" height="4" rx="2" fill="currentColor"/><rect x="8" y="1.5" width="4" height="4" rx="2" fill="currentColor" opacity=".55"/>'
+     '<rect x="4" y="6" width="4" height="4" rx="2" fill="currentColor" opacity=".55"/><circle cx="10" cy="8" r="2" fill="currentColor"/>'
+     '<path d="M6 10.5h2v2a2 2 0 1 1-2-2z" fill="currentColor" opacity=".8"/>'),
+    ("slack", "Slack", ("slack.com", "slack", "슬랙"), ("Slack · ", "Slack ", "슬랙 · ", "슬랙 "),
+     '<path d="M6 2v12M10 2v12M2 6h12M2 10h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>'),
+    ("confluence", "Confluence", ("atlassian.net/wiki", "confluence"), ("Confluence · ", "Confluence "),
+     '<path d="M2 11.5c3-3 6-3 12 0M2 4.5c6 3 9 3 12 0" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>'),
+    ("github", "GitHub", ("github.com",), ("GitHub · ", "GitHub ", "PR · "),
+     '<path d="M5.5 4 1.5 8l4 4M10.5 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>'),
+    ("other", "링크", (), (),
+     '<path d="M7 9a2.5 2.5 0 0 0 3.5 0l2.5-2.5a2.5 2.5 0 0 0-3.5-3.5L8.8 3.7M9 7a2.5 2.5 0 0 0-3.5 0L3 9.5A2.5 2.5 0 0 0 6.5 13l.7-.7" '
+     'fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>'),
+]
+
+
+def link_kind(link):
+    url, label = link.get("url", "").lower(), link.get("label", "").lower()
+    for kind in LINK_KINDS[:-1]:
+        if any(m in url for m in kind[2] if "." in m) or any(label.startswith(m) for m in kind[2] if "." not in m):
+            return kind
+    return LINK_KINDS[-1]
+
+
 def link_list(links):
-    lis = "".join(f'<li><a href="{esc(l.get("url", ""))}" target="_blank" rel="noopener">{esc(l.get("label", ""))}</a></li>' for l in links or [])
-    return f'<ul class="links">{lis}</ul>' if lis else ""
+    """Links grouped by where they point (기획서 → Jira → Figma → Slack …), one row per kind."""
+    groups = {}
+    for l in links or []:
+        groups.setdefault(link_kind(l), []).append(l)
+    rows = []
+    for kind in LINK_KINDS:
+        items = groups.get(kind)
+        if not items:
+            continue
+        cells = []
+        for l in items:
+            label = l.get("label", "")
+            short = next((label[len(p):] for p in kind[3] if label.startswith(p) and label[len(p):].strip()), label)
+            cells.append(f'<a href="{esc(l.get("url", ""))}" target="_blank" rel="noopener">{esc(short or l.get("url", ""))}</a>')
+        rows.append(f'<li class="lk lk-{kind[0]}"><span class="lk-k">{_SVG.format(kind[4])}{esc(kind[1])}</span>'
+                    f'<span class="lk-v">{"".join(cells)}</span></li>')
+    return f'<ul class="links">{"".join(rows)}</ul>' if rows else ""
 
 
 def feature_up(ctx, task):
