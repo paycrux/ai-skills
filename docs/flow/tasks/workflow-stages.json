@@ -454,6 +454,15 @@
         ".claude/skills/flow/scripts/render.py"
       ],
       "sha": "2b877f8"
+    },
+    {
+      "date": "2026-11-10",
+      "text": "상단 링크 클릭 막힘 수정 · 종류별 아이콘 그룹으로 정리",
+      "files": [
+        ".claude/skills/flow/scripts/render.py",
+        ".claude/skills/flow/assets/page.css"
+      ],
+      "sha": "3af07fa"
     }
   ]
 }
