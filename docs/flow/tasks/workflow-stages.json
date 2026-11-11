@@ -489,6 +489,12 @@
       "text": "render.py에 safe_html(허용 태그만) · safe_url(javascript: 차단), rich · 참조 미리보기 · share에 적용",
       "files": [],
       "sha": "ac28fd6"
+    },
+    {
+      "date": "2026-11-11",
+      "text": "render.py의 3.12 전용 f-string 두 곳, workflow.docs_for의 PermissionError 수정 · install.sh와 SKILL.md Step 0에 git · python3 확인과 설치 질문",
+      "files": [],
+      "sha": "8181507"
     }
   ]
 }
