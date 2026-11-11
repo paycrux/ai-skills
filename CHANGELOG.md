@@ -26,7 +26,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - `tracker` 스킬 — flow 기능 문서로 대체. 세션끼리 메시지로 일을 시키던 관제는 없애고, 보기는 기능 페이지가 맡음. 완료 댓글 · 이슈 설명 템플릿은 `flow/templates/`로 옮김
 
-## [1.0.0] - 2026-10-23
+## [0.13.0] - 2026-10-23
 
 ### Added
 
