@@ -136,6 +136,57 @@ while [[ $# -gt 0 ]]; do
 done
 
 # ─────────────────────────────────────────────
+# Prerequisites: git (clone) and python3 >= 3.9 (installer merges, flow scripts)
+# ─────────────────────────────────────────────
+python_ok() { command -v python3 >/dev/null && python3 -c 'import sys; sys.exit(sys.version_info < (3, 9))' 2>/dev/null; }
+
+missing_tools() {
+  local m=()
+  command -v git >/dev/null || m+=("git")
+  python_ok || m+=("python3 (3.9+)")
+  echo "${m[*]:-}"
+}
+
+install_prereqs() {
+  local os; os="$(uname -s)"
+  if [[ "$os" == "Darwin" ]]; then
+    if command -v brew >/dev/null; then
+      brew install git python
+    else
+      # Command Line Tools ship git and python3; the installer is a GUI dialog, so wait for it to finish.
+      xcode-select --install 2>/dev/null || true
+      info "Finish the Command Line Tools dialog that just opened — waiting (Ctrl+C to stop)..."
+      until xcode-select -p >/dev/null 2>&1 && command -v git >/dev/null && python_ok; do sleep 5; done
+    fi
+  elif command -v apt-get >/dev/null; then
+    sudo apt-get update -qq && sudo apt-get install -y git python3
+  elif command -v dnf >/dev/null; then
+    sudo dnf install -y git python3
+  elif command -v yum >/dev/null; then
+    sudo yum install -y git python3
+  else
+    return 1
+  fi
+}
+
+MISSING="$(missing_tools)"
+if [[ -n "$MISSING" ]]; then
+  warn "Required tools are missing: ${MISSING}"
+  if ensure_tty; then
+    read -rp "Install them now? [Y/n] " answer <&3
+    case "${answer:-Y}" in
+      [Yy]*) install_prereqs || error "No supported package manager found — install ${MISSING} yourself, then re-run this installer." ;;
+      *) error "Install ${MISSING}, then re-run this installer." ;;
+    esac
+    MISSING="$(missing_tools)"
+    [[ -z "$MISSING" ]] || error "Still missing after install: ${MISSING} — open a new terminal and re-run this installer."
+    ok "Prerequisites installed"
+  else
+    error "Install ${MISSING}, then re-run this installer (no interactive terminal to ask)."
+  fi
+fi
+
+# ─────────────────────────────────────────────
 # Interactive selection if not specified
 # ─────────────────────────────────────────────
 if [[ -z "$MODE" ]]; then

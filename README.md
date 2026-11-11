@@ -12,6 +12,8 @@ curl -fsSL https://raw.githubusercontent.com/paycrux/ai-skills/main/install.sh |
 
 실행하면 대화형으로 에디터(Claude Code / Cursor / Codex)와 설치 범위(Global / Project)를 선택합니다.
 
+`git`과 `python3`(3.9 이상)가 필요합니다. 없으면 설치 스크립트가 지금 설치할지 묻고, 동의하면 설치합니다(macOS는 Homebrew 또는 Xcode Command Line Tools).
+
 ### 업데이트 (`ai-skills` CLI)
 
 v0.5.0부터 최초 설치 시 `~/.ai-skills/repo`에 저장소가 영구 clone되고, 짧은 전역 커맨드 `ai-skills`가 함께 설치됩니다. 이후 업데이트는 매번 `curl | bash` 전체를 다시 받을 필요 없이 아래 한 줄이면 됩니다.

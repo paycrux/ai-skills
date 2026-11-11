@@ -12,6 +12,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- 설치 스크립트와 `flow`가 시작할 때 `git` · `python3`(3.9 이상)를 확인하고, 없으면 지금 설치할지 물은 뒤 동의하면 설치함(macOS: Homebrew 또는 `xcode-select --install`, Linux: `apt-get` · `dnf`)
+- `flow`: macOS 기본 Python 3.9에서 실행되지 않던 문제를 고침 — Python 3.12 이상에서만 되는 f-string 문법 두 곳과, 읽을 수 없는 상위 폴더를 만나면 멈추던 docs 폴더 찾기
 - `flow`: Claude Code · Codex · Cursor 어디서 불러도 같은 스킬로 동작. 스크립트 경로를 Claude 전용 변수 `${CLAUDE_SKILL_DIR}` 대신 'SKILL.md가 있는 폴더'로 적고, 세션 시작 훅이 없는 에이전트는 먼저 `flow.py current`를 실행. 새 컨텍스트 검증 `flow.py verify`는 `claude -p`와 `codex exec`(읽기 전용 샌드박스) 중 지금 에이전트를 씀(`--agent`로 지정). 코드 리뷰 · `git-pr` 호출도 에이전트별로 적음
 - `flow`: 기능 문서 `feature.json`과 작업 JSON에 내 컴퓨터의 절대 경로(`repo` · `worktree` · `home.worktree` · `feature.doc`)를 저장하지 않음. 워크트리와 기능 문서는 실행할 때 브랜치 이름으로 각자 컴퓨터에서 찾고, 예전 문서에 남은 경로는 `check`가 알림
 - `flow`: 기획서 하나가 지라 스토리 여러 개에 걸치면 **기능 문서**(`docs/features/<id>/feature.json`)를 씀. 기획 섹션 → 스토리 → `[프론트]` 이슈 → 브랜치 · 워크트리 → flow 작업을 한 표로 묶고, 각 줄의 진행도는 그 줄의 flow 작업 JSON에서 계산함. 기능 페이지는 아무 작업도 인용하지 않는 기획 섹션과 스냅샷에 없는 섹션을 노란 줄로 표시. 작업 페이지 머리에서 기능 페이지로 올라감
