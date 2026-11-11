@@ -471,6 +471,12 @@
         ".claude/skills/flow/SKILL.md"
       ],
       "sha": "37d568a"
+    },
+    {
+      "date": "2026-11-11",
+      "text": "feature.json · 작업 JSON에서 절대 경로 필드(repo · worktree · home.worktree · feature.doc) 제거, 워크트리는 브랜치로 찾음, check가 남은 경로를 알림",
+      "files": [],
+      "sha": "a016c45"
     }
   ]
 }
