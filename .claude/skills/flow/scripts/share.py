@@ -260,17 +260,14 @@ def share_path(t, who, fmt):
     return f"{t}/share/{who}.{'html' if fmt == 'html' else 'md'}"
 
 
-def pages(site, d, t):
-    """→ {path relative to docs: text} for every shared copy of a task, plus the menu's numbers."""
+def texts(site, d, t):
+    """→ the export menu's numbers and Markdown copies for a task. HTML copies are written only on export."""
     task = site.domains[d]["tasks"][t]
-    out, info = {}, {}
+    info = {}
     for who in AUDIENCES:
-        page, n = to_html(site, d, task, who)
-        text, _ = to_md(site, d, task, who)
-        out[f"{d}/{share_path(t, who, 'html')}"] = page
-        out[f"{d}/{share_path(t, who, 'md')}"] = text
+        text, n = to_md(site, d, task, who)
         info[who] = {"n": n, "md": text}
-    return out, info
+    return info
 
 
 def export(task_file, who, fmt, out=None):

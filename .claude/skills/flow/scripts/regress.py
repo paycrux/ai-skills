@@ -5,8 +5,8 @@
 
 Each case is evals/<name>/: case.json (prompt, branch, expect), fixture/ (a repository at the
 moment the request was made), optionally branch/ (files committed on the branch on top of it) and
-optionally home/ (the personal $FLOW_HOME — plugins; without it the case runs with an empty one, so
-this machine's own plugins never leak in). The fixture is copied to a temp git repo on `branch`, `claude -p`
+optionally home/ (the personal $FLOW_HOME — config.json; without it the case runs with an empty one, so
+this machine's own settings never leak in). The fixture is copied to a temp git repo on `branch`, `claude -p`
 runs the prompt there, then the checks below run. No LLM grades anything. Exit 1 when any case fails.
 """
 import argparse
@@ -77,37 +77,32 @@ def judge_copy(repo, expect):
     return fails
 
 
-def judge_plugin(repo, env, want):
-    """The personal plugins Claude wrote: which stages they use and what they rename."""
-    home = Path(env["FLOW_HOME"])
-    cfg = home / "config.json"
-    ids = json.loads(cfg.read_text()).get("plugins", []) if cfg.is_file() else []
-    if not ids:
-        return ["켜진 플러그인이 없어요 ($FLOW_HOME/config.json plugins)"]
-    fails, uses, labels, attached = [], [], {}, []
-    for pid in ids:
-        pj = home / "plugins" / pid / "plugin.json"
-        if not pj.is_file():
-            fails.append(f"플러그인 {pid}의 plugin.json이 없어요")
-            continue
-        body = json.loads(pj.read_text())
-        attached += [x.get("stage") for x in body.get("attach") or [] if isinstance(x, dict)]
-        st = body.get("stages") or {}
-        if "use" in st:
-            uses.append(set(st["use"]))
-        labels.update(st.get("labels") or {})
-    for k in want.get("useLacks") or []:
-        if not uses or any(k in u for u in uses):
-            fails.append(f"플러그인이 {k} 단계를 끄지 않았어요")
+def judge_personal(repo, env, want):
+    """The personal settings Claude wrote: what they rename, where they attach, which commands they add,
+    and keys that must not be there (off: every core stage is required)."""
+    cfg = Path(env["FLOW_HOME"]) / "config.json"
+    if not cfg.is_file():
+        return ["개인 설정이 없어요 ($FLOW_HOME/config.json)"]
+    body = json.loads(cfg.read_text())
+    labels, fails = body.get("labels") or {}, []
+    for k in want.get("absent") or []:
+        if body.get(k):
+            fails.append(f"개인 설정에 {k}가 있으면 안 돼요 — {json.dumps(body[k], ensure_ascii=False)[:120]}")
+    cmds = [x for x in body.get("commands") or [] if isinstance(x, dict)]
+    for on, n in (want.get("commandsOn") or {}).items():
+        got = sum(1 for x in cmds if x.get("on", "ask") == on)
+        if got < n:
+            fails.append(f"on: {on} 명령이 {got}개 (기대 {n}개 이상)")
+    attached = [x.get("stage") for x in body.get("attach") or [] if isinstance(x, dict)]
     for k in want.get("attachTo") or []:
         if k not in attached:
-            fails.append(f"플러그인이 {k} 단계에 붙지(attach) 않았어요 — 붙은 단계 {attached}")
+            fails.append(f"{k} 단계에 붙이지(attach) 않았어요 — 붙인 단계 {attached}")
     for k, v in (want.get("labels") or {}).items():
         if labels.get(k) != v:
             fails.append(f"{k} 단계 이름 {labels.get(k)} (기대 {v})")
-    r = sh(repo, sys.executable, str(FLOW), "plugin", "check", "docs", env=env)
+    r = sh(repo, sys.executable, str(FLOW), "workflow", "docs", env=env)
     if r.returncode:
-        fails.append(f"flow.py plugin check exit {r.returncode}: {r.stdout.strip()[-300:]}")
+        fails.append(f"flow.py workflow exit {r.returncode}: {r.stdout.strip()[-300:]}")
     return fails
 
 
@@ -190,8 +185,8 @@ def judge(repo, fixture, expect, env=None, result=""):
             fails.append(f"{key} 상태가 {want}인 작업이 없어요")
     if expect.get("copy"):
         fails += judge_copy(repo, expect)
-    if expect.get("plugin"):
-        fails += judge_plugin(repo, env, expect["plugin"])
+    if expect.get("personal"):
+        fails += judge_personal(repo, env, expect["personal"])
     for word in expect.get("resultMentions") or []:
         if word not in result:
             fails.append(f"마지막 답에 '{word}'가 없어요 — 답 끝: {result.strip()[-300:]}")

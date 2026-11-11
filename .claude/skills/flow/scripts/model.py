@@ -32,13 +32,10 @@ STAGE_KEYS = list(CORE_KEYS)
 STAGE_TITLE = dict(CORE_STAGES)
 STAGE_FILE = {k: f for _, _, f, keys in CORE_PAGES for k in keys}
 PAGE_OF = {k: page for page, _, _, keys in CORE_PAGES for k in keys}
-# Stages the person is involved in: shown in their pages, and Claude stops for them there. A stage
-# outside this set is still created, filled and checked like any other — turning it off never stops data.
-ENABLED = set(CORE_KEYS)
 CUSTOM = {}
 
 
-def apply_workflow(custom=(), labels=None, enabled=None):
+def apply_workflow(custom=(), labels=None):
     """Rebuild the live catalog. custom: [{"key", "title", "after"}] in plugin order."""
     labels = labels or {}
     stages, pages = list(CORE_STAGES), list(CORE_PAGES)
@@ -60,8 +57,6 @@ def apply_workflow(custom=(), labels=None, enabled=None):
     STAGE_FILE.update({k: f for _, _, f, keys in PAGES for k in keys})
     PAGE_OF.clear()
     PAGE_OF.update({k: page for page, _, _, keys in PAGES for k in keys})
-    ENABLED.clear()
-    ENABLED.update(STAGE_KEYS if enabled is None else enabled)
     CUSTOM.clear()
     CUSTOM.update({c["key"]: c for c in custom})
 
@@ -81,8 +76,10 @@ def task_keys(task):
 
 
 def task_pages(task):
-    """PAGES plus a plain page for each plugin stage of this task whose plugin is not active here."""
-    extra = [(k, k, foreign_file(k), (k,)) for k in task_keys(task) if k not in STAGE_KEYS]
+    """PAGES plus a plain page for each own stage of this task whose owner's settings are not here,
+    titled with the title the task carries for it."""
+    stages = task.get("stages") or {}
+    extra = [(k, str(stages[k].get("title") or k), foreign_file(k), (k,)) for k in task_keys(task) if k not in STAGE_KEYS]
     return PAGES + extra
 
 
@@ -170,6 +167,9 @@ def stage_skeleton(key):
                     {"id": "L1", "title": "배포 환경(dev · stg)에 반영됨", "done": False},
                     {"id": "L2", "title": "배포된 화면에서 주요 상태를 확인함", "done": False},
                     {"id": "L3", "title": "Jira 이슈를 완료 상태로 옮김 — 사람이 옮길 것이면 결론에 기록", "done": False}]}]}
+    if key in CUSTOM:
+        # The title travels with the task, so a teammate without these settings sees the stage by name.
+        return {"title": CUSTOM[key]["title"], "status": "wait", "summary": "시작 전", "conclusion": [], "blocks": []}
     if key != "done":
         return {"status": "wait", "summary": "시작 전", "conclusion": [], "blocks": []}
     return {"status": "wait", "summary": "리뷰 전", "conclusion": [],
@@ -291,8 +291,7 @@ def task_state(task):
 
 def finished(task):
     """Over and ready to prune: every stage done, and a 05 완료 stage whose checklist — review,
-    the critical fixes, tests run again after them, the PR — is all ticked. Implementation alone is not.
-    A workflow that turns 05 완료 off changes none of this: off only means the person is not stopped there."""
+    the critical fixes, tests run again after them, the PR — is all ticked. Implementation alone is not."""
     st = (task.get("stages") or {}).get("done")
     if not st or stages_state(task) != "done":
         return False

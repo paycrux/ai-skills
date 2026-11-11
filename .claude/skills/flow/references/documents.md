@@ -9,7 +9,7 @@ page · reading for tokens · legacy documents · earlier versions
 <repo>/docs/
   ├ index.html                 every feature and domain, open tasks                 (generated)
   ├ .gitignore                 flow keeps a "# flow:begin … # flow:end" block listing the generated files
-  ├ flow.config.json           optional: the team's required stages, page style and what the pages hide — see § Customizing the pages
+  ├ flow.config.json           optional: the team's stage names, page style and what the pages hide — see § Customizing the pages
   ├ features/<id>/             a PRD across several stories — see feature.md
   │ ├ feature.json · prd.md · issues/*.md
   │ └ index.html               the feature page                                     (generated)
@@ -22,8 +22,8 @@ page · reading for tokens · legacy documents · earlier versions
   │ ├ verify/<task-id>.json    the fresh-context verifier's verdicts — `flow.py verify`
   │ ├ prd.md                   PRD snapshot when one was fetched
   │ ├ index.html               the domain's tasks and SOT map                       (generated)
-  │ └ <task-id>/               index.html (every stage's conclusion) + 01-plan.html … 06-release.html, x-<plugin>-<key>.html (generated)
-  │   └ share/                 plan.html · plan.md · backend.html · backend.md — copies to send outside (generated)
+  │ └ <task-id>/               index.html (every stage's conclusion) + 01-plan.html … 06-release.html, x-<id>-<key>.html for own stages (generated)
+  │   └ share/                 copies to send outside, written only by `flow.py export` (generated)
   └ <anything else>            legacy — listed on the root page, never written
 ```
 
@@ -80,10 +80,9 @@ page · reading for tokens · legacy documents · earlier versions
   it holds the exact branch name. `base` (optional, a short SHA) is the commit the task started from
   on a branch that already carries other work; `check` then compares the plan's 파일 rows with the
   changes since `base` instead of since the branch left its root.
-- What went in without a person is recorded, never left implicit (a stage the person turned off is
-  still filled — `plugin.md`):
-  - `skipped` on the task: `[{"stage": "tasks", "stop": "계획 승인", "why": "05 꺼짐"}]` — one entry
-    per stop Claude went past instead of waiting.
+- What went in without a person is recorded, never left implicit:
+  - `skipped` on the task: `[{"stage": "tasks", "stop": "계획 승인", "why": "사용자가 묻지 말고 진행하라고 함"}]` — one entry
+    per stop Claude went past at the person's word instead of waiting.
   - `"by": "inferred"` on a checklist item ticked from the conversation or the code without the
     person's look; a decision inferred the same way has `reason.by: "inferred"`.
   - `"unknown": "<what is missing>"` on an item nobody could collect. It counts as resolved — the
@@ -156,7 +155,7 @@ path, so the whole `docs/` folder works from disk, from a zip, or from another c
 | `docs/features/<id>/index.html` | rows with progress read from each task, PRD sections × rows, copy, shared items, Jira path |
 | `docs/<domain>/index.html` | the domain's tasks and SOT map (pins ⇄ rows, which task items cite each row) |
 | `docs/<domain>/<task>/index.html` | every stage's conclusion on one page |
-| `docs/<domain>/<task>/share/*` | copies to send outside, one per audience and format — opened from the 내보내기 menu on the task's pages; images are inlined, not linked |
+| `docs/<domain>/<task>/share/*` | copies to send outside, written by `flow.py export` on request; images are inlined, not linked |
 | `docs/<domain>/<task>/0N-<page>.html` | one page: `01-plan` (plan + screen), `02-grill`, `03-tasks`, `04-verify`, `05-done`; `#P2-1`, `#R1-Q2`, `#S5` jump to an item |
 
 The left nav is one tree on every page: 전체 문서, then each domain (only the current one open) with
@@ -187,7 +186,7 @@ What the person can do in a page, and how it reaches the JSON:
 
 Each repository can change how its pages look without touching the JSON or the skill:
 `<docs>/flow.config.json`, read by every `build`. Its `workflow` key (stages the team requires,
-shared stage names) and each person's own plugins are in `plugin.md`.
+shared stage names) and each person's own settings are in `personal.md`.
 
 ```json
 {

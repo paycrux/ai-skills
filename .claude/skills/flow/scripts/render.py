@@ -7,7 +7,7 @@ from pathlib import Path
 
 import feature as feat
 import workflow
-from model import (CORE_PAGES, DEFAULT_OPTIONS, ENABLED, ITEM_ID, KIND, PAGES, REASON_BY, REF, STAGE_TITLE, STATE_LABEL, UNSURE, domains_of,
+from model import (CORE_PAGES, DEFAULT_OPTIONS, ITEM_ID, KIND, PAGES, REASON_BY, REF, STAGE_TITLE, STATE_LABEL, UNSURE, domains_of,
                    frame_boxes, git, grill_state, page_file, page_state, parse_ref, place, plain, read_json, stage_state,
                    task_files, task_items, task_pages, task_state, unconfirmed, walk_refs)
 
@@ -106,10 +106,6 @@ class Site:
     def hidden(self, kind, name):
         if f"{kind}:{name}" in self.config["hide"]:
             return True
-        if kind == "page":
-            # A page whose stages this person turned off leaves their pages; its data stays in the JSON.
-            keys = next((keys for page, _, _, keys in PAGES if page == name), ())
-            return bool(keys) and not any(k in ENABLED for k in keys)
         return False
 
     def domain_page(self, d):
@@ -267,7 +263,7 @@ def mock_theme(ctx):
 
 def user_style(ctx):
     out = ""
-    for attr, css in [("data-flow-config", ctx.site.config["style"])] + [("data-flow-plugin", c) for c in ctx.site.workflow["styles"]]:
+    for attr, css in (("data-flow-config", ctx.site.config["style"]), ("data-flow-personal", ctx.site.workflow["style"])):
         if css:
             css = css.replace("</", "<\\/")
             out += f"<style {attr}>\n{css}</style>"
@@ -301,12 +297,11 @@ def export_menu(ctx, d, t, shared):
         n = shared[who]["n"]
         state = f"{word} {n}건" if n else "확정본"
         rows.append(f'<div class="ex-row"><b>{label}</b><span>{state}</span>'
-                    f'<a class="ex-btn" href="{esc(ctx.href(f"{d}/{t}/share/{who}.html"))}" download target="_blank">HTML 파일</a>'
                     f'<button class="ex-btn" type="button" data-share="{who}">텍스트 복사</button></div>')
     return ('<details class="export"><summary>내보내기</summary><div class="ex-panel">'
             '<p class="note">이 작업을 기획 · 백엔드에 보낼 사본이에요. 받는 사람과 형식을 골라 주세요.</p>'
-            f'{"".join(rows)}<p class="note">HTML 파일은 그림이 들어 있어 그대로 슬랙에 첨부하면 돼요. 새 탭으로 열리면 ⌘S로 저장해요. '
-            '텍스트는 슬랙 본문이나 지라 댓글에 붙여 넣는 용도예요.</p></div></details>')
+            f'{"".join(rows)}<p class="note">텍스트는 슬랙 본문이나 지라 댓글에 붙여 넣는 용도예요. '
+            '그림이 든 HTML 파일이 필요하면 Claude에게 “기획 공유본 HTML 만들어줘”라고 하면 돼요 (<code>flow.py export</code>).</p></div></details>')
 
 
 def conclusion(ctx, status, items=None, lis=None):
@@ -1097,20 +1092,24 @@ def unconfirmed_section(ctx, task):
     if u["inferred"]:
         lis.append(f'<li><span class="k pend">추정</span> {" ".join(ref(i) for i in u["inferred"])}</li>')
     lis += [f'<li><span class="k out">모름</span> {ref(i)} — {esc(why)}</li>' for i, why in u["unknown"]]
-    return (f'<h2>사람 확인 없이 남은 것<small>꺼진 단계에서 Claude가 대화 · 코드로 채운 것과, 아무도 알 수 없어 비운 것</small></h2>'
+    return (f'<h2>사람 확인 없이 남은 것<small>사람이 보기 전에 Claude가 대화 · 코드로 채운 것과, 아무도 알 수 없어 비운 것</small></h2>'
             f'<ul class="check">{"".join(lis)}</ul>')
 
 
 def attached(ctx, key, st):
-    """What this person's plugins attached to a core stage collected — stages.<key>.ext.<plugin>."""
+    """Everything attached to a core stage — stages.<key>.ext.<id> — whoever attached it. The title and
+    field names come from the task itself, so a teammate without the attaching person's settings reads it
+    the same way; the settings only add the fields still missing."""
+    ext_all = st.get("ext") if isinstance(st.get("ext"), dict) else {}
+    mine = {a["plugin"]: a for a in ctx.site.workflow["attach"] if a["stage"] == key}
     out = ""
-    for a in ctx.site.workflow["attach"]:
-        if a["stage"] != key:
-            continue
-        ext = (st.get("ext") or {}).get(a["plugin"]) or {}
+    for pid in list(dict.fromkeys([*mine, *ext_all])):
+        ext = ext_all.get(pid) if isinstance(ext_all.get(pid), dict) else {}
+        a = mine.get(pid)
         unknown = ext.get("unknown") if isinstance(ext.get("unknown"), dict) else {}
         inferred = set(ext.get("inferred") or [])
-        names = list(dict.fromkeys(a["fields"] + [k for k in ext if k not in ("unknown", "inferred")]))
+        names = list(dict.fromkeys((a["fields"] if a else []) + [k for k in ext if k not in ("title", "unknown", "inferred")]
+                                   + list(unknown)))
         rows = []
         for f in names:
             if f in ext:
@@ -1122,7 +1121,8 @@ def attached(ctx, key, st):
             else:
                 val, tag = '<span class="note">아직 없어요</span>', ""
             rows.append(f"<tr><td><code>{esc(f)}</code></td><td>{val}{tag}</td></tr>")
-        out += (f'<h2>플러그인 · {esc(a["title"])}<small>{esc(a["plugin"])} · stages.{esc(key)}.ext.{esc(a["plugin"])}</small></h2>'
+        title = str(ext.get("title") or (a and a["title"]) or pid)
+        out += (f'<h2>붙임 · {esc(title)}<small>{esc(pid)} · stages.{esc(key)}.ext.{esc(pid)}</small></h2>'
                 f'<table class="tbl"><tbody>{"".join(rows) or "<tr><td>아직 없어요</td></tr>"}</tbody></table>')
     return out
 
@@ -1281,8 +1281,7 @@ def render_all(docs):
         for t, task in dom["tasks"].items():
             shared = None
             if share.wanted(task):
-                copies, shared = share.pages(site, d, t)
-                pages.update(copies)
+                shared = share.texts(site, d, t)
             pages[site.task_page(d, t)] = task_index(site, d, t, shared)
             for n, (page, _, _, keys) in enumerate(task_pages(task), 1):
                 if any(k in (task.get("stages") or {}) for k in keys) and not site.hidden("page", page):

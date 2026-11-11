@@ -1,0 +1,57 @@
+<frame id="2507:17556" name="사용 불가 상품권도 보기" x="4118" y="1864" width="375" height="1039">
+  <instance id="2507:17557" name="StatusBar" x="0" y="0" width="375" height="50" />
+  <instance id="2507:17558" name="AppBar" x="0" y="50" width="375" height="56">
+    <frame id="I2507:17558;2020:5726" name="LeftContentWrap" x="24" y="16" width="193" height="24">
+      <text id="I2507:17558;2020:5729" name="페이지 이름" x="0" y="0" width="62" height="24" />
+    </frame>
+    <frame id="I2507:17558;2020:5730" name="RightContentWrap" x="225" y="12" width="126" height="32">
+      <instance id="I2507:17558;2020:5731" name="Actions/Button" x="0" y="0" width="126" height="32" />
+    </frame>
+  </instance>
+  <instance id="2507:17559" name="Tab" x="0" y="106" width="375" height="48" />
+  <frame id="2507:17879" name="ChipsSection" x="0" y="154" width="375" height="48">
+    <frame id="3119:42715" name="GapWrap" x="24" y="8" width="158" height="32">
+      <instance id="2507:17677" name="Actions/Chip" x="0" y="0" width="75" height="32" />
+      <instance id="2507:17726" name="Actions/Chip" x="83" y="0" width="75" height="32" />
+    </frame>
+  </frame>
+  <frame id="2507:17880" name="PlusCouponSection" x="0" y="202" width="375" height="773">
+    <instance id="2507:17881" name="FilterSelect" x="24" y="12" width="327" height="48">
+      <text id="I2507:17881;2052:27662" name="검색기간" x="16" y="13" width="55" height="22" />
+      <text id="I2507:17881;2052:27661" name="최근 1개월" x="79" y="13" width="212" height="22" />
+    </instance>
+    <instance id="2889:27304" name="Input/CheckBox" x="24" y="68" width="180" height="24" />
+    <instance id="2858:24099" name="GiftCoupon" x="24" y="100" width="327" height="130">
+      <frame id="I2858:24099;2856:23942" name="GapWrap" x="16" y="16" width="295" height="44">
+        <frame id="I2858:24099;2858:24012" name="AlignWrap" x="0" y="0" width="211" height="44">
+          <text id="I2858:24099;2856:23943" name="홍길동님이 보낸 선물" x="0" y="0" width="211" height="20" />
+          <text id="I2858:24099;2856:23945" name="아이스 아메리카노" x="0" y="20" width="219" height="24" />
+        </frame>
+        <instance id="I2858:24099;2856:23946" name="Actions/Button" x="223" y="0" width="72" height="32" />
+      </frame>
+      <text id="I2858:24099;2856:23947" name="받은 선물은 자동으로 모바일 상품권에 등록됐어요." x="16" y="68" width="295" height="19" />
+      <text id="I2858:24099;2856:23948" name="2026.11.18까지" x="16" y="95" width="99" height="19" />
+    </instance><instance id="2858:24123" name="GiftCoupon" x="24" y="238" width="327" height="130" />
+    <instance id="2865:24138" name="GiftCoupon" x="24" y="376" width="327" height="123">
+      <frame id="I2865:24138;2856:23950" name="GapWrap" x="16" y="16" width="295" height="64">
+        <frame id="I2865:24138;2858:24011" name="AlignWrap" x="0" y="0" width="211" height="64">
+          <text id="I2865:24138;2856:23951" name="사용완료 ⋅ 홍길동님이 보낸 선물" x="0" y="0" width="211" height="40" />
+          <text id="I2865:24138;2856:23953" name="아이스 아메리카노" x="0" y="40" width="219" height="24" />
+        </frame>
+        <instance id="I2865:24138;2856:23954" name="Actions/Button" x="223" y="0" width="72" height="32" />
+      </frame>
+      <text id="I2865:24138;2856:23955" name="받은 선물은 자동으로 모바일 상품권에 등록됐어요." x="12" y="72" width="303" height="19" hidden="true" />
+      <text id="I2865:24138;2856:23956" name="2026.11.18까지" x="16" y="88" width="99" height="19" />
+    </instance>
+    <instance id="2858:24135" name="GiftCoupon" x="24" y="507" width="327" height="123" />
+    <instance id="2858:24100" name="GiftCoupon" x="24" y="638" width="327" height="123">
+      <frame id="I2858:24100;2856:23950" name="GapWrap" x="16" y="16" width="295" height="64">
+        <frame id="I2858:24100;2858:24011" name="AlignWrap" x="0" y="0" width="211" height="64">
+          <text id="I2858:24100;2856:23951" name="사용완료 ⋅ 홍길동님이 보낸 선물" x="0" y="0" width="211" height="40" />
+          <text id="I2858:24100;2856:23953" name="아이스 아메리카노" x="0" y="40" width="219" height="24" />
+        </frame>
+      </frame>
+    </instance>
+  </frame>
+  <instance id="4172:65219" name="BottomNavigation" x="0" y="975" width="375" height="64" />
+</frame>

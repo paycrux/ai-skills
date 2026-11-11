@@ -1,7 +1,7 @@
 # Feature documents — one PRD across several Jira stories
 
 A PRD (기획서) that spans several Jira stories becomes several branches at once. The feature
-document is the one place that says how the PRD was cut: PRD sections → stories → `[프론트]` issues →
+document is the one place that says how the PRD was cut: PRD sections → stories → Jira sub-issues →
 branches and worktrees → flow tasks. It replaces the removed `/tracker` meta-plan
 (`docs/<name>/meta-plan.md`, still read as legacy). It only shows and records; it never sends work to
 another session. Each worktree's session runs its own `/flow` task.
@@ -19,7 +19,7 @@ screen → a plain `/flow` task, no feature document.
 <docs>/features/<id>/
   feature.json       the document (Claude writes it)
   prd.md             PRD snapshot — committed, never edited by hand
-  issues/<row>.md    description of each [프론트] issue still to create (templates/dev-issue.template.md)
+  issues/<row>.md    description of each sub-issue still to create (templates/dev-issue.template.md)
   index.html         feature page (generated, not committed)
 ```
 
@@ -33,7 +33,7 @@ screen → a plain `/flow` task, no feature document.
   "prd": [{"label": "선물하기 기획서", "url": "…", "snapshot": "prd.md", "lastEdited": "2026-09-16T05:42:00.000Z"}],
   "links": [{"label": "Figma 선물하기", "url": "…"}],
   "scope": ["<background sentence>", "<goal sentence>"],
-  "jira": {"project": "COMP", "issueType": "[개발]", "site": "https://<site>.atlassian.net", "path": [
+  "jira": {"project": "COMP", "issueType": "[개발]", "titlePrefix": "[프론트]", "site": "https://<site>.atlassian.net", "path": [
     {"status": "계획"}, {"status": "담당자 확인 중"}, {"status": "작업 중", "mark": "start"},
     {"status": "[DEV] 개발 완료", "via": "개발계 배포 완료", "manual": true, "mark": "done"}]},
   "rows": [{
@@ -53,7 +53,7 @@ screen → a plain `/flow` task, no feature document.
 }
 ```
 
-- **One row = one `[프론트]` issue = one worktree = one branch `feat/<KEY>` = one flow task `<KEY>`.**
+- **One row = one Jira sub-issue = one worktree = one branch `feat/<KEY>` = one flow task `<KEY>`.**
   Every story gets exactly one row; more only when the PRD itself separates the story into screens
   that ship independently — name that section in the row's `sections`. An existing `[개발]`
   sub-issue assigned to the user goes in `issue` and is reused.
@@ -66,6 +66,11 @@ screen → a plain `/flow` task, no feature document.
   matrix lists it in amber instead.
 - `start` fills `issue`, `worktree`, `branch`, `base`, `task`, and the document's `home`. Never write
   progress, stage or checklist counts here — the page reads them from each row's task.
+- `jira.titlePrefix` — what the team puts in front of a sub-issue title (`[프론트]`, `[FE]`, `[앱]`, or
+  `""` for none). Learned once per feature, never assumed: read the titles of the sub-issues already
+  under the stories (step 2 of § Draft and stop) and take the prefix they share; with none to read or
+  no shared prefix, ask the user once. Every new row's `title` starts with it, and `check` fails an
+  approved row while it is unset. The flow task title is the row title without it.
 - `jira.path` — the issue workflow, learned once (§ Jira). `mark: "start"` is where implementation
   begins, `mark: "done"` where flow stops. `manual: true` marks a transition with a precondition
   that the files cannot show (a dev deploy); flow never takes it.
@@ -96,6 +101,7 @@ screen → a plain `/flow` task, no feature document.
 2. **Stories and existing sub-issues** —
    `acli jira workitem view <STORY> --fields summary,issuetype,status,parent --json` and
    `acli jira workitem search --jql "parent = <STORY>" --fields key,summary,assignee,status --json`.
+   The sub-issue titles found here give `jira.titlePrefix`.
 3. **Design, shallow only** — `get_metadata` one level down per frame; never `get_design_context`
    here. Record frame names and node IDs in each row's `figma`.
 4. **Map** sections → stories → rows. Write one `issues/<row>.md` per new row from
@@ -104,7 +110,7 @@ screen → a plain `/flow` task, no feature document.
    marks every 주인 없는 섹션 and every section a task cites that the snapshot lacks.
 
 ```
-기능 문서 초안을 썼어요. 스토리 2개, [프론트] 이슈 3개(새로 만들 것 2개)예요.
+기능 문서 초안을 썼어요. 스토리 2개, 하위 이슈 3개(새로 만들 것 2개)예요. 제목 접두어는 기존 하위 이슈를 따라 [프론트]로 했어요.
 주인 없는 기획 섹션 1개가 노랗게 표시돼 있어요. 열린 페이지를 보고 고칠 곳을 알려 주세요.
 괜찮으면 "진행해" — 지라 이슈 · 워크트리 · 브랜치 · flow 작업을 만들어요. 이슈는 만드는 즉시 팀에 보여요.
 ```
@@ -136,7 +142,7 @@ python3 "${CLAUDE_SKILL_DIR}/../_shared/notion/fetch_notion_markdown.py" "<notio
 `flow.py start <feature.json> [--row KEY]... [--approve] [--dry-run]` makes, for every approved row,
 in order, saving after each step so a rerun continues where a failure stopped:
 
-1. **Jira** — a `[프론트]` sub-issue under `story` (`acli`, description converted by
+1. **Jira** — a sub-issue titled with the row's `title` under `story` (`acli`, description converted by
    `_shared/jira/md_to_adf.py`, assignee `@me`); an existing sub-issue with the same summary is reused.
 2. **Worktree** — `git fetch origin <root>`, then an orca **top-level** worktree
    (`--no-parent`, base `origin/<root>`, branch `feat/<KEY>`), then `orca worktree list --json` to

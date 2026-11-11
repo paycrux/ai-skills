@@ -1,6 +1,6 @@
 ---
 name: flow
-description: "Run a frontend task from PRD to PR as JSON documents under docs/<domain>/, rendered to linked static HTML pages that open from disk with no server — Figma SOT map per domain, question rounds answered in the page, plan, build, verify, release. A PRD spanning several Jira stories gets a feature document that cuts it into [프론트] issues, worktrees and flow tasks. Each person can layer a personal plugin on top: turn optional stages off, rename stages, add their own stages, restyle their pages. Use when the user runs /flow, hands over PRD + Figma links for a screen, hands over a PRD with several Jira story links, or asks to change their own flow workflow (내 플러그인, 단계 끄기, 단계 이름 바꾸기, 단계 추가)."
+description: "Run a frontend task from PRD to PR as JSON documents under docs/<domain>/, rendered to linked static HTML pages that open from disk with no server — Figma SOT map per domain, question rounds answered in the page, plan, build, verify, release. A PRD spanning several Jira stories gets a feature document that cuts it into Jira sub-issues (titled with the team's own prefix), worktrees and flow tasks. Every core stage is required; each person can only extend — add their own stages, attach more data to a stage, add their own commands (export, notes-app sync), rename stages and restyle their own pages. Use when the user runs /flow, hands over PRD + Figma links for a screen, hands over a PRD with several Jira story links, reports a bug with a symptom and reproduction steps whose cause is not yet located (a one-file fix with an obvious cause is done directly instead), or asks to change their own flow workflow (내 설정, 단계 이름 바꾸기, 단계 추가, 붙이기, 내 명령, 옵시디언 연동)."
 argument-hint: "<PRD link or text> [figma links] [Jira key(s)] — or a task ID to resume"
 ---
 
@@ -17,12 +17,12 @@ JSON, then rebuilds — the HTML is always the finished version Claude wrote.
 01 기획 · 화면 → 02 질문 ⇄ (01 · 03 · 04) → 03 구현 계획 · 구현 → 04 검증 → 05 완료 → 06 배포
 ```
 
-That is the core catalog. The team's `flow.config.json` can require stages, and each person's
-plugins can take the optional ones out of their workflow, rename them and add their own.
-`flow.py workflow <docs>` prints the stages this person works with. **A stage that is off is still
-created and filled exactly as below — only its page leaves the person's pages and Claude does not
-stop for them there.** Data is never dropped because a stage is off. A plugin stage is worked from
-its own instructions file (`references/plugin.md`).
+That is the core catalog, and every stage of it is required. Each person's own
+`~/.config/flow/config.json` only extends it: own stages, attachments to a stage, own commands,
+stage names and page style. `flow.py workflow <docs>` prints the stages, attachments and commands
+this person works with. **Whatever a setting writes into a task carries its own title, so a teammate
+without the setting reads and edits the same task.** An own stage is worked from its own
+instructions file (`references/personal.md`).
 
 The user acts in four places only: answering questions, approving the plan, unblocking an item,
 confirming completion. Everywhere else, keep going.
@@ -33,7 +33,7 @@ Read before starting:
 - `${CLAUDE_SKILL_DIR}/references/sot-map.md` — the `screen` stage, when the task has a screen
 - `${CLAUDE_SKILL_DIR}/references/questions.md` — the `grill` stage, every time a round opens or answers arrive
 - `${CLAUDE_SKILL_DIR}/references/feature.md` — when the request carries a PRD and several Jira stories
-- `${CLAUDE_SKILL_DIR}/references/plugin.md` — when the person asks to change their own workflow, or a task has a plugin stage
+- `${CLAUDE_SKILL_DIR}/references/personal.md` — when the person asks to change their own workflow, or a task has an own stage, an attachment or a command
 
 `flow.py` below means `python3 ${CLAUDE_SKILL_DIR}/scripts/flow.py`. `<docs>` is the repository's
 `docs/` folder. Write the full command each time — `F="python3 …"; $F build` fails in zsh, which
@@ -114,7 +114,7 @@ flow.py add <docs>/<domain>/tasks/<id>.json grill        # later, when a questio
 | The result has to be checked on a real screen, state by state | `verify` |
 | Requests to the server or PRD remain to hand over at the end | `done` |
 | The work has to be confirmed on a deployed environment, or the Jira issue moved after it | `release` |
-| A plugin stage applies (`flow.py workflow` lists it) | `<plugin>:<key>` |
+| An own stage applies (`flow.py workflow` lists it) | `<id>:<key>` |
 
 Add PRD / Figma / Jira URLs to the task's `links` as `{"label", "url"}`.
 
@@ -276,8 +276,7 @@ off-screen state (`V3`: `[[X3]] …`), plus the screens' main states.
 
 ## Step 7: 05 완료
 
-Implementation alone does not finish a task. Every task that changed code goes through this step,
-`done` off included. Add the stage first when it is missing (`flow.py add <task.json> done`). Work its checklist in
+Implementation alone does not finish a task. Every task that changed code goes through this step. Add the stage first when it is missing (`flow.py add <task.json> done`). Work its checklist in
 order — each item is ticked only when it actually happened:
 
 - D1: rewrite SOT evidence from plan-time guesses to real `file:line`, update `base` to the current
@@ -313,16 +312,20 @@ on that environment. L3: the Jira issue walked to its done status — a transiti
 take is written in the conclusion as 사람이 옮길 것. Set `release` to `done` with its conclusion,
 then `prune` as in Step 7; `prune` waits for every stage, this one included.
 
-## Plugin stages and the person's own workflow
+## Own stages, attachments, commands and the person's own workflow
 
-A task stage keyed `<plugin>:<key>` belongs to a personal plugin. Read its instructions file first
+A task stage keyed `<id>:<key>` is a person's own stage. Read its instructions file first
 (`flow.py brief <task.json> --stage <key>` prints the path), work it like any stage, and set it
-`done` only when its `check` command passes — `flow.py check` runs it. A plugin can also attach to a
-core stage: `flow.py brief --stage <key>` then prints its instructions and the fields to collect into
-`stages.<key>.ext.<plugin>` — collect them like any data (inferred marked, `unknown` when nobody can
-say). When the person asks to change how they work with flow (turn a stage off, rename, add a stage,
-collect more on a stage, restyle their pages, keep their own data), follow `references/plugin.md`: edit their plugin, never the team's `flow.config.json`, unless
-they say the change is for the whole team. A stage the team requires stays on; say so.
+`done` only when its `check` command passes — `flow.py check` runs it. A person can also attach to a
+core stage: `flow.py brief --stage <key>` then prints the instructions and the fields to collect into
+`stages.<key>.ext.<id>` together with its `title` — collect them like any data (inferred marked,
+`unknown` when nobody can say). A person's own commands run with `flow.py run <docs> <name>`; those
+marked `on: "build"` run after every build.
+When the person asks to change how they work with flow (add a stage, collect more on a stage, add a
+feature of their own, rename, restyle their pages, keep their own data), follow
+`references/personal.md`: edit their `~/.config/flow/config.json`, never the team's
+`flow.config.json`, unless they say the change is for the whole team. No stage can be turned off;
+say so and offer what fits.
 
 ## Follow-ups on a finished task
 
@@ -339,12 +342,11 @@ commit message is the record.
 ## Sharing outside the flow
 
 The pages are the wrong thing to send to 기획 · 디자인 or 백엔드: they mix both audiences, show
-internal IDs, and an answer typed in them stays in the reader's own browser. So `flow.py build`
-also writes, for every task with a `grill` stage, one copy per audience into
-`<docs>/<domain>/<task>/share/` — `plan.html` · `plan.md` · `backend.html` · `backend.md` — and
-every page of that task carries a 내보내기 menu at the top right. The person picks who and which
-format there: HTML 파일 (drawn case tables, images inside, one file to attach) or 텍스트 복사
-(Markdown on the clipboard for a Slack message or Jira comment).
+internal IDs, and an answer typed in them stays in the reader's own browser. So every page of a task
+with a `grill` stage carries a 내보내기 menu at the top right: 텍스트 복사 per audience (Markdown on
+the clipboard for a Slack message or Jira comment). An HTML copy (drawn case tables, images inside,
+one file to attach) is written only when asked:
+`flow.py export <task.json> --to plan|backend --format html` → `<docs>/<domain>/<task>/share/`.
 
 - 기획 · 디자인: each cases table with the questions it holds right below it; code-only cells
   (`enum`) and context rows (`enum`, `서버`, `코드`, `API`, `스키마`) left out.
@@ -353,7 +355,7 @@ format there: HTML 파일 (drawn case tables, images inside, one file to attach)
   With no open question for that audience the copy is titled 확정본 instead of a request.
 - Keep `to` set on every question someone outside must settle (`references/questions.md`) — it
   decides which copy a question lands in.
-- When the user asks in chat instead, point them to the menu, or run
+- When the user asks in chat for a copy, run
   `flow.py export <task.json> --to plan|backend --format html|md [-o FILE] [--copy]`.
 - Answers come back in the thread. When the user pastes them, record them as chat answers
   (`references/questions.md` § When answers cannot come from the page) and continue from there;
@@ -387,11 +389,12 @@ Chat messages at a stop are two or three lines plus what the user should do; the
 - **Never write legacy documents** — anything under `docs/` outside a domain folder is read only
 - **`flow.py check` passes before reporting a stage done**
 - **Create a stage only when the task needs it** — `add` it at the moment the need appears, never "just in case"
-- **A stage that is off still collects its data** — it leaves only the person's pages and stops. At
-  an off stage, write what the conversation and the code tell you and mark it (`reason.by` or item
-  `by: "inferred"`, `intent` `guess`); record each stop you go past in `skipped`; give an item nobody
-  can settle `unknown` with what is missing — never invent it (`references/plugin.md`). A stage the
-  team requires cannot be turned off
+- **Every core stage is required; personal settings only extend** — own stages, attachments and
+  commands add; labels and style change only that person's pages. What a setting writes into a task
+  carries its title, so the task reads the same without it (`references/personal.md`)
+- **What went in without a person is marked** — a value from the conversation or the code gets
+  `reason.by` or item `by: "inferred"` (`intent` `guess`); a stop you went past at the person's word
+  goes in `skipped`; an item nobody can settle gets `unknown` with what is missing — never invent it
 - **Open a page only at a stop** — `flow.py open <file>` builds, then opens the OS default browser; elsewhere print the path
 - **Generated files are never committed** — pages, `share/`, `.receipts/`; JSON, `prd.md`, Figma images and structure XML are
 - **A feature document only shows and records** — progress is read from each row's task; work is never sent to another session

@@ -1,8 +1,8 @@
-"""Feature documents: one PRD split into Jira stories, [프론트] issues, worktrees and flow tasks.
+"""Feature documents: one PRD split into Jira stories, sub-issues, worktrees and flow tasks.
 
     <docs>/features/<id>/feature.json   the feature document (Claude writes it)
     <docs>/features/<id>/prd.md         PRD snapshot, committed; diffed only when the user asks
-    <docs>/features/<id>/issues/*.md    description of each [프론트] issue to create
+    <docs>/features/<id>/issues/*.md    description of each sub-issue to create
     <docs>/features/<id>/index.html     feature page (generated)
 
 Progress on every row is read from that row's flow task JSON — in this checkout, in the row's
@@ -300,7 +300,7 @@ def orca_entry(path):
 # ---------------------------------------------------------------- start
 
 def start(path, only=None, approve=False, dry=False):
-    """Create, for every approved row: [프론트] issue, top-level worktree, branch, flow task skeleton.
+    """Create, for every approved row: Jira sub-issue, top-level worktree, branch, flow task skeleton.
 
     No judgment: rows come from the approved feature document, results are written back to it.
     Every finished step is saved at once, so a rerun picks up where a failure stopped.
@@ -332,7 +332,7 @@ def start(path, only=None, approve=False, dry=False):
             if row["issue"]:
                 lines.append(f"{name}: 지라 {row['issue']} 재사용 (같은 제목의 하위 이슈가 이미 있음)")
             elif dry:
-                lines.append(f"{name}: 지라 [프론트] 하위 이슈를 만들 예정 — 부모 {row.get('story')}")
+                lines.append(f"{name}: 지라 하위 이슈 \"{row['title']}\"를 만들 예정 — 부모 {row.get('story')}")
                 continue
             else:
                 row["issue"] = create_issue(f, row, path.parent)
@@ -446,7 +446,9 @@ def make_task(wt_docs, f, row, fpath):
     site = (f.get("jira") or {}).get("site")
     if site:
         links.append({"label": f"지라 {row['issue']}", "url": f"{site.rstrip('/')}/browse/{row['issue']}"})
-    task = {"id": row["task"], "title": row.get("taskTitle") or re.sub(r"^\[프론트\]\s*", "", row["title"]),
+    prefix = str((f.get("jira") or {}).get("titlePrefix") or "")
+    title = row["title"][len(prefix):].strip() if prefix and row["title"].startswith(prefix) else row["title"]
+    task = {"id": row["task"], "title": row.get("taskTitle") or title,
             "type": row.get("type", "기능 개발"), "branch": row["branch"],
             "feature": {"id": f["id"], "doc": str(fpath)}, "links": links,
             "stages": {k: stage_skeleton(k) for k in STAGE_KEYS if k in keys}}

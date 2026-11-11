@@ -463,6 +463,14 @@
         ".claude/skills/flow/assets/page.css"
       ],
       "sha": "3af07fa"
+    },
+    {
+      "date": "2026-11-11",
+      "text": "description에 원인 미확인 버그 리포트(증상 · 재현) 트리거 추가 — 원인이 뻔한 한 파일 수정은 제외",
+      "files": [
+        ".claude/skills/flow/SKILL.md"
+      ],
+      "sha": "37d568a"
     }
   ]
 }

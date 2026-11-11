@@ -1,14 +1,14 @@
-"""Which stages this person works with: the core catalog, the team's required stages, and the
-personal plugins layered on top.
+"""Which stages this person works with: the core catalog, every stage of it required, and the person's
+own extensions on top.
 
-  core      model.CORE_STAGES — fixed by the skill
-  team      <docs>/flow.config.json  "workflow": {"required": [...], "labels": {...}}   (committed)
-  personal  $FLOW_HOME/config.json   {"plugins": ["<id>", ...]}                          (not committed)
-            $FLOW_HOME/plugins/<id>/plugin.json
+  core      model.CORE_STAGES — fixed by the skill, all required
+  team      <docs>/flow.config.json  "workflow": {"labels": {...}}                          (committed)
+  personal  $FLOW_HOME/config.json   {"id", "labels", "custom", "attach", "commands", "style"} (not committed)
 
-A personal plugin may take optional stages out of the person's workflow, rename any stage, add its own
-stages and attach to a core stage to collect more data there, but never turn off a stage the team
-requires. A stage out of the workflow is still created and filled; only its page and stops go. $FLOW_HOME defaults to $XDG_CONFIG_HOME/flow or ~/.config/flow.
+The personal file only extends: it adds the person's own stages, attaches more data to a core stage, adds
+commands of their own (an export, a sync to a notes app), renames stages and restyles their own pages.
+It never removes a core stage. Whatever it writes into a task carries its own title, so a teammate
+without the file reads and edits the same task. $FLOW_HOME defaults to $XDG_CONFIG_HOME/flow or ~/.config/flow.
 """
 import json
 import os
@@ -18,10 +18,15 @@ from pathlib import Path
 import model
 
 CONFIG = "flow.config.json"
-PLUGIN_KEYS = {"id", "stages", "custom", "attach", "style"}
+PERSONAL_KEYS = {"id", "labels", "custom", "attach", "commands", "style"}
 CUSTOM_KEYS = {"key", "title", "after", "instructions", "check"}
 ATTACH_KEYS = {"stage", "title", "instructions", "fields", "check"}
+COMMAND_KEYS = {"name", "title", "run", "on"}
+COMMAND_ON = ("ask", "build")
+# Names flow itself writes inside ext.<id>, so an attachment cannot collect a field under them.
+EXT_RESERVED = {"title", "unknown", "inferred"}
 SHORT_KEY = re.compile(r"[a-z][a-z0-9-]*")
+REMOVED = "기본 단계는 모두 필수라서 읽지 않아요 — 지워도 돼요"
 
 
 def home():
@@ -56,17 +61,8 @@ def _read(path, label, problems):
     return data
 
 
-def _stage_list(value, label, known, problems):
-    if not isinstance(value, list):
-        problems.append(f"{label}: 단계 키 목록이어야 해요")
-        return []
-    bad = [k for k in value if k not in known]
-    if bad:
-        problems.append(f"{label}: 없는 단계 {', '.join(map(str, bad))} — {' · '.join(known)} 중에서")
-    return [k for k in value if k in known]
-
-
-def _labels(value, label, known, problems):
+def _labels(value, label, problems, known=None):
+    known = known or model.CORE_KEYS
     if not isinstance(value, dict):
         problems.append(f"{label}: {{단계 키: 이름}} 객체여야 해요")
         return {}
@@ -77,168 +73,167 @@ def _labels(value, label, known, problems):
 
 
 def team(docs, problems):
-    """<docs>/flow.config.json "workflow" → (required, labels)."""
+    """<docs>/flow.config.json "workflow" → labels."""
     path = Path(docs) / CONFIG if docs else None
     if not path or not path.exists():
-        return [], {}
+        return {}
     raw = _read(path, CONFIG, problems)
     wf = (raw or {}).get("workflow")
     if not wf:
-        return [], {}
+        return {}
     if not isinstance(wf, dict):
-        problems.append(f"{CONFIG}: workflow는 객체예요 — required · labels")
-        return [], {}
+        problems.append(f"{CONFIG}: workflow는 객체예요 — labels")
+        return {}
+    if "required" in wf:
+        problems.append(f"{CONFIG}: workflow.required는 {REMOVED}")
     unknown = sorted(set(wf) - {"required", "labels"})
     if unknown:
-        problems.append(f"{CONFIG}: workflow의 모르는 키 {', '.join(unknown)} — required · labels만 읽어요")
-    required = _stage_list(wf.get("required", []), f"{CONFIG} workflow.required", model.CORE_KEYS, problems)
-    labels = _labels(wf.get("labels", {}), f"{CONFIG} workflow.labels", model.CORE_KEYS, problems)
-    return required, labels
+        problems.append(f"{CONFIG}: workflow의 모르는 키 {', '.join(unknown)} — labels만 읽어요")
+    return _labels(wf.get("labels", {}), f"{CONFIG} workflow.labels", problems)
 
 
-def plugin(pid, problems):
-    """$FLOW_HOME/plugins/<id>/plugin.json → normalized plugin, or None."""
-    folder = home() / "plugins" / pid
-    label = f"플러그인 {pid}"
-    if not (folder / "plugin.json").is_file():
-        problems.append(f"{label}: {folder / 'plugin.json'}이 없어요 — flow.py plugin new {pid}")
-        return None
-    raw = _read(folder / "plugin.json", label, problems)
-    if raw is None:
-        return None
-    unknown = sorted(set(raw) - PLUGIN_KEYS)
-    if unknown:
-        problems.append(f"{label}: 모르는 키 {', '.join(unknown)} — {' · '.join(sorted(PLUGIN_KEYS))}만 읽어요")
-    if raw.get("id", pid) != pid:
-        problems.append(f"{label}: id({raw.get('id')})가 폴더 이름과 달라요")
-    out = {"id": pid, "dir": folder, "use": None, "labels": {}, "custom": [], "attach": [], "style": ""}
+def _custom(raw, pid, folder, problems):
+    out = []
     for c in raw.get("custom") or []:
         if not isinstance(c, dict):
-            problems.append(f"{label} custom: 단계마다 객체여야 해요")
+            problems.append("custom: 단계마다 객체여야 해요")
             continue
         short = str(c.get("key", ""))
         if not SHORT_KEY.fullmatch(short):
-            problems.append(f"{label} custom: key '{short}'는 영어 소문자 · 숫자 · -로 (예: perf)")
+            problems.append(f"custom: key '{short}'는 영어 소문자 · 숫자 · -로 (예: perf)")
             continue
-        key = f"{pid}:{short}"
         bad = sorted(set(c) - CUSTOM_KEYS)
         if bad:
-            problems.append(f"{label} custom {short}: 모르는 키 {', '.join(bad)} — {' · '.join(sorted(CUSTOM_KEYS))}")
+            problems.append(f"custom {short}: 모르는 키 {', '.join(bad)} — {' · '.join(sorted(CUSTOM_KEYS))}")
         after = c.get("after", "done")
-        known_after = model.CORE_KEYS + [x["key"] for x in out["custom"]]
+        known_after = model.CORE_KEYS + [x["key"] for x in out]
         if after not in known_after:
-            problems.append(f"{label} custom {short}: after '{after}'는 {' · '.join(known_after)} 중 하나")
+            problems.append(f"custom {short}: after '{after}'는 {' · '.join(known_after)} 중 하나")
             after = "done"
         if not c.get("title"):
-            problems.append(f"{label} custom {short}: title이 없어요")
+            problems.append(f"custom {short}: title이 없어요")
         ins = c.get("instructions")
         if not ins:
-            problems.append(f"{label} custom {short}: instructions(이 단계에서 Claude가 따를 절차 문서)가 없어요")
+            problems.append(f"custom {short}: instructions(이 단계에서 Claude가 따를 절차 문서)가 없어요")
         elif not (folder / ins).is_file():
-            problems.append(f"{label} custom {short}: instructions 파일이 없어요 ({folder / ins})")
-        out["custom"].append({"key": key, "title": str(c.get("title") or short), "after": after, "plugin": pid,
-                              "instructions": str(folder / ins) if ins else "", "check": c.get("check") or "",
-                              "dir": str(folder)})
+            problems.append(f"custom {short}: instructions 파일이 없어요 ({folder / ins})")
+        out.append({"key": f"{pid}:{short}", "title": str(c.get("title") or short), "after": after, "plugin": pid,
+                    "instructions": str(folder / ins) if ins else "", "check": c.get("check") or "", "dir": str(folder)})
+    return out
+
+
+def _attach(raw, pid, folder, problems):
+    out = []
     for a in raw.get("attach") or []:
         if not isinstance(a, dict):
-            problems.append(f"{label} attach: 붙일 단계마다 객체여야 해요")
+            problems.append("attach: 붙일 단계마다 객체여야 해요")
             continue
         stage = a.get("stage")
         if stage not in model.CORE_KEYS:
-            problems.append(f"{label} attach: stage '{stage}'는 {' · '.join(model.CORE_KEYS)} 중 하나")
+            problems.append(f"attach: stage '{stage}'는 {' · '.join(model.CORE_KEYS)} 중 하나")
             continue
         bad = sorted(set(a) - ATTACH_KEYS)
         if bad:
-            problems.append(f"{label} attach {stage}: 모르는 키 {', '.join(bad)} — {' · '.join(sorted(ATTACH_KEYS))}")
+            problems.append(f"attach {stage}: 모르는 키 {', '.join(bad)} — {' · '.join(sorted(ATTACH_KEYS))}")
         fields = a.get("fields") or []
         if not isinstance(fields, list) or not all(isinstance(x, str) and x for x in fields):
-            problems.append(f"{label} attach {stage}: fields는 모을 값 이름의 목록이에요")
+            problems.append(f"attach {stage}: fields는 모을 값 이름의 목록이에요")
             fields = []
-        if set(fields) & {"unknown", "inferred"}:
-            problems.append(f"{label} attach {stage}: unknown · inferred는 flow가 쓰는 이름이라 fields에 못 써요")
+        if set(fields) & EXT_RESERVED:
+            problems.append(f"attach {stage}: {' · '.join(sorted(EXT_RESERVED))}는 flow가 쓰는 이름이라 fields에 못 써요")
         ins = a.get("instructions")
         if not ins:
-            problems.append(f"{label} attach {stage}: instructions(이 단계에서 Claude가 더 할 일)가 없어요")
+            problems.append(f"attach {stage}: instructions(이 단계에서 Claude가 더 할 일)가 없어요")
         elif not (folder / ins).is_file():
-            problems.append(f"{label} attach {stage}: instructions 파일이 없어요 ({folder / ins})")
-        out["attach"].append({"stage": stage, "plugin": pid, "title": str(a.get("title") or pid),
-                              "instructions": str(folder / ins) if ins else "", "fields": fields,
-                              "check": a.get("check") or "", "dir": str(folder)})
-    known = model.CORE_KEYS + [c["key"] for c in out["custom"]]
-    st = raw.get("stages") or {}
-    if not isinstance(st, dict):
-        problems.append(f"{label}: stages는 객체예요 — use · labels")
-        st = {}
-    bad = sorted(set(st) - {"use", "labels"})
-    if bad:
-        problems.append(f"{label} stages: 모르는 키 {', '.join(bad)} — use · labels")
-    if "use" in st:
-        out["use"] = _stage_list(st["use"], f"{label} stages.use", model.CORE_KEYS, problems)
-    out["labels"] = _labels(st.get("labels", {}), f"{label} stages.labels", known, problems)
+            problems.append(f"attach {stage}: instructions 파일이 없어요 ({folder / ins})")
+        out.append({"stage": stage, "plugin": pid, "title": str(a.get("title") or stage),
+                    "instructions": str(folder / ins) if ins else "", "fields": fields,
+                    "check": a.get("check") or "", "dir": str(folder)})
+    return out
+
+
+def _commands(raw, folder, problems):
+    out = []
+    for c in raw.get("commands") or []:
+        if not isinstance(c, dict):
+            problems.append("commands: 명령마다 객체여야 해요")
+            continue
+        name = str(c.get("name", ""))
+        if not SHORT_KEY.fullmatch(name):
+            problems.append(f"commands: name '{name}'는 영어 소문자 · 숫자 · -로 (예: obsidian)")
+            continue
+        bad = sorted(set(c) - COMMAND_KEYS)
+        if bad:
+            problems.append(f"commands {name}: 모르는 키 {', '.join(bad)} — {' · '.join(sorted(COMMAND_KEYS))}")
+        if not c.get("run"):
+            problems.append(f"commands {name}: run(실행할 셸 명령)이 없어요")
+            continue
+        on = c.get("on", "ask")
+        if on not in COMMAND_ON:
+            problems.append(f"commands {name}: on은 {' · '.join(COMMAND_ON)} 중 하나 — ask는 부를 때만, build는 build 뒤마다")
+            on = "ask"
+        out.append({"name": name, "title": str(c.get("title") or name), "run": str(c["run"]), "on": on, "dir": str(folder)})
+    names = [c["name"] for c in out]
+    dup = sorted({n for n in names if names.count(n) > 1})
+    if dup:
+        problems.append(f"commands: 같은 이름이 두 번 있어요 — {', '.join(dup)}")
+    return out
+
+
+def personal(problems):
+    """$FLOW_HOME/config.json → {"id", "labels", "custom", "attach", "commands", "style"}."""
+    out = {"id": "", "labels": {}, "custom": [], "attach": [], "commands": [], "style": ""}
+    folder = home()
+    path = folder / "config.json"
+    if not path.exists():
+        return out
+    raw = _read(path, str(path), problems)
+    if raw is None:
+        return out
+    if "off" in raw:
+        problems.append(f"{path}: off는 {REMOVED}")
+    unknown = sorted(set(raw) - PERSONAL_KEYS - {"off"})
+    if unknown:
+        problems.append(f"{path}: 모르는 키 {', '.join(unknown)} — {' · '.join(sorted(PERSONAL_KEYS))}만 읽어요")
+    pid = str(raw.get("id") or "")
+    if (raw.get("custom") or raw.get("attach")) and not SHORT_KEY.fullmatch(pid):
+        problems.append(f"{path}: custom · attach를 쓰려면 id가 있어야 해요 — 영어 소문자 · 숫자 · - (예: hyunsu). "
+                        "내 단계 키(<id>:<key>)와 붙인 값(ext.<id>)의 이름이 돼요")
+        pid = pid if SHORT_KEY.fullmatch(pid) else "me"
+    out["id"] = pid
+    out["custom"] = _custom(raw, pid, folder, problems)
+    out["attach"] = _attach(raw, pid, folder, problems)
+    out["commands"] = _commands(raw, folder, problems)
+    out["labels"] = _labels(raw.get("labels", {}), f"{path} labels", problems,
+                            model.CORE_KEYS + [c["key"] for c in out["custom"]])
     if raw.get("style"):
         css = folder / raw["style"]
         if css.is_file():
             out["style"] = css.read_text()
         else:
-            problems.append(f"{label}: style 파일이 없어요 ({css})")
+            problems.append(f"{path}: style 파일이 없어요 ({css})")
     return out
-
-
-def personal(problems):
-    """$FLOW_HOME/config.json → [plugin]."""
-    path = home() / "config.json"
-    if not path.exists():
-        return []
-    raw = _read(path, str(path), problems)
-    if raw is None:
-        return []
-    unknown = sorted(set(raw) - {"plugins"})
-    if unknown:
-        problems.append(f"{path}: 모르는 키 {', '.join(unknown)} — plugins만 읽어요")
-    ids = raw.get("plugins") or []
-    if not isinstance(ids, list):
-        problems.append(f"{path}: plugins는 플러그인 id 목록이에요")
-        return []
-    return [p for p in (plugin(str(i), problems) for i in ids) if p]
 
 
 def load(docs=None):
     """→ the effective workflow, with every problem found on the way."""
     problems = []
-    required, team_labels = team(docs, problems)
-    plugins = personal(problems)
-    source = {k: "코어" for k in model.CORE_KEYS}
-    for k in required:
-        source[k] = "팀 필수"
-    uses = [p for p in plugins if p["use"] is not None]
-    if uses:
-        chosen = set().union(*(set(p["use"]) for p in uses))
-        for p in uses:
-            for k in required:
-                if k not in p["use"]:
-                    problems.append(f"플러그인 {p['id']}: 팀 필수 단계 {k}를 뺐어요 — 팀 필수는 끌 수 없어서 켜 둔 채로 써요")
-    else:
-        chosen = set(model.CORE_KEYS)
-    custom = [c for p in plugins for c in p["custom"]]
-    seen = {}
-    for c in custom:
-        source[c["key"]] = f"플러그인 {c['plugin']}"
-        seen[c["key"]] = seen.get(c["key"], 0) + 1
-    dup = sorted(k for k, n in seen.items() if n > 1)
+    team_labels = team(docs, problems)
+    mine = personal(problems)
+    source = {k: "코어 · 필수" for k in model.CORE_KEYS}
+    for c in mine["custom"]:
+        source[c["key"]] = "내 단계"
+    keys = [c["key"] for c in mine["custom"]]
+    dup = sorted({k for k in keys if keys.count(k) > 1})
     if dup:
         problems.append(f"같은 단계를 두 번 만들었어요: {', '.join(dup)}")
-    enabled = [k for k in model.CORE_KEYS if k in chosen or k in required] + list(dict.fromkeys(c["key"] for c in custom))
     labels, label_from = dict(team_labels), {k: "팀" for k in team_labels}
-    for p in plugins:
-        for k, v in p["labels"].items():
-            if label_from.get(k, "").startswith("플러그인") and labels.get(k) != v:
-                problems.append(f"단계 {k}의 이름을 {label_from[k]}와 플러그인 {p['id']}가 다르게 정했어요 — 뒤의 것을 써요")
-            labels[k] = v
-            label_from[k] = f"플러그인 {p['id']}"
-    return {"docs": str(docs) if docs else "", "required": required, "enabled": enabled, "labels": labels,
-            "label_from": label_from, "source": source, "custom": custom, "plugins": plugins,
-            "attach": [a for p in plugins for a in p["attach"]],
-            "styles": [p["style"] for p in plugins if p["style"]], "problems": problems, "home": str(home())}
+    for k, v in mine["labels"].items():
+        labels[k] = v
+        label_from[k] = "개인"
+    return {"docs": str(docs) if docs else "", "labels": labels, "label_from": label_from, "source": source,
+            "custom": mine["custom"], "attach": mine["attach"], "commands": mine["commands"],
+            "style": mine["style"], "problems": problems, "home": str(home())}
 
 
 _current = {}
@@ -249,7 +244,7 @@ def use(docs=None):
     key = (str(Path(docs).resolve()) if docs else "", str(home()))
     if _current.get("key") != key:
         wf = load(docs)
-        model.apply_workflow(wf["custom"], wf["labels"], wf["enabled"])
+        model.apply_workflow(wf["custom"], wf["labels"])
         _current.update(key=key, wf=wf)
     return _current["wf"]
 
