@@ -15,9 +15,9 @@
     python3 flow.py merge-xml <base.xml> <expanded.xml>... -o <out.xml>
     python3 flow.py routes <task.json> [--src DIR]          route · sheet rows for the files the task names (task route map)
     python3 flow.py open <page.html>                        build, then open the page in the OS default browser
-    python3 flow.py current [<dir>]                         the flow task whose branch is the checked-out one (SessionStart hook)
+    python3 flow.py current [<dir>]                         the flow task whose branch is the checked-out one (session start)
     python3 flow.py log <docs> --file PATH... -m "..." [--sha SHA] [--task ID]   one follow-up line on the task that covers the files
-    python3 flow.py verify <task.json> [--cmd CMD]... [--repo DIR]   a read-only checker in a fresh context writes <domain>/verify/<task>.json
+    python3 flow.py verify <task.json> [--cmd CMD]... [--agent claude|codex] a read-only checker in a fresh context writes <domain>/verify/<task>.json
     python3 flow.py prune <task.json>                       a finished task keeps conclusions and decisions only (run when its last stage turns done)
     python3 flow.py feature <docs> <feature-id> --title "..." --root BRANCH [--prd URL]   a feature document skeleton
     python3 flow.py start <docs>/features/<id>/feature.json [--row KEY]... [--approve] [--dry-run]
@@ -1000,15 +1000,15 @@ def tracked_generated(docs):
 
 EVIDENCE_ROWS = ("파일", "테스트", "실패 커밋", "증상", "재현")
 VERDICT = {"pass": "통과", "fail": "실패", "unknown": "확인 못 함"}
-VERIFY_SCHEMA = {
-    "type": "object", "required": ["items", "commands"],
+VERIFY_SCHEMA = {  # strict form (no extra keys, every key required) — Codex structured output rejects anything looser
+    "type": "object", "additionalProperties": False, "required": ["items", "commands"],
     "properties": {
         "items": {"type": "array", "items": {
-            "type": "object", "required": ["id", "verdict", "evidence"],
-            "properties": {"id": {"type": "string"}, "verdict": {"enum": list(VERDICT)},
+            "type": "object", "additionalProperties": False, "required": ["id", "verdict", "evidence"],
+            "properties": {"id": {"type": "string"}, "verdict": {"type": "string", "enum": list(VERDICT)},
                            "evidence": {"type": "string"}}}},
         "commands": {"type": "array", "items": {
-            "type": "object", "required": ["command", "exit"],
+            "type": "object", "additionalProperties": False, "required": ["command", "exit"],
             "properties": {"command": {"type": "string"}, "exit": {"type": "integer"}}}},
     },
 }
@@ -1033,6 +1033,63 @@ def result_message(out):
     return data
 
 
+VERIFY_AGENTS = ("claude", "codex")
+
+
+def verify_agent(choice):
+    """The CLI that runs the fresh-context check: --agent, else FLOW_AGENT, else the host we run under, else what is installed."""
+    import shutil
+    choice = choice or os.environ.get("FLOW_AGENT")
+    if not choice:
+        if os.environ.get("CLAUDECODE"):
+            choice = "claude"
+        elif any(k.startswith("CODEX_") for k in os.environ):
+            choice = "codex"
+        else:
+            choice = next((a for a in VERIFY_AGENTS if shutil.which(a)), None)
+    if choice not in VERIFY_AGENTS:
+        sys.exit("검증할 에이전트 CLI를 찾지 못했어요 — --agent claude 또는 --agent codex (설치된 것)")
+    if not shutil.which(choice):
+        sys.exit(f"{choice} CLI가 PATH에 없어요 — 설치하거나 --agent로 다른 것을 골라요")
+    return choice
+
+
+def verify_claude(prompt, repo, args):
+    tools = ["Read", "Grep", "Glob"] + (["Bash"] if args.cmd else [])
+    cmd = ["claude", "-p", prompt, "--output-format", "json", "--json-schema", json.dumps(VERIFY_SCHEMA),
+           "--tools", *tools, "--allowedTools", "Read", "Grep", "Glob", *[f"Bash({c})" for c in args.cmd],
+           "--permission-mode", "default", "--strict-mcp-config", "--no-session-persistence"]
+    if args.model:
+        cmd += ["--model", args.model]
+    proc = subprocess.run(cmd, cwd=repo, capture_output=True, text=True)
+    try:
+        res = result_message(proc.stdout)
+    except ValueError:
+        res = {}
+    out = res.get("structured_output")
+    if proc.returncode or res.get("is_error"):
+        out = None
+    return out, res.get("total_cost_usd"), proc.stderr + str(res.get("result", ""))
+
+
+def verify_codex(prompt, repo, args):
+    # Codex has no per-command allowlist; the read-only sandbox blocks writes and the guide names the only commands to run.
+    import tempfile
+    tmp = Path(tempfile.mkdtemp())
+    schema, last = tmp / "schema.json", tmp / "out.json"
+    schema.write_text(json.dumps(VERIFY_SCHEMA))
+    cmd = ["codex", "exec", "--sandbox", "read-only", "--skip-git-repo-check", "-C", str(repo),
+           "--output-schema", str(schema), "-o", str(last)]
+    if args.model:
+        cmd += ["-m", args.model]
+    proc = subprocess.run([*cmd, prompt], cwd=repo, capture_output=True, text=True, stdin=subprocess.DEVNULL)
+    try:
+        out = json.loads(last.read_text()) if proc.returncode == 0 else None
+    except (OSError, ValueError):
+        out = None
+    return out, None, proc.stderr + proc.stdout
+
+
 def cmd_verify(args):
     f = Path(args.task).resolve()
     t = read_json(f)
@@ -1044,25 +1101,15 @@ def cmd_verify(args):
         sys.exit("확인할 체크리스트 항목이 없어요")
     guide = (Path(__file__).parent.parent / "references" / "verifier.md").read_text()
     prompt = guide + "\n\n```json\n" + json.dumps(payload, ensure_ascii=False, indent=1) + "\n```\n"
-    tools = ["Read", "Grep", "Glob"] + (["Bash"] if args.cmd else [])
-    cmd = ["claude", "-p", prompt, "--output-format", "json", "--json-schema", json.dumps(VERIFY_SCHEMA),
-           "--tools", *tools, "--allowedTools", "Read", "Grep", "Glob", *[f"Bash({c})" for c in args.cmd],
-           "--permission-mode", "default", "--strict-mcp-config", "--no-session-persistence"]
-    if args.model:
-        cmd += ["--model", args.model]
-    print(f"새 컨텍스트에서 검증 중 — 항목 {len(payload['items'])}개, 명령 {len(args.cmd)}개 ({repo})")
-    proc = subprocess.run(cmd, cwd=repo, capture_output=True, text=True)
-    try:
-        res = result_message(proc.stdout)
-    except ValueError:
-        res = {}
-    out = res.get("structured_output")
-    if proc.returncode or res.get("is_error") or not isinstance(out, dict):
-        sys.stderr.write(proc.stderr[-2000:] + str(res.get("result", ""))[-2000:])
+    agent = verify_agent(args.agent)
+    print(f"새 컨텍스트에서 검증 중 ({agent}) — 항목 {len(payload['items'])}개, 명령 {len(args.cmd)}개 ({repo})")
+    out, cost, err = (verify_codex if agent == "codex" else verify_claude)(prompt, repo, args)
+    if not isinstance(out, dict):
+        sys.stderr.write(err[-4000:])
         sys.exit("검증자가 결과를 내지 못했어요 — 파일을 쓰지 않았어요")
-    record = {"task": t.get("id"), "date": date.today().isoformat(),
+    record = {"task": t.get("id"), "date": date.today().isoformat(), "agent": agent,
               "head": git(repo, "rev-parse", "--short", "HEAD"), "commands": out.get("commands", []),
-              "items": out.get("items", []), "cost": res.get("total_cost_usd")}
+              "items": out.get("items", []), "cost": cost}
     dest = domain / "verify" / f"{t.get('id')}.json"
     dest.parent.mkdir(exist_ok=True)
     write_json(dest, record)
@@ -1423,6 +1470,7 @@ def main():
     p.add_argument("--cmd", action="append", default=[], help="a command the verifier may run (exact)")
     p.add_argument("--repo", help="the code repository, when it is not the one holding <docs>")
     p.add_argument("--model")
+    p.add_argument("--agent", choices=VERIFY_AGENTS, help="the CLI that runs the check (default: the host agent, else what is installed)")
     p.set_defaults(fn=cmd_verify)
     p = sub.add_parser("open")
     p.add_argument("page")

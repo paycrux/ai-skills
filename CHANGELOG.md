@@ -8,10 +8,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
-- `skill-report` 스킬 추가 — 작업 중 스킬이 불편하거나 버그 같으면 말한 그대로 `paycrux/ai-skills` GitHub 이슈로 올림. 리포트 작업은 `claude -p`로 띄운 별도 세션이 하고(스킬 소스에서 해당 규칙 찾기, 열린 중복 이슈면 댓글), 지금 세션에는 URL 한 줄만 돌아옴. 공개 저장소라 프로젝트 · 회사 정보는 빼고 올림
+- `skill-report` 스킬 추가 — 작업 중 스킬이 불편하거나 버그 같으면 말한 그대로 `paycrux/ai-skills` GitHub 이슈로 올림. 리포트 작업은 `claude -p` 또는 `codex exec`로 띄운 읽기 전용 별도 세션이 이슈 내용을 쓰고(스킬 소스에서 해당 규칙 찾기, 열린 중복 이슈면 댓글) 스크립트가 `gh`로 올림. 지금 세션에는 URL 한 줄만 돌아옴. 공개 저장소라 프로젝트 · 회사 정보는 빼고 올림
 
 ### Changed
 
+- `flow`: Claude Code · Codex · Cursor 어디서 불러도 같은 스킬로 동작. 스크립트 경로를 Claude 전용 변수 `${CLAUDE_SKILL_DIR}` 대신 'SKILL.md가 있는 폴더'로 적고, 세션 시작 훅이 없는 에이전트는 먼저 `flow.py current`를 실행. 새 컨텍스트 검증 `flow.py verify`는 `claude -p`와 `codex exec`(읽기 전용 샌드박스) 중 지금 에이전트를 씀(`--agent`로 지정). 코드 리뷰 · `git-pr` 호출도 에이전트별로 적음
+- `flow`: 기능 문서 `feature.json`과 작업 JSON에 내 컴퓨터의 절대 경로(`repo` · `worktree` · `home.worktree` · `feature.doc`)를 저장하지 않음. 워크트리와 기능 문서는 실행할 때 브랜치 이름으로 각자 컴퓨터에서 찾고, 예전 문서에 남은 경로는 `check`가 알림
 - `flow`: 기획서 하나가 지라 스토리 여러 개에 걸치면 **기능 문서**(`docs/features/<id>/feature.json`)를 씀. 기획 섹션 → 스토리 → `[프론트]` 이슈 → 브랜치 · 워크트리 → flow 작업을 한 표로 묶고, 각 줄의 진행도는 그 줄의 flow 작업 JSON에서 계산함. 기능 페이지는 아무 작업도 인용하지 않는 기획 섹션과 스냅샷에 없는 섹션을 노란 줄로 표시. 작업 페이지 머리에서 기능 페이지로 올라감
 - `flow`: `flow.py start` — 승인된 줄마다 지라 `[프론트]` 하위 이슈(이미 있으면 재사용), orca 최상위 워크트리(상위 워크트리 없음 확인), `feat/<키>` 브랜치(upstream 해제), flow 작업 뼈대를 만들고 결과를 기능 문서에 씀. 단계마다 저장해서 실패 뒤 다시 실행하면 이어서 함
 - `flow`: `flow.py jira start|done` — 전환 경로를 기능 문서에 한 번 기록해 두고 한 단계씩 옮김. 완료 단계는 완료 댓글 후 이동. 개발계 배포처럼 조건이 붙은 전환은 하지 않고 '사람이 옮길 것'으로 표시

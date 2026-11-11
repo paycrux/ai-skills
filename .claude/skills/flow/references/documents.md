@@ -76,7 +76,7 @@ page · reading for tokens · legacy documents · earlier versions
 }
 ```
 
-- `branch` is matched against the checked-out branch by `flow.py current` (the SessionStart hook), so
+- `branch` is matched against the checked-out branch by `flow.py current` (run at session start), so
   it holds the exact branch name. `base` (optional, a short SHA) is the commit the task started from
   on a branch that already carries other work; `check` then compares the plan's 파일 rows with the
   changes since `base` instead of since the branch left its root.
@@ -225,7 +225,7 @@ load comes back blank.
 ## Reading for tokens
 
 - Session start: `flow.py current` prints the head of the brief for the task whose `branch` is checked
-  out (or one warning line); the SessionStart hook runs it.
+  out (or one warning line); run it first in a session (a host's session-start hook may run it for you).
 - Resuming: `flow.py brief <task.json>` — stage lines, conclusions, decided questions, pending marks.
 - Working on a stage: `flow.py brief <task.json> --stage tasks`, plus the JSON of that stage only.
 - SOT rows: read the rows you cite from `screens.json`, not the whole file, when it is large.

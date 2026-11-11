@@ -109,7 +109,7 @@ screen → a plain `/flow` task, no feature document.
 3. **Design, shallow only** — `get_metadata` one level down per frame; never `get_design_context`
    here. Record frame names and node IDs in each row's `figma`.
 4. **Map** sections → stories → rows. Write one `issues/<row>.md` per new row from
-   `${CLAUDE_SKILL_DIR}/templates/dev-issue.template.md` — PRD text quoted, never summarized.
+   `<skill>/templates/dev-issue.template.md` — PRD text quoted, never summarized.
 5. `flow.py build <docs>`, `flow.py open <docs>/features/<id>/index.html`, and **stop**. The page
    marks every 주인 없는 섹션 and every section a task cites that the snapshot lacks.
 
@@ -128,7 +128,7 @@ repository; otherwise ask once. Never derive it from a rule like "develop, else 
 ## Snapshot
 
 ```bash
-python3 "${CLAUDE_SKILL_DIR}/../_shared/notion/fetch_notion_markdown.py" "<notion-url>" \
+python3 "<skill>/../_shared/notion/fetch_notion_markdown.py" "<notion-url>" \
   --output "<docs>/features/<id>/prd.md" --metadata /tmp/flow-prd-meta.json --check-auth
 ```
 
@@ -197,7 +197,7 @@ group:
 
 ## After start
 
-Each worktree is worked in its own session: open the worktree, and the SessionStart hook
-(`flow.py current`) names the task on that branch. Blocker questions are asked in that tab; a
+Each worktree is worked in its own session: open the worktree, and `flow.py current` (run
+first, or already printed by a host's session-start hook) names the task on that branch. Blocker questions are asked in that tab; a
 decision that shaped one item stays a `결정` row in that task. Only cross-row matters reach the
 feature document. Commit before switching branches; PRs go to the root, squash-merged.

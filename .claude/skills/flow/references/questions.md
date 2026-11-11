@@ -172,7 +172,7 @@ Claude. `check` fails on an unfinished task while a question lacks `intent`, a d
 
 When the user says they answered ("답 썼어") or copied ("복사했어"):
 
-1. `python3 ${CLAUDE_SKILL_DIR}/scripts/flow.py pull <docs>` — or `pull <docs> --clipboard` after
+1. `python3 <skill>/scripts/flow.py pull <docs>` — or `pull <docs> --clipboard` after
    "복사했어". It writes what the page kept into the task as `"by": "user"` marks and prints them.
    Nothing found → the browser had not written it to disk yet (pull again after ten seconds) or the
    page was opened in Safari (ask for 답 복사).

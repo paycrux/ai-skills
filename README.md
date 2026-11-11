@@ -270,12 +270,12 @@ flow.py open docs/index.html  # build 후 문서 보기
 
 ### /skill-report
 
-**스킬 버그 · 불편을 GitHub 이슈로 올림** — 별도 세션(`claude -p`)에서 올리고, 지금 세션엔 URL 한 줄만 돌아옵니다.
+**스킬 버그 · 불편을 GitHub 이슈로 올림** — 별도 세션(`claude -p` 또는 `codex exec`, 읽기 전용)이 이슈 내용을 쓰고 스크립트가 `gh`로 올리며, 지금 세션엔 URL 한 줄만 돌아옵니다.
 
 설치: ai-skills를 설치하면 함께 들어옵니다(이미 설치했다면 `ai-skills update`). 추가로 필요한 것은 두 가지입니다.
 
 ```bash
-claude --version   # Claude Code CLI (Cursor · Codex에서 불러도 필요)
+claude --version   # 또는 codex --version — 둘 중 설치된 것으로 새 세션을 띄움 (둘 다 있으면 claude, SKILL_REPORT_AGENT=codex로 지정)
 gh auth login      # paycrux/ai-skills에 이슈를 올릴 GitHub 계정
 ```
 

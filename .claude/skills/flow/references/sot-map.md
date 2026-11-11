@@ -45,7 +45,7 @@ some are screens. Classify every direct child before fetching anything else:
    instances — a card shows as one box with no text nodes inside. Call `get_metadata` again on
    each instance you will put a marker in, save each to `images/<screen>.<n>.xml`, then:
    ```bash
-   python3 ${CLAUDE_SKILL_DIR}/scripts/flow.py merge-xml images/<screen>.base.xml images/<screen>.1.xml ... -o images/<screen>.xml
+   python3 <skill>/scripts/flow.py merge-xml images/<screen>.base.xml images/<screen>.1.xml ... -o images/<screen>.xml
    ```
    Do not expand instances you will not mark (repeated cards, status bars).
 3. **API schema** — open the generated schema or API types the app uses and expand the response
@@ -175,8 +175,8 @@ only calls this task actually confirmed in code — never the whole import graph
 ## Check
 
 ```bash
-python3 ${CLAUDE_SKILL_DIR}/scripts/flow.py build <docs>
-python3 ${CLAUDE_SKILL_DIR}/scripts/flow.py check <docs>/<domain>
+python3 <skill>/scripts/flow.py build <docs>
+python3 <skill>/scripts/flow.py check <docs>/<domain>
 ```
 
 A node ID missing from the merged XML is reported with its ID — expand that instance and merge

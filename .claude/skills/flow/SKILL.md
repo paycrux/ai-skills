@@ -29,13 +29,17 @@ confirming completion. Everywhere else, keep going.
 
 Read before starting:
 
-- `${CLAUDE_SKILL_DIR}/references/documents.md` — layout, JSON shapes, references, the pages, answers, earlier versions
-- `${CLAUDE_SKILL_DIR}/references/sot-map.md` — the `screen` stage, when the task has a screen
-- `${CLAUDE_SKILL_DIR}/references/questions.md` — the `grill` stage, every time a round opens or answers arrive
-- `${CLAUDE_SKILL_DIR}/references/feature.md` — when the request carries a PRD and several Jira stories
-- `${CLAUDE_SKILL_DIR}/references/personal.md` — when the person asks to change their own workflow, or a task has an own stage, an attachment or a command
+- `<skill>/references/documents.md` — layout, JSON shapes, references, the pages, answers, earlier versions
+- `<skill>/references/sot-map.md` — the `screen` stage, when the task has a screen
+- `<skill>/references/questions.md` — the `grill` stage, every time a round opens or answers arrive
+- `<skill>/references/feature.md` — when the request carries a PRD and several Jira stories
+- `<skill>/references/personal.md` — when the person asks to change their own workflow, or a task has an own stage, an attachment or a command
 
-`flow.py` below means `python3 ${CLAUDE_SKILL_DIR}/scripts/flow.py`. `<docs>` is the repository's
+`<skill>` is the folder this `SKILL.md` was read from (`~/.claude/skills/flow`, `~/.codex/skills/flow`,
+a project's `.claude/skills/flow` …; Claude Code also exposes it as `<skill>`). This skill
+runs under any agent — Claude Code, Codex, Cursor — so never assume one host's tools; where a step
+names one, the other hosts' equivalent is given beside it.
+`flow.py` below means `python3 <skill>/scripts/flow.py`. `<docs>` is the repository's
 `docs/` folder. Write the full command each time — `F="python3 …"; $F build` fails in zsh, which
 does not split a variable into words.
 
@@ -71,8 +75,9 @@ feature document draft (`references/feature.md`): write it, open its page, and s
 worktrees, branches and the task skeletons. Each task is then worked in its own worktree from
 **resume** below.
 
-- The session started on a branch that has a task → the SessionStart hook already printed
-  `flow.py current` (task line and stage lines); that is the task — **resume** it.
+- First run `flow.py current` (a host with a session-start hook may already have printed it). It
+  prints the task whose `branch` is the checked-out one (task line and stage lines); that is the
+  task — **resume** it.
 - The argument names an existing task → **resume**: `flow.py pull <docs>` (answers left in the
   pages since last time), `flow.py brief <task.json>`, then `flow.py changes <docs>/<domain>` if
   either reports something, and continue at the first stage that is `ask` or `now`. Do not read the
@@ -130,7 +135,7 @@ first, then the screens under a 화면 · SOT 맵 divider. Either one alone stil
 
 **Read the PRD.**
 - Notion: use the host's Notion connector when one is available; otherwise
-  `python3 ${CLAUDE_SKILL_DIR}/../_shared/notion/fetch_notion_markdown.py <url> -o <docs>/<domain>/prd.md --check-auth`
+  `python3 <skill>/../_shared/notion/fetch_notion_markdown.py <url> -o <docs>/<domain>/prd.md --check-auth`
   (needs `notion-cli`). Neither available → ask the user to paste the section.
 - A long PRD covers many features. Save the full text to the domain's `prd.md`, list its headings,
   and read only the section(s) this task covers — never the whole document into context.
@@ -268,7 +273,9 @@ off-screen state (`V3`: `[[X3]] …`), plus the screens' main states.
 - Finish with the project's deterministic commands (typecheck, lint, tests); only exit codes count.
 - Then a second look from a fresh context, so the verdict does not inherit this session's
   assumptions: `flow.py verify <task.json> --cmd "<typecheck>" --cmd "<tests>" [--repo <code repo>]`.
-  It runs `claude -p` with read-only tools and only the commands named, hands it the items and
+  It runs a fresh non-interactive session of the agent CLI you run under (`claude -p` or
+  `codex exec` in a read-only sandbox — pass `--agent claude|codex` to say which) with only the
+  commands named, hands it the items and
   their evidence rows but not the conclusions or `결정` rows, and writes
   `<docs>/<domain>/verify/<task>.json`. Exit 1 means a `fail` verdict or a failed command — treat
   each as a `B<n>` bug. `unknown` items are the ones left for the user's look below.
@@ -282,7 +289,8 @@ order — each item is ticked only when it actually happened:
 - D1: rewrite SOT evidence from plan-time guesses to real `file:line`, update `base` to the current
   short SHAs.
 - D2: list every remaining `calc` row and server or PRD request.
-- D3: run `/code-review` on the branch's changes and fix what is critical. Refactor only what it
+- D3: run the host's code review on the branch's changes (`/code-review` in Claude Code, `/review`
+  in Codex; with neither, review the diff yourself against the plan) and fix what is critical. Refactor only what it
   flags.
 - D4: after those fixes, run the deterministic commands again (typecheck, lint, tests) — only exit
   codes count. With `verify`, that stage must be `done` too; a fix after it re-runs what it covers.
@@ -291,7 +299,8 @@ order — each item is ticked only when it actually happened:
   toward the done status. A transition with a precondition (a dev deploy) is not taken — it shows on
   the feature page as 사람이 옮길 것.
 - D5, the PR, comes only after D3 and D4. Ask whether to open one now. On yes, invoke
-  `/git-pr --mode pr` with the Skill tool — it links this task, skips the review D3 already ran, and
+  the `git-pr` skill with `--mode pr` (Claude Code: the Skill tool; elsewhere read its `SKILL.md`
+  and follow it) — it links this task, skips the review D3 already ran, and
   still shows the draft before creating anything. Add the PR URL it returns to the task's `links`
   and tick D5. On no, tick D5 and say "PR 없음" in the stage conclusion. Never run `gh pr create`
   from this skill.
@@ -366,7 +375,7 @@ one file to attach) is written only when asked:
 Write for a reader who has not implemented this feature and does not share your context:
 background before conclusion, no unexplained internal term, one clear line instead of a paragraph
 they skip, no filler (전반적으로, ~등을 개선, 안정성 향상), and what actually is rather than what
-was intended. Full rules: `${CLAUDE_SKILL_DIR}/../../rules/writing.md`.
+was intended. Full rules: `<skill>/../../rules/writing.md`.
 
 This applies to chat and to every sentence in the JSON — conclusions, decisions, `rule` and `note`.
 Chat messages at a stop are two or three lines plus what the user should do; the detail is in the page.

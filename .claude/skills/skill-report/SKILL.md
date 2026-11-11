@@ -8,13 +8,13 @@ allowed-tools: Bash, Write
 # /skill-report — Report an ai-skills bug or pain point as a GitHub issue
 
 The user is in the middle of other work. This skill must not turn the current session
-into a reporting session: it writes a short brief, hands it to a **new headless Claude
-Code session** (`claude -p`), and goes back to the user's task. The new session reads the
-skill source, checks for duplicates, writes the issue and posts it. The current session
-only sees one line back — the issue URL.
+into a reporting session: it writes a short brief, hands it to a **new headless agent
+session** (`claude -p` or `codex exec`, read-only), and goes back to the user's task. The new
+session reads the skill source, checks the open issues for a duplicate and writes the issue;
+the script posts it with `gh`. The current session only sees one line back — the issue URL.
 
-This works the same from Claude Code, Cursor and Codex: whichever agent runs this skill,
-the report itself always runs in a separate `claude` process.
+This works the same from Claude Code, Cursor and Codex. The script uses whichever of `claude`
+and `codex` is installed (`claude` first); `SKILL_REPORT_AGENT=codex` picks one.
 
 ## Step 1: Write the brief (current session — keep it short)
 
@@ -50,15 +50,17 @@ EOF
 ## Step 2: Launch the new session
 
 ```bash
-bash "${CLAUDE_SKILL_DIR}/scripts/report.sh" "$BRIEF"
+bash "<skill>/scripts/report.sh" "$BRIEF"
 ```
+
+`<skill>` is the folder this `SKILL.md` was read from (Claude Code: `${CLAUDE_SKILL_DIR}`).
 
 - **Claude Code:** run it with `run_in_background: true` and return to the user's task
   immediately. When the notification arrives, relay the last line.
 - **Cursor / Codex (no background notification):** append `&> "$BRIEF.log" &` and tell the
   user the log path; the issue URL is the log's last line.
 
-The script exits non-zero and prints the reason when `claude` or `gh` is missing or `gh`
+The script exits non-zero and prints the reason when no agent CLI (`claude` / `codex`) or `gh` is installed or `gh`
 is not logged in. Relay that reason in one line; do not try to fix the environment.
 
 ## Step 3: Report back — one line
