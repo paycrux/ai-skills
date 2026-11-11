@@ -483,6 +483,12 @@
       "text": "SKILL.md · references에서 ${CLAUDE_SKILL_DIR} 제거, verify에 --agent claude|codex, skill-report는 읽기 전용 세션이 쓰고 스크립트가 gh로 올림",
       "files": [],
       "sha": "383d6aa"
+    },
+    {
+      "date": "2026-11-11",
+      "text": "render.py에 safe_html(허용 태그만) · safe_url(javascript: 차단), rich · 참조 미리보기 · share에 적용",
+      "files": [],
+      "sha": "ac28fd6"
     }
   ]
 }
