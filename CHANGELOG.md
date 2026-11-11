@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- `skill-report` 스킬 추가 — 작업 중 스킬이 불편하거나 버그 같으면 말한 그대로 `paycrux/ai-skills` GitHub 이슈로 올림. 리포트 작업은 `claude -p`로 띄운 별도 세션이 하고(스킬 소스에서 해당 규칙 찾기, 열린 중복 이슈면 댓글), 지금 세션에는 URL 한 줄만 돌아옴. 공개 저장소라 프로젝트 · 회사 정보는 빼고 올림
+
 ### Changed
 
 - `flow`: 기획서 하나가 지라 스토리 여러 개에 걸치면 **기능 문서**(`docs/features/<id>/feature.json`)를 씀. 기획 섹션 → 스토리 → `[프론트]` 이슈 → 브랜치 · 워크트리 → flow 작업을 한 표로 묶고, 각 줄의 진행도는 그 줄의 flow 작업 JSON에서 계산함. 기능 페이지는 아무 작업도 인용하지 않는 기획 섹션과 스냅샷에 없는 섹션을 노란 줄로 표시. 작업 페이지 머리에서 기능 페이지로 올라감

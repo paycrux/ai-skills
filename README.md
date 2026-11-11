@@ -268,6 +268,21 @@ flow.py open docs/index.html  # build 후 문서 보기
 /notion-do <notion-url-or-page-id> <하고 싶은 작업>
 ```
 
+### /skill-report
+
+**스킬 버그 · 불편을 GitHub 이슈로 올림** — 별도 세션(`claude -p`)에서 올리고, 지금 세션엔 URL 한 줄만 돌아옵니다.
+
+설치: ai-skills를 설치하면 함께 들어옵니다(이미 설치했다면 `ai-skills update`). 추가로 필요한 것은 두 가지입니다.
+
+```bash
+claude --version   # Claude Code CLI (Cursor · Codex에서 불러도 필요)
+gh auth login      # paycrux/ai-skills에 이슈를 올릴 GitHub 계정
+```
+
+```
+/skill-report flow 승인 후에 매번 다시 물어봐서 불편해
+```
+
 ### /browse
 
 **헤드리스 브라우저 탐색/테스트**
@@ -391,6 +406,7 @@ PR 본문 구성:
 │   ├── study/SKILL.md
 │   ├── create-prd/SKILL.md
 │   ├── notion-do/SKILL.md
+│   ├── skill-report/      # SKILL.md, scripts/report.sh (새 세션 실행), templates/issue-body.md
 │   ├── _shared/           # 스킬 아님 — 둘 이상이 쓰는 코드
 │   │   ├── notion/fetch_notion_markdown.py
 │   │   └── jira/md_to_adf.py
