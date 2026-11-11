@@ -59,6 +59,29 @@ def esc(text):
     return html.escape(str(text if text is not None else ""), quote=True)
 
 
+# Text fields accept a little inline HTML (references/documents.md). JSON text can come from a PRD, Jira or a
+# teammate's commit, so only these tags survive, and only without attributes; every other "<" is shown as text.
+SAFE_TAGS = ("code|b|strong|em|i|u|s|mark|small|sub|sup|kbd|br|p|ul|ol|li|pre|blockquote|hr|h4|h5|"
+             "table|thead|tbody|tr|th|td")
+_SAFE_TAG = re.compile(rf"&lt;(/?)({SAFE_TAGS})\s*(/?)&gt;", re.I)
+_OWN_TAG = re.compile(r'&lt;(span class=&quot;k [a-z-]+&quot;|/span|code class=&quot;r&quot;)&gt;')
+_ENTITY = re.compile(r"&amp;(#\d+|#x[0-9a-fA-F]+|[a-zA-Z]+);")
+
+
+def safe_html(text):
+    out = html.escape(str(text if text is not None else ""), quote=True)
+    out = _ENTITY.sub(r"&\1;", out)
+    out = _SAFE_TAG.sub(lambda m: f"<{m.group(1)}{m.group(2).lower()}{m.group(3)}>", out)
+    return _OWN_TAG.sub(lambda m: "<" + m.group(1).replace("&quot;", '"') + ">", out)
+
+
+def safe_url(url):
+    """A link from JSON: web, mail and file links only — a javascript: or data: URL becomes inert."""
+    u = str(url or "").strip()
+    scheme = re.match(r"([a-zA-Z][a-zA-Z0-9+.-]*):", u)
+    return u if not scheme or scheme.group(1).lower() in ("http", "https", "mailto", "file") else "#"
+
+
 def copy_marks(text):
     return re.sub(r"“([^”]+)”", r'<span class="copy">\1</span>', text)
 
@@ -230,9 +253,9 @@ class Ctx:
             if not target:
                 return f'<a class="ref broken" data-raw="{esc(raw)}" title="찾을 수 없는 참조">{esc(raw)}</a>'
             if raw not in self.refs:
-                self.refs[raw] = {k: (v if k == "where" else flat_refs(v)) for k, v in prev.items()}
+                self.refs[raw] = {k: (v if k == "where" else flat_refs(safe_html(v))) for k, v in prev.items()}
             return f'<a class="ref" data-raw="{esc(raw)}" href="{esc(self.href(target))}">{esc(raw)}</a>'
-        return REF.sub(link, str(text if text is not None else ""))
+        return REF.sub(link, safe_html(text))
 
 
 def plain_refs(text):
@@ -366,7 +389,7 @@ def mock_html(ctx, m):
         return f'<div class="mock banner"><div class="bn">{mock_text(x.get("body", ""))}</div>{sub}{rows}</div>'
     if "shot" in m:
         x = m["shot"] if isinstance(m["shot"], dict) else {"src": m["shot"]}
-        src = ctx.href(f"{ctx.domain}/{x['src']}") if ctx.domain else x["src"]
+        src = ctx.href(f"{ctx.domain}/{x['src']}") if ctx.domain else safe_url(x["src"])
         cls = "shot-img" + (" dim" if x.get("dim") else "") + (" wide" if x.get("wide") else "")
         img = f'<img src="{esc(src)}" alt="{esc(x.get("alt", ""))}">'
         if x.get("wide"):
@@ -521,7 +544,7 @@ def link_list(links):
         for l in items:
             label = l.get("label", "")
             short = next((label[len(p):] for p in kind[3] if label.startswith(p) and label[len(p):].strip()), label)
-            cells.append(f'<a href="{esc(l.get("url", ""))}" target="_blank" rel="noopener">{esc(short or l.get("url", ""))}</a>')
+            cells.append(f'<a href="{esc(safe_url(l.get("url", "")))}" target="_blank" rel="noopener">{esc(short or l.get("url", ""))}</a>')
         rows.append(f'<li class="lk lk-{kind[0]}"><span class="lk-k">{_SVG.format(kind[4])}{esc(kind[1])}</span>'
                     f'<span class="lk-v">{"".join(cells)}</span></li>')
     return f'<ul class="links">{"".join(rows)}</ul>' if rows else ""
@@ -617,7 +640,7 @@ def nav_tree(ctx, d=None, t=None, current=None):
     foot = ""
     if d and t:
         links = site.domains[d]["tasks"][t].get("links", [])
-        foot = "".join(f'<a href="{esc(l.get("url", ""))}" target="_blank" rel="noopener">{esc(l.get("label", ""))}</a>' for l in links)
+        foot = "".join(f'<a href="{esc(safe_url(l.get("url", "")))}" target="_blank" rel="noopener">{esc(l.get("label", ""))}</a>' for l in links)
     return (f'<a class="home" href="{ctx.href(site.root)}">{esc(site.repo)}</a><p class="nav-meta">flow 문서</p>'
             f'<a class="tn root{" on" if here == site.root else ""}" href="{ctx.href(site.root)}">전체 문서</a>'
             f'{"<div class=nav-group>기능</div>" + "".join(feats) if feats else ""}'

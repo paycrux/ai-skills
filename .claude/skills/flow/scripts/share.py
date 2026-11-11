@@ -8,7 +8,7 @@ import re
 from pathlib import Path
 
 from model import DEFAULT_OPTIONS, REF, parse_ref, plain, read_json
-from render import (FONTS, Ctx, Site, asset, blocks, cases, copy_marks, esc, heading, mock_theme, mocks_html,
+from render import (FONTS, Ctx, Site, asset, blocks, cases, copy_marks, esc, heading, safe_html, mock_theme, mocks_html,
                     needs_answer, question_homes)
 
 AUDIENCES = {"plan": "기획 · 디자인", "backend": "백엔드"}
@@ -67,7 +67,7 @@ class ShareCtx(Ctx):
         return title.split(" · ")[0] if item and re.fullmatch(r"R\d+", item) else title or raw
 
     def rich(self, text):
-        return REF.sub(lambda m: f'<span class="ref-name">‘{esc(self.label(m.group(1)))}’</span>', str(text if text is not None else ""))
+        return REF.sub(lambda m: f'<span class="ref-name">‘{esc(self.label(m.group(1)))}’</span>', safe_html(text))
 
     def frame(self, target):
         path = self.site.docs / target
