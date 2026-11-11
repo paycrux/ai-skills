@@ -477,6 +477,12 @@
       "text": "feature.json · 작업 JSON에서 절대 경로 필드(repo · worktree · home.worktree · feature.doc) 제거, 워크트리는 브랜치로 찾음, check가 남은 경로를 알림",
       "files": [],
       "sha": "a016c45"
+    },
+    {
+      "date": "2026-11-11",
+      "text": "SKILL.md · references에서 ${CLAUDE_SKILL_DIR} 제거, verify에 --agent claude|codex, skill-report는 읽기 전용 세션이 쓰고 스크립트가 gh로 올림",
+      "files": [],
+      "sha": "383d6aa"
     }
   ]
 }
