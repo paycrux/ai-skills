@@ -1,0 +1,99 @@
+{
+  "id": "gift-sort",
+  "title": "선물 목록 정렬 옵션",
+  "type": "기능 수정",
+  "branch": "feat/gift-sort",
+  "links": [],
+  "stages": {
+    "plan": {
+      "status": "done",
+      "summary": "범위 확정",
+      "conclusion": [
+        "선물 목록에 최신순 · 낮은 가격순 정렬을 추가해요. 기본은 최신순이에요.",
+        "정렬은 앱에서 해요. 서버 요청은 바꾸지 않아요."
+      ],
+      "blocks": [
+        {
+          "type": "quote",
+          "title": "기획서 발췌",
+          "items": [
+            {
+              "ref": "3-2. 선물 목록",
+              "text": "목록 상단에서 최신순 / 낮은 가격순을 고를 수 있다. 기본값은 최신순."
+            }
+          ]
+        }
+      ]
+    },
+    "tasks": {
+      "status": "now",
+      "summary": "Phase 1 구현 끝, 마무리 전",
+      "conclusion": [
+        "선물 목록 정렬을 앱에서 하도록 계획했고 Phase 1을 구현했어요."
+      ],
+      "blocks": [
+        {
+          "type": "checklist",
+          "id": "P1",
+          "title": "Phase 1 · 정렬",
+          "items": [
+            {
+              "id": "P1-1",
+              "title": "정렬 옵션 상태와 선택 UI",
+              "done": true,
+              "rows": [
+                [
+                  "파일",
+                  "<code>src/gift/sort.js</code>"
+                ],
+                [
+                  "결정",
+                  "기본값은 최신순 — 기획서 3-2"
+                ],
+                [
+                  "근거",
+                  "목록 상단 드롭다운"
+                ]
+              ]
+            },
+            {
+              "id": "P1-2",
+              "title": "낮은 가격순 정렬 함수",
+              "done": true,
+              "rows": [
+                [
+                  "파일",
+                  "<code>src/gift/sort.js</code> <code>src/gift/sort.test.js</code>"
+                ],
+                [
+                  "결정",
+                  "같은 가격이면 최신순"
+                ],
+                [
+                  "근거",
+                  "정렬 안정성"
+                ]
+              ]
+            },
+            {
+              "id": "P1-3",
+              "title": "실행 명령",
+              "done": true,
+              "rows": [
+                [
+                  "파일",
+                  "<code>package.json</code>"
+                ]
+              ]
+            },
+            {
+              "id": "P1-V",
+              "title": "검증: <code>npm test</code> · <code>npm run typecheck</code> 통과",
+              "done": true
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "from": "flow intent rule — picking the recommendation without a reason no longer opens a confirmation round",
+  "branch": "feat/gift-bulk-fail",
+  "prompt": "/flow gift-bulk-fail — R1-Q1은 추천대로 갈게. 반영하고 01 기획까지 정리해 줘. 03은 쓰지 마.",
+  "expect": {
+    "task": "docs/gift/tasks/gift-bulk-fail.json",
+    "decided": [
+      "R1-Q1"
+    ],
+    "reasonBy": {
+      "R1-Q1": "recommended"
+    },
+    "maxRounds": 1,
+    "status": {
+      "plan": "done"
+    },
+    "srcUnchanged": true
+  }
+}

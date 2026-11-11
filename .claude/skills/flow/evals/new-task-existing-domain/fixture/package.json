@@ -1,0 +1,9 @@
+{
+  "name": "new-task-existing-domain",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "typecheck": "tsc --noEmit"
+  }
+}

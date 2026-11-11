@@ -1,0 +1,13 @@
+{
+  "from": "personal settings — collect more on an existing stage by attaching to it, not by adding a stage",
+  "branch": "feat/gift-price-format",
+  "prompt": "/flow 검증 단계에 Lighthouse 성능 점수(score)랑 LCP 모으는 거 붙여줘. 새 단계 만들지 말고 검증 단계에서 같이 모으면 돼.",
+  "expect": {
+    "personal": {
+      "attachTo": [
+        "verify"
+      ]
+    },
+    "srcUnchanged": true
+  }
+}

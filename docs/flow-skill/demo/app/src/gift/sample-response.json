@@ -1,0 +1,10 @@
+{
+  "items": [
+    { "id": "g1", "name": "아이스 아메리카노", "price": 2000, "status": "USABLE", "senderPhoneMasked": "010-****-1234", "receivedAt": "2026-11-18T13:00:00+09:00" },
+    { "id": "g2", "name": "카페 1만원권", "price": 10000, "status": "USABLE", "senderPhoneMasked": "010-****-1234", "receivedAt": "2026-11-18T13:00:00+09:00" },
+    { "id": "g3", "name": "아이스 아메리카노", "price": 2000, "status": "USED", "senderPhoneMasked": "010-****-1234", "receivedAt": "2026-11-18T13:00:00+09:00" },
+    { "id": "g4", "name": "아이스 아메리카노", "price": 2000, "status": "EXPIRED", "senderPhoneMasked": "010-****-1234", "receivedAt": "2026-11-18T13:00:00+09:00" },
+    { "id": "g5", "name": "아이스 아메리카노", "price": 2000, "status": "REFUNDED", "senderPhoneMasked": "010-****-1234", "receivedAt": "2026-11-18T13:00:00+09:00" }
+  ],
+  "nextCursor": null
+}

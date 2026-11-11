@@ -9,7 +9,7 @@ set -euo pipefail
 REPO_URL="https://github.com/paycrux/ai-skills.git"
 MARKER_START="<!-- AI-SKILLS:START -->"
 MARKER_END="<!-- AI-SKILLS:END -->"
-VERSION="0.12.0"
+VERSION="0.13.0"
 
 # Permanent state directory (persists across installs so `ai-skills update` works)
 AI_SKILLS_HOME="$HOME/.ai-skills"
@@ -306,6 +306,10 @@ cleanup_legacy_skills() {
     "investigate"
     "caveman"
     "qa-guide"
+    "task-plan"
+    "implement"
+    "qa"
+    "tracker"
   )
 
   local cleaned=0
@@ -317,7 +321,7 @@ cleanup_legacy_skills() {
   done
 
   if [[ $cleaned -gt 0 ]]; then
-    ok "Cleaned up ${cleaned} legacy skill directories (git-branch/pr consolidated into git-pr in v0.4.3; test-case merged into qa-guide in v0.4.6; evaluate/finalize removed in v0.4.7; investigate merged into task-plan; caveman removed in v0.10.0; qa-guide removed)"
+    ok "Cleaned up ${cleaned} legacy skill directories (git-branch/pr consolidated into git-pr in v0.4.3; test-case merged into qa-guide in v0.4.6; evaluate/finalize removed in v0.4.7; investigate merged into task-plan; caveman removed in v0.10.0; qa-guide removed; task-plan/implement/qa merged into flow; tracker replaced by flow feature documents)"
   fi
 }
 
@@ -392,41 +396,6 @@ cleanup_moved_scripts() {
 
   if [[ $cleaned -gt 0 ]]; then
     ok "Cleaned up ${cleaned} duplicated scripts (fetch_notion_markdown.py moved to skills/_shared/notion/ in v0.10.0)"
-  fi
-}
-
-# ─────────────────────────────────────────────
-# Helper: clean up obsolete files inside the task-plan skill
-# (task-plan was lightened — references/ and several templates removed)
-# ─────────────────────────────────────────────
-cleanup_task_plan_legacy() {
-  local task_plan_dir="$1/skills/task-plan"
-  if [[ ! -d "$task_plan_dir" ]]; then
-    return
-  fi
-
-  local removed_paths=(
-    "references"
-    "agents"
-    "templates/README.template.md"
-    "templates/findings.template.md"
-    "templates/ui-spec.template.md"
-    "templates/bug.template.md"
-    "templates/update.template.md"
-    "templates/progress.template.md"
-  )
-
-  local cleaned=0
-  for path in "${removed_paths[@]}"; do
-    local full="$task_plan_dir/$path"
-    if [[ -e "$full" ]]; then
-      rm -rf "$full"
-      ((cleaned++))
-    fi
-  done
-
-  if [[ $cleaned -gt 0 ]]; then
-    ok "Cleaned up ${cleaned} obsolete task-plan files (skill lightened)"
   fi
 }
 
@@ -546,11 +515,10 @@ merge_agents_md() {
 
 ## Task Planning
 
-사용자가 새로운 기능 개발, 버그 수정 등 작업을 요청하면:
-- \"task-plan 스킬을 사용해서 작업 계획을 먼저 세울까요, 아니면 바로 진행할까요?\" 를 먼저 물어본다
-- 계획이 필요없다고 하면 → 바로 진행
-- 계획 작성을 원하면 → .cursor/skills/task-plan/SKILL.md 를 읽고 그대로 따른다
-- 사용자가 디자인 문서나 요구사항을 첨부하면 → 분석 후 스킬 플로우에 반영
+사용자가 새로운 기능 개발, 버그 수정 등 작업을 요청하면 계획 여부를 묻지 않고 요청에서 경로를 고른다:
+- 기획서(PRD)나 Figma 링크가 있거나 여러 화면·파일에 걸치면 → .cursor/skills/flow/SKILL.md 를 읽고 그대로 따른다
+- 여러 Jira 스토리에 걸치면 → .cursor/skills/flow/references/feature.md 를 읽고 flow 기능 문서 초안부터 쓴다
+- 그 외 → 바로 진행하고, 바꾼 내용을 한 줄로 보고한다
 
 ## Implementation Rules
 
@@ -558,7 +526,7 @@ All code changes are executed directly — no sub-agents.
 
 - Follow \`.cursor/rules/react-typescript.mdc\` for frontend code
 - Follow existing patterns discovered in codebase exploration
-- When using implement skill, the workflow orchestrates phases — but code is written directly
+- When using the flow skill, the workflow orchestrates phases — but code is written directly
 
 ### Exceptions (direct edit without workflow)
 - Config file changes (package.json, tsconfig.json, .env, etc.)
@@ -571,30 +539,17 @@ All code changes are executed directly — no sub-agents.
 
 | Workflow | File | Purpose |
 |----------|------|---------|
-| task-plan | @.cursor/skills/task-plan/SKILL.md | Task planning + document generation |
-| implement | @.cursor/skills/implement/SKILL.md | Document-driven phased implementation |
-| qa-guide | @.cursor/skills/qa-guide/SKILL.md | QA test guide generation |
+| flow | @.cursor/skills/flow/SKILL.md | PRD → Figma SOT map → questions → plan → build → verify, as JSON docs per domain rendered to linked static HTML pages |
 | study | @.cursor/skills/study/SKILL.md | Study report writing |
 
 ## Plan Storage Path
 
-All plan documents are stored in \`docs/{task-name}/\`.
-
-## Task-plan Document Updates
-
-When the root cause or approach differs from the task-plan during implementation:
-
-1. Stop and confirm with user first: \"The cause appears to be Y, not X. Should I update the documents?\"
-2. On approval, update:
-   - **findings.md** — fix root cause analysis (primary target)
-   - **tasks.md** — adjust implementation steps for the changed cause
-   - **progress.md** — record direction change reason and details
-3. README.md describes symptoms/requirements, so it's not an update target
+flow documents are stored in \`docs/<domain>/\` (task JSON under \`docs/<domain>/tasks/\`). Plans under \`docs/*/plans/\` predate flow and are read only.
 
 ## Session Handoff
 
 If there's work in progress:
-1. Read progress.md of the task with status \"진행중\" under \`docs/\`
+1. Find the flow task whose stage is \`now\` or \`ask\` and read it with \`flow.py brief <task.json>\`
 2. Report current status and continue after user approval
 ${MARKER_END}"
 
@@ -683,11 +638,10 @@ merge_agents_md_codex() {
 
 ## Task Planning
 
-사용자가 새로운 기능 개발, 버그 수정 등 작업을 요청하면:
-- \"task-plan 스킬을 사용해서 작업 계획을 먼저 세울까요, 아니면 바로 진행할까요?\" 를 먼저 물어본다
-- 계획이 필요없다고 하면 → 바로 진행
-- 계획 작성을 원하면 → ${ref}/skills/task-plan/SKILL.md 를 읽고 그대로 따른다
-- 사용자가 디자인 문서나 요구사항을 첨부하면 → 분석 후 스킬 플로우에 반영
+사용자가 새로운 기능 개발, 버그 수정 등 작업을 요청하면 계획 여부를 묻지 않고 요청에서 경로를 고른다:
+- 기획서(PRD)나 Figma 링크가 있거나 여러 화면·파일에 걸치면 → ${ref}/skills/flow/SKILL.md 를 읽고 그대로 따른다
+- 여러 Jira 스토리에 걸치면 → ${ref}/skills/flow/references/feature.md 를 읽고 flow 기능 문서 초안부터 쓴다
+- 그 외 → 바로 진행하고, 바꾼 내용을 한 줄로 보고한다
 
 ## Implementation Rules
 
@@ -695,7 +649,7 @@ All code changes are executed directly — no sub-agents.
 
 - Follow ${ref}/rules/react-typescript.md for frontend code
 - Follow existing patterns discovered in codebase exploration
-- When using implement skill, the workflow orchestrates phases — but code is written directly
+- When using the flow skill, the workflow orchestrates phases — but code is written directly
 
 ### Exceptions (direct edit without workflow)
 - Config file changes (package.json, tsconfig.json, .env, etc.)
@@ -708,19 +662,17 @@ All code changes are executed directly — no sub-agents.
 
 | Workflow | File | Purpose |
 |----------|------|---------|
-| task-plan | ${ref}/skills/task-plan/SKILL.md | Task planning + document generation |
-| implement | ${ref}/skills/implement/SKILL.md | Document-driven phased implementation |
-| qa-guide | ${ref}/skills/qa-guide/SKILL.md | QA test guide generation |
+| flow | ${ref}/skills/flow/SKILL.md | PRD → Figma SOT map → questions → plan → build → verify, as JSON docs per domain rendered to linked static HTML pages |
 | study | ${ref}/skills/study/SKILL.md | Study report writing |
 
 ## Plan Storage Path
 
-All plan documents are stored in \`docs/{task-name}/\`.
+flow documents are stored in \`docs/<domain>/\` (task JSON under \`docs/<domain>/tasks/\`). Plans under \`docs/*/plans/\` predate flow and are read only.
 
 ## Session Handoff
 
 If there's work in progress:
-1. Read the tasks.md of the task with status \"진행중\" under \`docs/\`
+1. Find the flow task whose stage is \`now\` or \`ask\` and read it with \`flow.py brief <task.json>\`
 2. Report current status and continue after user approval
 ${MARKER_END}"
 
@@ -830,7 +782,6 @@ mkdir -p "$TARGET_DIR"
 cleanup_legacy_skills "$TARGET_DIR"
 cleanup_legacy_agents "$TARGET_DIR"
 cleanup_moved_scripts "$TARGET_DIR"
-cleanup_task_plan_legacy "$TARGET_DIR"
 
 if [[ "$MODE" == "claude" ]]; then
   # ── Claude Code install ──
@@ -903,9 +854,9 @@ record_install
 install_cli
 register_path
 
-# Note: browse (headless browser for /qa) is intentionally NOT built here.
-# /qa and /browse detect a missing binary on first use and build it then —
-# see the "Setup" step in their SKILL.md files.
+# Note: browse (headless browser) is intentionally NOT built here.
+# /browse detects a missing binary on first use and builds it then —
+# see the "Setup" step in its SKILL.md.
 
 echo ""
 ok "Done! ai-skills installed to ${TARGET_DIR}/"

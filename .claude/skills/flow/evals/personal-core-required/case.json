@@ -1,0 +1,19 @@
+{
+  "from": "personal settings — a teammate asks to turn the question stage off (refused: every core stage is required) and renames one stage",
+  "branch": "feat/gift-price-format",
+  "prompt": "/flow 내 설정 바꿔줘. 질문 단계는 안 쓸 거야. '구현 계획 · 구현'은 '작업 쪼개기'로 이름 바꿔줘.",
+  "expect": {
+    "personal": {
+      "absent": [
+        "off"
+      ],
+      "labels": {
+        "tasks": "작업 쪼개기"
+      }
+    },
+    "resultMentions": [
+      "필수"
+    ],
+    "srcUnchanged": true
+  }
+}

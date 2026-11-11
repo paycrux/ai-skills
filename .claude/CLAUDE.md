@@ -8,17 +8,15 @@ Exceptions (Korean allowed): `README.md`, `CHANGELOG.md` at the project root, an
 
 ## Task Planning Rules
 
-### /task-plan Skill Usage
+### Entry Judgment
 
-When the user requests new feature development, bug fixes, or similar tasks, always ask first:
+When the user requests a feature, a bug fix, or similar work, pick the path from the request — do not ask whether to plan:
 
-> "/task-plan skill을 사용해서 작업 계획을 먼저 세울까요, 아니면 바로 진행할까요?"
+- PRD or Figma link, or several screens or files → `/flow`
+- Several Jira stories → a `/flow` feature document (`flow/references/feature.md`)
+- Everything else → proceed directly and report the change in one line
 
-- If the user says no planning is needed → proceed directly
-- If the user wants a plan → run `/task-plan` skill
-- If the user attaches a design doc or requirements → analyze and feed into the skill flow
-
-> Direction changes, PR creation rules, PRD update rules → see `/task-plan` skill
+> Direction changes and PRD update rules → see `/flow` skill
 
 ## Implementation Rules
 
@@ -28,4 +26,4 @@ All code changes are executed directly in the main conversation. Do not spawn su
 
 - Follow `.claude/rules/react-typescript.md` for frontend code
 - Follow existing patterns discovered in codebase exploration
-- When using `/implement`, the skill orchestrates phases — but code is written directly, not delegated
+- When using `/flow`, the skill orchestrates phases — but code is written directly, not delegated

@@ -1,0 +1,16 @@
+{
+  "id": "gift", "title": "선물하기", "root": "main",
+  "prd": [{"label": "선물하기 기획서", "url": "https://www.notion.so/gift-0000", "snapshot": "prd.md", "lastEdited": "2026-10-30T05:42:00.000Z"}],
+  "links": [],
+  "scope": ["모바일오더에서 다른 사람에게 음료를 선물한다."],
+  "jira": {"project": "COMP", "issueType": "[개발]", "titlePrefix": "[프론트]", "site": "", "path": []},
+  "rows": [
+    {"id": "gift-shop", "story": "COMP-358", "storyTitle": "[모바일오더] 선물하기", "title": "[프론트] 기프트샵",
+     "sections": ["1-1"], "domain": "gift", "domainTitle": "선물하기", "stages": "plan,tasks",
+     "figma": [], "issueBody": "issues/gift-shop.md", "approved": false},
+    {"id": "gift-pay", "story": "COMP-359", "storyTitle": "[모바일오더] 선물 결제", "title": "[프론트] 선물 결제 · 보낸 선물함",
+     "sections": ["1-2", "1-3"], "domain": "gift", "domainTitle": "선물하기", "stages": "plan,tasks",
+     "figma": [], "issueBody": "issues/gift-pay.md", "approved": false}
+  ],
+  "copy": [], "shared": [], "componentDiffs": [], "questions": [], "log": []
+}

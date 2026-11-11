@@ -1,2 +1,7 @@
 .gstack/
 .ai-skills/
+__pycache__/
+
+# flow skill examples hold internal design and PRD material; keep them local
+docs/flow-skill/example-docs/
+.playwright-cli/

@@ -1,0 +1,494 @@
+{
+  "id": "workflow-stages",
+  "title": "SDLC 단계 카탈로그와 개인 플러그인",
+  "type": "기능 개발",
+  "branch": "feat/flow-skill",
+  "links": [],
+  "stages": {
+    "tasks": {
+      "status": "done",
+      "summary": "구현 완료",
+      "conclusion": [
+        "flow 문서는 레포에 커밋되어 팀이 함께 읽으므로, 남이 읽는 것은 팀이 고정하고 나만 쓰는 것은 개인이 바꾸도록 세 층으로 나눠요.",
+        "flow 코어는 데이터 형식 · ID · 상태값 · 단계 카탈로그의 의미 · check 규칙을 정하고 바꿀 수 없어요.",
+        "팀 설정(레포 flow.config.json)은 필수 단계(workflow.required)와 공용 스타일을 정해요. 개인은 필수 단계를 끌 수 없어요.",
+        "개인 플러그인(~/.config/flow/plugins/<id>/plugin.json)은 선택 단계 · 단계 이름 · 내 화면 스타일 · 나만의 단계 · ext.<id> 데이터를 정해요.",
+        "이벤트 훅과 렌더러 교체는 다음 작업으로 미뤄요.",
+        "test_check_files.py 25개와 회귀 사례 9개가 모두 통과해요."
+      ],
+      "blocks": [
+        {
+          "type": "checklist",
+          "id": "P1",
+          "title": "Phase 1 · 단계 카탈로그에 배포 추가",
+          "items": [
+            {
+              "id": "P1-1",
+              "title": "카탈로그에 배포(release) 단계 추가 — 06 배포 페이지, 체크리스트 L1 배포 반영 · L2 배포된 화면 확인 · L3 Jira 완료 전환",
+              "done": true,
+              "rows": [
+                [
+                  "파일",
+                  "<code>.claude/skills/flow/scripts/model.py</code>"
+                ],
+                [
+                  "결정",
+                  "release는 05 완료 뒤에 와요. 리뷰가 PR보다 먼저라 PR(D5)은 05에 남고, 배포와 Jira 전환만 06으로 가요"
+                ]
+              ]
+            },
+            {
+              "id": "P1-V",
+              "title": "검증: <code>python3 scripts/test_check_files.py</code> 통과, 기존 회귀 픽스처 build가 그대로",
+              "done": true
+            }
+          ]
+        },
+        {
+          "type": "checklist",
+          "id": "P2",
+          "title": "Phase 2 · 코어 · 팀 · 개인 설정 병합",
+          "items": [
+            {
+              "id": "P2-1",
+              "title": "팀 설정 <code>flow.config.json</code>에 <code>workflow.required</code> · <code>workflow.labels</code> 추가",
+              "done": true,
+              "rows": [
+                [
+                  "파일",
+                  "<code>.claude/skills/flow/scripts/render.py</code>, <code>.claude/skills/flow/scripts/model.py</code>"
+                ]
+              ]
+            },
+            {
+              "id": "P2-2",
+              "title": "개인 설정 <code>~/.config/flow/config.json</code>의 <code>plugins</code> 목록으로 켤 플러그인을 고르고, 각 <code>plugin.json</code>의 stages.use · labels · style · custom을 읽음",
+              "done": true,
+              "rows": [
+                [
+                  "파일",
+                  "<code>.claude/skills/flow/scripts/workflow.py</code> (새 파일), <code>.claude/skills/flow/scripts/model.py</code>"
+                ],
+                [
+                  "결정",
+                  "플러그인 폴더가 있다고 자동으로 켜지지 않고 plugins 목록에 적힌 것만 켜요. 무엇이 적용 중인지 한 곳에서 보이게 하려는 거예요"
+                ],
+                [
+                  "결정",
+                  "FLOW_HOME 환경변수로 개인 설정 폴더를 바꿀 수 있어요. 테스트와 회귀 사례가 내 설정을 읽지 않게 하는 데 써요"
+                ]
+              ]
+            },
+            {
+              "id": "P2-3",
+              "title": "병합 규칙 — 켜진 단계 = 팀 필수 ∪ 플러그인 선택(플러그인이 없으면 카탈로그 전체), 이름은 플러그인 > 팀 > 코어",
+              "done": true,
+              "rows": [
+                [
+                  "파일",
+                  "<code>.claude/skills/flow/scripts/model.py</code>"
+                ],
+                [
+                  "결정",
+                  "플러그인이 팀 필수 단계를 빼면 무시하지 않고 문제로 보고해요"
+                ]
+              ]
+            },
+            {
+              "id": "P2-V",
+              "title": "검증: test_check_files.py에 병합 순서 · 필수 단계 충돌 · 모르는 키 사례 추가 후 통과",
+              "done": true
+            }
+          ]
+        },
+        {
+          "type": "checklist",
+          "id": "P3",
+          "title": "Phase 3 · 규칙을 켜진 단계에만 적용",
+          "items": [
+            {
+              "id": "P3-1",
+              "title": "<code>flow.py task</code> · <code>add</code>가 꺼진 단계를 만들지 않음",
+              "done": true,
+              "rows": [
+                [
+                  "파일",
+                  "<code>.claude/skills/flow/scripts/flow.py</code>"
+                ]
+              ]
+            },
+            {
+              "id": "P3-2",
+              "title": "끝난 작업 판정(finished)과 prune — 05 완료가 꺼져 있으면 모든 단계 done이면 끝",
+              "done": true,
+              "rows": [
+                [
+                  "파일",
+                  "<code>.claude/skills/flow/scripts/model.py</code>, <code>.claude/skills/flow/scripts/flow.py</code>"
+                ]
+              ]
+            },
+            {
+              "id": "P3-3",
+              "title": "버그 수정 검사 — verify가 꺼져 있으면 재현 테스트 행만 인정",
+              "done": true,
+              "rows": [
+                [
+                  "파일",
+                  "<code>.claude/skills/flow/scripts/flow.py</code>"
+                ]
+              ]
+            },
+            {
+              "id": "P3-4",
+              "title": "이미 JSON에 있는 꺼진 단계는 지우지 않고 보여 주고 상태에도 셈",
+              "done": true,
+              "rows": [
+                [
+                  "파일",
+                  "<code>.claude/skills/flow/scripts/model.py</code>, <code>.claude/skills/flow/scripts/render.py</code>"
+                ],
+                [
+                  "결정",
+                  "팀원이 다른 워크플로로 만든 작업의 데이터가 사라지지 않게 하려는 거예요"
+                ]
+              ]
+            },
+            {
+              "id": "P3-V",
+              "title": "검증: test_check_files.py에 꺼진 단계 사례 추가 후 통과",
+              "done": true
+            }
+          ]
+        },
+        {
+          "type": "checklist",
+          "id": "P4",
+          "title": "Phase 4 · 나만의 단계와 플러그인 데이터",
+          "items": [
+            {
+              "id": "P4-1",
+              "title": "나만의 단계 — 키는 <code>&lt;플러그인&gt;:&lt;key&gt;</code>, <code>after</code>로 위치, <code>instructions</code> 절차 문서, <code>check</code> 통과 명령",
+              "done": true,
+              "rows": [
+                [
+                  "파일",
+                  "<code>.claude/skills/flow/scripts/model.py</code>, <code>.claude/skills/flow/scripts/flow.py</code>"
+                ],
+                [
+                  "결정",
+                  "키에 플러그인 이름을 붙여, 플러그인이 없는 팀원의 check가 '없는 단계'로 실패하지 않고 형식만 검사하게 해요"
+                ]
+              ]
+            },
+            {
+              "id": "P4-2",
+              "title": "<code>flow.py check</code>가 플러그인이 설치된 곳에서만 done인 나만의 단계의 check 명령을 돌리고 exit code로 판정",
+              "done": true,
+              "rows": [
+                [
+                  "파일",
+                  "<code>.claude/skills/flow/scripts/flow.py</code>"
+                ]
+              ]
+            },
+            {
+              "id": "P4-3",
+              "title": "<code>ext.&lt;id&gt;</code> 칸 — task · 질문 · 항목 어디든 허용, flow는 해석하지 않고 prune이 지우지 않음",
+              "done": true,
+              "rows": [
+                [
+                  "파일",
+                  "<code>.claude/skills/flow/scripts/flow.py</code>"
+                ]
+              ]
+            },
+            {
+              "id": "P4-4",
+              "title": "페이지 — 단계 이름 반영, 나만의 단계는 일반 체크리스트 페이지로, 플러그인 style은 팀 style 뒤에",
+              "done": true,
+              "rows": [
+                [
+                  "파일",
+                  "<code>.claude/skills/flow/scripts/render.py</code>"
+                ],
+                [
+                  "결정",
+                  "페이지는 커밋되지 않으므로 개인 style은 내 build에만 적용돼요"
+                ]
+              ]
+            },
+            {
+              "id": "P4-V",
+              "title": "검증: 픽스처에 플러그인 하나를 붙여 build · check, 나만의 단계 페이지와 바꾼 이름 확인",
+              "done": true,
+              "rows": [
+                [
+                  "결정",
+                  "별도 화면 확인 대신 test_check_files.py의 WorkflowTest가 06 배포 · x-mine-perf 페이지 생성과 바꾼 이름을 확인해요"
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "type": "checklist",
+          "id": "P5",
+          "title": "Phase 5 · 플러그인 명령",
+          "items": [
+            {
+              "id": "P5-1",
+              "title": "<code>flow.py plugin new &lt;id&gt;</code> — 플러그인 폴더와 plugin.json 뼈대를 만들고 config.json plugins에 등록",
+              "done": true,
+              "rows": [
+                [
+                  "파일",
+                  "<code>.claude/skills/flow/scripts/flow.py</code>"
+                ]
+              ]
+            },
+            {
+              "id": "P5-2",
+              "title": "<code>flow.py plugin check</code> — 형식 오류 · 팀 필수 단계 충돌 · 없는 파일을 exit code로 판정",
+              "done": true,
+              "rows": [
+                [
+                  "파일",
+                  "<code>.claude/skills/flow/scripts/flow.py</code>"
+                ]
+              ]
+            },
+            {
+              "id": "P5-3",
+              "title": "<code>flow.py workflow &lt;docs&gt;</code> — 켜진 단계마다 출처(코어 · 팀 · 플러그인)와 이름을 출력",
+              "done": true,
+              "rows": [
+                [
+                  "파일",
+                  "<code>.claude/skills/flow/scripts/flow.py</code>"
+                ]
+              ]
+            },
+            {
+              "id": "P5-V",
+              "title": "검증: test_check_files.py에 세 명령의 exit code 사례 추가 후 통과",
+              "done": true
+            }
+          ]
+        },
+        {
+          "type": "checklist",
+          "id": "P6",
+          "title": "Phase 6 · 문서와 회귀",
+          "items": [
+            {
+              "id": "P6-1",
+              "title": "SKILL.md — 시작 시 <code>flow.py workflow</code>, Step 8 배포, '플러그인 만들기' 절, description에 플러그인 · 내 워크플로 추가",
+              "done": true,
+              "rows": [
+                [
+                  "파일",
+                  "<code>.claude/skills/flow/SKILL.md</code>"
+                ]
+              ]
+            },
+            {
+              "id": "P6-2",
+              "title": "references에 plugin.md(형식 · 병합 규칙 · 팀원 요청 예시) 추가, documents.md § Customizing에서 연결",
+              "done": true,
+              "rows": [
+                [
+                  "파일",
+                  "<code>.claude/skills/flow/references/plugin.md</code>, <code>.claude/skills/flow/references/documents.md</code>"
+                ]
+              ]
+            },
+            {
+              "id": "P6-3",
+              "title": "regress.py가 FLOW_HOME을 빈 임시 폴더로 고정",
+              "done": true,
+              "rows": [
+                [
+                  "파일",
+                  "<code>.claude/skills/flow/scripts/regress.py</code>"
+                ]
+              ]
+            },
+            {
+              "id": "P6-4",
+              "title": "회귀 사례 plugin-stage-off — '질문 단계 끄고 구현 계획 이름 바꿔줘' 뒤 plugin check 통과, 팀 필수 단계 끄기 요청은 거절",
+              "done": true,
+              "rows": [
+                [
+                  "파일",
+                  "<code>.claude/skills/flow/evals/plugin-stage-off/</code>"
+                ]
+              ]
+            },
+            {
+              "id": "P6-5",
+              "title": "작업별 시작 커밋 <code>base</code> — 여러 작업을 담은 브랜치에서 계획 대비 변경을 그 작업 몫만 비교",
+              "done": true,
+              "rows": [
+                [
+                  "파일",
+                  "<code>.claude/skills/flow/scripts/flow.py</code>, <code>.claude/skills/flow/scripts/test_check_files.py</code>, <code>.claude/skills/flow/references/documents.md</code>"
+                ],
+                [
+                  "결정",
+                  "05에서 check가 이 브랜치의 이전 작업 파일 102개를 계획 밖 변경으로 잡아서 추가했어요"
+                ]
+              ]
+            },
+            {
+              "id": "P6-V",
+              "title": "검증: <code>python3 scripts/regress.py -j 5</code> 와 test_check_files.py 통과",
+              "done": true,
+              "rows": [
+                [
+                  "결정",
+                  "bugfix-repro-first가 두 번 실패해 SKILL.md Step 5에 '계획 단계부터 재현 항목에 테스트 행'을 명시했고, 그 뒤 통과했어요"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "done": {
+      "status": "done",
+      "summary": "완료 · PR 없음",
+      "conclusion": [
+        "코드 리뷰에서 크리티컬한 지적이 없었고, 리뷰 뒤 테스트 26개 · 회귀 사례 9개 · flow.py check가 통과해요.",
+        "PR 없음 — 사용자 요청으로 feat/flow-skill에 커밋 후 푸시만 했어요."
+      ],
+      "blocks": [
+        {
+          "type": "checklist",
+          "title": "PR 전",
+          "items": [
+            {
+              "id": "D1",
+              "title": "SOT 맵 근거를 실제 코드 파일:줄로 바꿈",
+              "done": true
+            },
+            {
+              "id": "D2",
+              "title": "남은 Computed · 계산 행을 서버 · 기획 요청으로 정리",
+              "done": true
+            },
+            {
+              "id": "D3",
+              "title": "<code>/code-review</code> — 크리티컬한 지적을 고침",
+              "done": true,
+              "rows": [
+                [
+                  "결정",
+                  "/code-review low 결과 크리티컬 없음. 지적 2건(cmd_routes 빈 단계, cmd_verify 출력 자르기)은 이번 변경 밖의 기존 코드라 고치지 않았어요"
+                ]
+              ]
+            },
+            {
+              "id": "D4",
+              "title": "고친 뒤 typecheck · lint · test 다시 통과 (04 검증이 있으면 그것도 완료)",
+              "done": true,
+              "rows": [
+                [
+                  "결정",
+                  "리뷰 뒤 base 지원을 더했고, test_check_files.py 26개와 flow.py check가 다시 통과해요"
+                ]
+              ]
+            },
+            {
+              "id": "D5",
+              "title": "PR — <code>/git-pr</code>로 만들거나, 안 만들면 결론에 기록",
+              "done": true
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "title": "서버 · 기획에 요청할 것",
+          "html": "없어요"
+        }
+      ]
+    }
+  },
+  "intent": [
+    {
+      "text": "flow는 팀이 함께 읽는 데이터와 규칙만 고정하고, 각자는 플러그인으로 자기 워크플로 · 화면 · 데이터를 얹는다.",
+      "state": "confirmed",
+      "basis": "사용자 요청 (2026-11-09 대화)"
+    }
+  ],
+  "base": "d1e16e9",
+  "pruned": "2026-11-09",
+  "followUps": [
+    {
+      "date": "2026-11-09",
+      "text": "끈 단계도 데이터는 만들고 채우도록 되돌림 — 끄기는 내 페이지 숨김과 멈춤 생략만",
+      "files": [
+        ".claude/skills/flow/scripts/model.py",
+        ".claude/skills/flow/scripts/flow.py",
+        ".claude/skills/flow/scripts/render.py",
+        ".claude/skills/flow/references/plugin.md"
+      ],
+      "sha": "4766343"
+    },
+    {
+      "date": "2026-11-09",
+      "text": "꺼진 단계의 건너뛴 멈춤 · 추정 · 모르는 값을 기록하고 건수를 보여 줌",
+      "files": [
+        ".claude/skills/flow/scripts/model.py",
+        ".claude/skills/flow/scripts/flow.py",
+        ".claude/skills/flow/scripts/render.py"
+      ],
+      "sha": "21694a9"
+    },
+    {
+      "date": "2026-11-09",
+      "text": "플러그인 attach — 코어 단계에 붙어 ext 데이터를 더 모음",
+      "files": [
+        ".claude/skills/flow/scripts/workflow.py",
+        ".claude/skills/flow/scripts/flow.py",
+        ".claude/skills/flow/scripts/render.py"
+      ],
+      "sha": "2b877f8"
+    },
+    {
+      "date": "2026-11-10",
+      "text": "상단 링크 클릭 막힘 수정 · 종류별 아이콘 그룹으로 정리",
+      "files": [
+        ".claude/skills/flow/scripts/render.py",
+        ".claude/skills/flow/assets/page.css"
+      ],
+      "sha": "3af07fa"
+    },
+    {
+      "date": "2026-11-11",
+      "text": "description에 원인 미확인 버그 리포트(증상 · 재현) 트리거 추가 — 원인이 뻔한 한 파일 수정은 제외",
+      "files": [
+        ".claude/skills/flow/SKILL.md"
+      ],
+      "sha": "37d568a"
+    },
+    {
+      "date": "2026-11-11",
+      "text": "feature.json · 작업 JSON에서 절대 경로 필드(repo · worktree · home.worktree · feature.doc) 제거, 워크트리는 브랜치로 찾음, check가 남은 경로를 알림",
+      "files": [],
+      "sha": "a016c45"
+    },
+    {
+      "date": "2026-11-11",
+      "text": "SKILL.md · references에서 ${CLAUDE_SKILL_DIR} 제거, verify에 --agent claude|codex, skill-report는 읽기 전용 세션이 쓰고 스크립트가 gh로 올림",
+      "files": [],
+      "sha": "383d6aa"
+    },
+    {
+      "date": "2026-11-11",
+      "text": "render.py에 safe_html(허용 태그만) · safe_url(javascript: 차단), rich · 참조 미리보기 · share에 적용",
+      "files": [],
+      "sha": "ac28fd6"
+    }
+  ]
+}

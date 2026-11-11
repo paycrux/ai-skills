@@ -1,0 +1,16 @@
+{
+  "from": "personal settings — a feature of the person's own (sync to a notes app) is a command run after every build, not a stage",
+  "branch": "feat/gift-price-format",
+  "prompt": "/flow build할 때마다 flow 문서를 내 옵시디언 볼트(~/vault/flow)로 복사되게 해줘.",
+  "expect": {
+    "personal": {
+      "commandsOn": {
+        "build": 1
+      },
+      "absent": [
+        "custom"
+      ]
+    },
+    "srcUnchanged": true
+  }
+}
