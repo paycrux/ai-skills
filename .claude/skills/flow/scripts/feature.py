@@ -116,6 +116,39 @@ def docs_rel(docs):
         return Path("docs")
 
 
+def worktree_of(cwd, branch):
+    """This machine's checkout of a branch, from `git worktree list` — never stored, so each person gets their own path."""
+    if not branch:
+        return None
+    ref = f"refs/heads/{branch}"
+    path = None
+    for line in git(cwd, "worktree", "list", "--porcelain").splitlines():
+        if line.startswith("worktree "):
+            path = line[len("worktree "):]
+        elif line == f"branch {ref}" and path:
+            return path
+    return None
+
+
+def row_worktree(docs, row):
+    return worktree_of(docs, row.get("branch"))
+
+
+def feature_doc(docs, ref):
+    """Where a task's feature document is on this machine: this checkout, else the worktree of its home branch."""
+    fid = (ref or {}).get("id")
+    if not fid:
+        return None
+    rel = docs_rel(docs) / FEATURES / fid / "feature.json"
+    here = Path(docs) / FEATURES / fid / "feature.json"
+    wt = worktree_of(docs, ref.get("branch"))
+    old = Path(ref["doc"]) if ref.get("doc") else None  # written by earlier versions
+    for p in (here, Path(wt) / rel if wt else None, old):
+        if p and p.is_file():
+            return p
+    return None
+
+
 def locate_task(docs, row):
     """→ (task dict or None, where it was read)."""
     tid, dom = row.get("task"), row.get("domain")
@@ -123,7 +156,8 @@ def locate_task(docs, row):
         return None, ""
     rel = docs_rel(docs) / dom / "tasks" / f"{tid}.json"
     here = Path(docs) / dom / "tasks" / f"{tid}.json"
-    wt = Path(row["worktree"]) / rel if row.get("worktree") else None
+    wt_dir = row_worktree(docs, row)
+    wt = Path(wt_dir) / rel if wt_dir else None
     for p, label in ((wt, "워크트리"), (here, "이 체크아웃")):
         if p and p.is_file():
             try:
@@ -143,8 +177,9 @@ def locate_task(docs, row):
 def task_path(docs, row):
     """Where the row's task JSON lives on disk, preferring its worktree."""
     rel = docs_rel(docs) / row.get("domain", "") / "tasks" / f"{row.get('task')}.json"
-    if row.get("worktree") and (Path(row["worktree"]) / rel).is_file():
-        return Path(row["worktree"]) / rel
+    wt = row_worktree(docs, row)
+    if wt and (Path(wt) / rel).is_file():
+        return Path(wt) / rel
     here = Path(docs) / row.get("domain", "") / "tasks" / f"{row.get('task')}.json"
     return here if here.is_file() else None
 
@@ -165,9 +200,10 @@ def row_progress(docs, row):
         return {"state": "legacy", "stages": [], "count": None, "blockers": 0, "next": "레거시 계획 — 손으로 끝내거나 flow로 다시 시작", "where": row["legacy"], "task": None}
     task, where = locate_task(docs, row)
     if task is None:
-        state = "wait" if row.get("worktree") else "new"
+        started = bool(row.get("branch"))
+        state = "wait" if started else "new"
         nxt = "flow.py start" if row.get("approved") else "승인 대기"
-        if row.get("worktree"):
+        if started:
             nxt = "워크트리에서 flow 시작"
         return {"state": state, "stages": [], "count": None, "blockers": 0, "next": nxt, "where": "", "task": None}
     stages = task.get("stages") or {}
@@ -318,7 +354,12 @@ def start(path, only=None, approve=False, dry=False):
     todo = [r for r in rows if r.get("approved") and not r.get("legacy")]
     if not todo:
         return ["승인된 줄이 없어요 — 사용자가 승인한 줄에 \"approved\": true (또는 --approve)"]
-    repo = f.get("repo") or common_repo(docs)
+    repo = common_repo(docs)
+    for stale in [f] + f.get("rows", []):
+        stale.pop("repo", None)
+        stale.pop("worktree", None)
+    if isinstance(f.get("home"), dict):
+        f["home"].pop("worktree", None)
     rel = docs_rel(docs)
     has_orca = shutil.which("orca") is not None and not os.environ.get("FLOW_NO_ORCA")
     save = (lambda: None) if dry else (lambda: write_json(path, f))
@@ -340,18 +381,17 @@ def start(path, only=None, approve=False, dry=False):
             save()
         key = row["issue"]
         branch = row.get("branch") or f"feat/{key}"
-        # 2. worktree (top-level, from origin/<root>)
-        if not row.get("worktree"):
+        # 2. worktree (top-level, from origin/<root>) — found by branch, its path is never written down
+        wt = worktree_of(repo, branch)
+        if not wt:
             if dry:
                 lines.append(f"{key}: 워크트리 {'orca 최상위' if has_orca else 'git worktree'} + {branch} ← origin/{f['root']} 예정")
                 continue
             if not fetched:
                 run(["git", "-C", repo, "fetch", "origin", f["root"]])
                 fetched = True
-            row["worktree"] = create_worktree(repo, key, branch, f["root"], has_orca)
-            lines.append(f"{key}: 워크트리 {row['worktree']}" + (" — 최상위 확인" if has_orca else ""))
-            save()
-        wt = row["worktree"]
+            wt = create_worktree(repo, key, branch, f["root"], has_orca)
+            lines.append(f"{key}: 워크트리 {wt}" + (" — 최상위 확인" if has_orca else ""))
         # 3. branch name, no upstream
         current = git(wt, "branch", "--show-current")
         if current and current != branch:
@@ -365,13 +405,13 @@ def start(path, only=None, approve=False, dry=False):
             row["task"] = key
         tfile = Path(wt) / rel / row["domain"] / "tasks" / f"{row['task']}.json"
         if not tfile.exists():
-            make_task(Path(wt) / rel, f, row, path)
+            make_task(Path(wt) / rel, f, row, home_branch(f, todo))
             lines.append(f"{key}: flow 작업 {tfile}")
         save()
     if not lines:
         lines.append("승인된 줄은 모두 만들어져 있어요 — 할 것 없음")
     if not dry:
-        moved = settle_home(path, f, todo)
+        moved = settle_home(path, f, todo, repo)
         if moved:
             lines.append(f"기능 문서를 {moved}로 옮겼어요 — 그 브랜치의 다음 커밋에 함께 들어가요")
     return lines
@@ -432,7 +472,12 @@ def create_worktree(repo, key, branch, root, has_orca):
     return wt
 
 
-def make_task(wt_docs, f, row, fpath):
+def home_branch(f, rows):
+    """The branch the feature document is committed on: the first started row's, fixed once."""
+    return (f.get("home") or {}).get("branch") or rows[0].get("branch")
+
+
+def make_task(wt_docs, f, row, home):
     dom = wt_docs / row["domain"]
     if not (dom / "domain.json").exists():
         (dom / "tasks").mkdir(parents=True, exist_ok=True)
@@ -450,46 +495,38 @@ def make_task(wt_docs, f, row, fpath):
     title = row["title"][len(prefix):].strip() if prefix and row["title"].startswith(prefix) else row["title"]
     task = {"id": row["task"], "title": row.get("taskTitle") or title,
             "type": row.get("type", "기능 개발"), "branch": row["branch"],
-            "feature": {"id": f["id"], "doc": str(fpath)}, "links": links,
+            "feature": {"id": f["id"], "branch": home}, "links": links,
             "stages": {k: stage_skeleton(k) for k in STAGE_KEYS if k in keys}}
     (dom / "tasks").mkdir(parents=True, exist_ok=True)
     write_json(dom / "tasks" / f"{row['task']}.json", task)
 
 
-def settle_home(path, f, rows):
+def settle_home(path, f, rows, repo):
     """The feature document moves once, to the first started row's worktree, and is versioned there."""
-    if f.get("home") or not rows or not rows[0].get("worktree"):
+    if f.get("home") or not rows or not rows[0].get("branch"):
+        return None
+    wt = worktree_of(repo, rows[0]["branch"])
+    if not wt:
         return None
     docs = docs_of_feature(path)
-    dest = Path(rows[0]["worktree"]) / docs_rel(docs) / FEATURES / f["id"]
+    dest = Path(wt) / docs_rel(docs) / FEATURES / f["id"]
+    f["home"] = {"branch": rows[0]["branch"]}
     if dest.resolve() == path.parent.resolve():
-        f["home"] = {"branch": rows[0]["branch"], "worktree": rows[0]["worktree"]}
         write_json(path, f)
         return None
     if dest.exists():
         raise RuntimeError(f"{dest}가 이미 있어요 — 어느 쪽이 맞는지 확인해 주세요")
-    f["home"] = {"branch": rows[0]["branch"], "worktree": rows[0]["worktree"]}
     write_json(path, f)
     dest.parent.mkdir(parents=True, exist_ok=True)
     shutil.move(str(path.parent), str(dest))
-    new_doc = str(dest / "feature.json")
-    for r in f.get("rows", []):
-        tp = task_path(docs_of_feature(dest / "feature.json"), r) if r.get("task") else None
-        if tp:
-            t = read_json(tp)
-            if (t.get("feature") or {}).get("doc") != new_doc:
-                t["feature"] = {"id": f["id"], "doc": new_doc}
-                write_json(tp, t)
     return dest
 
 
 # ---------------------------------------------------------------- Jira transitions and comment
 
-def feature_of(task):
-    doc = (task.get("feature") or {}).get("doc")
-    if doc and Path(doc).is_file():
-        return Path(doc), read_json(doc)
-    return None, None
+def feature_of(task, docs):
+    doc = feature_doc(docs, task.get("feature"))
+    return (doc, read_json(doc)) if doc else (None, None)
 
 
 def row_of(feature, task):
@@ -566,7 +603,7 @@ def done_comment(task, feature, row, task_file):
 def jira_step(task_file, mark, dry=False):
     task_file = Path(task_file).resolve()
     task = read_json(task_file)
-    fpath, feature = feature_of(task)
+    fpath, feature = feature_of(task, task_file.parents[2])
     row = row_of(feature, task)
     key = (row or {}).get("issue") or task["id"]
     if not re.fullmatch(r"[A-Z][A-Z0-9]+-\d+", key):

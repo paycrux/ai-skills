@@ -497,6 +497,8 @@ def check_task(f, domain, index, problems):
         problems.append(f"{rel}: 작업 ID로 tasks · images · diagrams · verify · index는 쓸 수 없어요")
     if not t.get("title"):
         problems.append(f"{rel}: title이 없어요")
+    if (t.get("feature") or {}).get("doc"):
+        problems.append(f"{rel}: feature.doc에 이 컴퓨터의 경로가 들어 있어요 — 지우고 feature.branch에 기능 문서의 home 브랜치를 적어요")
     stages = t.get("stages") or {}
     if not stages:
         problems.append(f"{rel}: 단계가 하나도 없어요 — flow.py add로 만들어요")
@@ -665,6 +667,10 @@ def check_feature(fd, problems):
     for key in ("title", "root"):
         if not f.get(key):
             problems.append(f"{rel}: {key}가 없어요")
+    paths = (["repo"] if "repo" in f else []) + (["home.worktree"] if "worktree" in (f.get("home") or {}) else [])
+    paths += [f"{feat.row_key(r)}.worktree" for r in f.get("rows", []) if "worktree" in r]
+    if paths:
+        problems.append(f"{rel}: {', '.join(paths)}에 이 컴퓨터의 경로가 들어 있어요 — 지워요 (워크트리는 실행할 때 브랜치로 찾아요)")
     for p in f.get("prd") or []:
         if p.get("snapshot") and not (fd / p["snapshot"]).is_file():
             problems.append(f"{rel}: 기획서 스냅샷 {p['snapshot']}이 없어요")
@@ -1054,7 +1060,7 @@ def cmd_verify(args):
     if proc.returncode or res.get("is_error") or not isinstance(out, dict):
         sys.stderr.write(proc.stderr[-2000:] + str(res.get("result", ""))[-2000:])
         sys.exit("검증자가 결과를 내지 못했어요 — 파일을 쓰지 않았어요")
-    record = {"task": t.get("id"), "date": date.today().isoformat(), "repo": str(repo),
+    record = {"task": t.get("id"), "date": date.today().isoformat(),
               "head": git(repo, "rev-parse", "--short", "HEAD"), "commands": out.get("commands", []),
               "items": out.get("items", []), "cost": res.get("total_cost_usd")}
     dest = domain / "verify" / f"{t.get('id')}.json"
@@ -1229,7 +1235,7 @@ def cmd_feature(args):
     (root / "issues").mkdir(parents=True, exist_ok=True)
     prd = [{"label": "기획서", "url": args.prd, "snapshot": "prd.md", "lastEdited": ""}] if args.prd else []
     write_json(root / "feature.json", {
-        "id": args.id, "title": args.title, "root": args.root, "repo": feat.common_repo(args.docs),
+        "id": args.id, "title": args.title, "root": args.root,
         "prd": prd, "links": [], "scope": [],
         "jira": {"project": "", "issueType": "[개발]", "site": "", "path": []},
         "rows": [], "copy": [], "shared": [], "componentDiffs": [], "questions": [], "log": []})
@@ -1257,7 +1263,7 @@ def cmd_jira(args):
             print(line)
     except RuntimeError as e:
         sys.exit(f"멈춤: {e}")
-    fpath, _ = feat.feature_of(read_json(args.task))
+    fpath, _ = feat.feature_of(read_json(args.task), Path(args.task).resolve().parents[2])
     for docs in {feat.docs_of_feature(fpath) if fpath else None, docs_above(args.task)} - {None}:
         render.build(docs)
 

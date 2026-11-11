@@ -29,7 +29,7 @@ screen → a plain `/flow` task, no feature document.
 
 ```json
 {
-  "id": "gift", "title": "선물하기", "root": "main-rn0.83", "repo": "<original checkout, absolute>",
+  "id": "gift", "title": "선물하기", "root": "main-rn0.83",
   "prd": [{"label": "선물하기 기획서", "url": "…", "snapshot": "prd.md", "lastEdited": "2026-09-16T05:42:00.000Z"}],
   "links": [{"label": "Figma 선물하기", "url": "…"}],
   "scope": ["<background sentence>", "<goal sentence>"],
@@ -64,8 +64,12 @@ screen → a plain `/flow` task, no feature document.
   number from 1, so a bare `"1-1"` matches several. One entry can override it with
   `"<snapshot>#1-1 ~ 1-3"`. A number found in several snapshots with no `prd` gets no dot; the
   matrix lists it in amber instead.
-- `start` fills `issue`, `worktree`, `branch`, `base`, `task`, and the document's `home`. Never write
+- `start` fills `issue`, `branch`, `base`, `task`, and the document's `home` (`{"branch"}`). Never write
   progress, stage or checklist counts here — the page reads them from each row's task.
+- **No machine paths.** This file is committed and read on teammates' machines, so it never holds an
+  absolute path. A row's worktree is found at run time from its `branch` (`git worktree list`); the
+  repository from `git rev-parse --git-common-dir`. `check` fails a `repo` or `worktree` field left by
+  an earlier version — delete it.
 - `jira.titlePrefix` — what the team puts in front of a sub-issue title (`[프론트]`, `[FE]`, `[앱]`, or
   `""` for none). Learned once per feature, never assumed: read the titles of the sub-issues already
   under the stories (step 2 of § Draft and stop) and take the prefix they share; with none to read or
@@ -155,7 +159,7 @@ in order, saving after each step so a rerun continues where a failure stopped:
    domain the root does not have yet is created from `domainTitle`.
 
 The first time, the feature folder moves to the first row's worktree (`home`) and is committed there
-with that branch's next commit; the other worktrees read it by absolute path. It makes no judgment:
+with that branch's next commit; the other worktrees find it through the worktree of `home.branch`. It makes no judgment:
 anything not approved in the document is not created.
 
 The root is never committed to, pushed, or force-pushed. orca's setup hook may rewrite a lockfile;

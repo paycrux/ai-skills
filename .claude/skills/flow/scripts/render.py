@@ -536,8 +536,8 @@ def feature_up(ctx, task):
     if fid in ctx.site.features:
         f = ctx.site.features[fid]
         return ctx.href(ctx.site.feature_page(fid)), f.get("title") or fid, True, ctx.site.feature_state(fid)
-    doc = Path(ref.get("doc") or "")
-    if doc.is_file():
+    doc = feat.feature_doc(ctx.site.docs, ref)
+    if doc:
         title = read_json(doc).get("title") or fid
         return (doc.parent / "index.html").as_uri(), title, False, "wait"
     return None
@@ -1162,8 +1162,9 @@ def row_task_link(ctx, row, prog):
         return esc(feat.row_key(row))
     if prog["where"] == "이 체크아웃" and d in ctx.site.domains and tid in ctx.site.domains[d]["tasks"]:
         return f'<a href="{esc(ctx.href(ctx.site.task_page(d, tid)))}">{esc(tid)}</a>'
-    if row.get("worktree"):
-        page = Path(row["worktree"]) / feat.docs_rel(ctx.site.docs) / d / tid / "index.html"
+    wt = feat.row_worktree(ctx.site.docs, row)
+    if wt:
+        page = Path(wt) / feat.docs_rel(ctx.site.docs) / d / tid / "index.html"
         return f'<a href="{esc(page.as_uri())}" title="다른 워크트리 — 그 워크트리에서 flow.py build 후 열려요">{esc(tid)}</a>'
     return esc(tid)
 
@@ -1208,8 +1209,9 @@ def feature_page(site, fid):
         story = f'{esc(r.get("story", ""))}<br><span class="note">{esc(r.get("storyTitle", ""))}</span>' if r.get("story") else "—"
         branch = r.get("branch") or (p["task"] or {}).get("branch")
         where = f'<code>{esc(branch)}</code>' if branch else '<span class="note">만들기 전</span>'
-        if r.get("worktree"):
-            where += f'<br><span class="note">{esc(r["worktree"])}</span>'
+        wt = feat.row_worktree(site.docs, r)
+        if wt:
+            where += f'<br><span class="note">{esc(wt)}</span>'
         trs.append(f'<tr{" class=ask" if not r.get("approved") else ""}><td><b>{row_task_link(ctx, r, p)}</b> {esc(r.get("title", ""))}'
                    f'<br><span class="st-dot {row_dot(p)}">{esc(feat.ROW_STATE[p["state"]])}</span>'
                    f'{"<div class=nt>" + " · ".join(notes) + "</div>" if notes else ""}{todo}</td>'
