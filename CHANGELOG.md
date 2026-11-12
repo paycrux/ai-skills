@@ -32,6 +32,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- `flow`: `docs/index.html`의 "그 밖의 문서"에서 예전 `.md`를 누르면 마크다운 원문이 그대로 보이던 문제. `build`가 `.md`마다 같은 폴더에 `<파일>.md.html` 보기 페이지를 만들어 렌더링해 보여주고(문서 안 `.md` 링크와 `#제목` 앵커도 동작, 오프라인이면 원문), 원본 `.md`는 건드리지 않음. 생성 페이지는 `docs/.gitignore`에 들어감
 - 설치 스크립트: `PATH`의 `bash`가 4.1 이상(Homebrew bash, Linux)이면 `ai-skills update`가 설치 배너만 출력한 뒤 `Update 실패`로 끝나던 문제. 지울 예전 스킬(예: `tracker`)이 있거나 파일을 하나라도 복사하면 `install.sh`가 메시지 없이 종료됐음. Linux에서는 `ai-skills update`도 `git pull` 직후, 첫 대상의 `━━━ Updating` 줄이 나오기 전에 멈췄음. 원인은 `set -e` 아래에서 0에서 시작하는 `((count++))`가 실패로 처리되는 bash 동작이고, `install.sh` · `bin/ai-skills`의 10곳을 `count=$((count + 1))`로 바꿈
 
 ## [0.13.0] - 2026-10-23

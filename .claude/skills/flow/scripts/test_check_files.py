@@ -582,5 +582,35 @@ class WorkflowTest(unittest.TestCase):
             self.assertIn(word, r.stdout)
 
 
+class LegacyMarkdownTest(unittest.TestCase):
+    """A .md under docs/ outside a domain gets a rendered view page beside it; the source is untouched."""
+
+    def test_md_gets_a_view_page_and_index_links_to_it(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            fx = Fixture(tmp)
+            plans = fx.docs / "old" / "plans"
+            plans.mkdir(parents=True)
+            src = "# Tasks\n\n- [x] done\n\nsee [spec](../spec.md#a) and <!-- note --> </script>\n"
+            (plans / "tasks.md").write_text(src)
+            (fx.docs / "old" / "spec.md").write_text("# Spec\n")
+            flow(fx.root, "build", str(fx.docs))
+
+            view = plans / "tasks.md.html"
+            self.assertTrue(view.exists())
+            self.assertEqual((plans / "tasks.md").read_text(), src)
+            index = (fx.docs / "index.html").read_text()
+            self.assertIn('href="old/plans/tasks.md.html"', index)
+            self.assertNotIn('href="old/plans/tasks.md"', index)
+            html = view.read_text()
+            self.assertIn('"../spec.md"', html)
+            self.assertNotIn("<!-- note", html.split('id="md-data">')[1].split("</script>")[0])
+            self.assertIn("*.md.html", (fx.docs / ".gitignore").read_text())
+            self.assertEqual(fx.check().returncode, 0, fx.check().stdout)
+
+            (plans / "tasks.md").unlink()
+            flow(fx.root, "build", str(fx.docs))
+            self.assertFalse(view.exists())
+
+
 if __name__ == "__main__":
     unittest.main()
