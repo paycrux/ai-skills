@@ -582,5 +582,48 @@ class WorkflowTest(unittest.TestCase):
             self.assertIn(word, r.stdout)
 
 
+class DocsForTest(unittest.TestCase):
+    """Finding the docs tree from a path must not leave the repo or die on an unreadable entry."""
+
+    def setUp(self):
+        sys.path.insert(0, str(FLOW.parent))
+        import workflow
+        self.workflow = workflow
+
+    def test_walk_stops_at_the_repo_root(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            outer = Path(tmp)
+            (outer / "stray").mkdir()
+            (outer / "stray" / "domain.json").write_text("{}")
+            repo = outer / "repo"
+            (repo / "src").mkdir(parents=True)
+            run(repo, "git", "init", "-q")
+            self.assertIsNone(self.workflow.docs_for(repo / "src"))
+
+    def test_unstatable_entry_is_skipped(self):
+        # Stands in for macOS /.resolve, whose stat fails with EINVAL.
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "bad").mkdir()
+            (root / "d").mkdir()
+            (root / "d" / "domain.json").write_text("{}")
+            real = Path.exists
+
+            def exists(path, *a, **kw):
+                if path.parent.name == "bad":
+                    raise OSError(22, "Invalid argument", str(path))
+                return real(path, *a, **kw)
+
+            from unittest import mock
+            with mock.patch.object(Path, "exists", exists):
+                self.assertEqual(self.workflow.docs_for(root), root.resolve())
+
+    def test_current_runs_in_a_repo_without_docs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            run(tmp, "git", "init", "-q")
+            r = flow(tmp, "current")
+            self.assertNotIn("Traceback", r.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()
