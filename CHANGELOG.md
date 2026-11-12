@@ -30,6 +30,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - `tracker` 스킬 — flow 기능 문서로 대체. 세션끼리 메시지로 일을 시키던 관제는 없애고, 보기는 기능 페이지가 맡음. 완료 댓글 · 이슈 설명 템플릿은 `flow/templates/`로 옮김
 
+### Fixed
+
+- 설치 스크립트: `PATH`의 `bash`가 4.1 이상(Homebrew bash, Linux)이면 `ai-skills update`가 설치 배너만 출력한 뒤 `Update 실패`로 끝나던 문제. 지울 예전 스킬(예: `tracker`)이 있거나 파일을 하나라도 복사하면 `install.sh`가 메시지 없이 종료됐음. Linux에서는 `ai-skills update`도 `git pull` 직후, 첫 대상의 `━━━ Updating` 줄이 나오기 전에 멈췄음. 원인은 `set -e` 아래에서 0에서 시작하는 `((count++))`가 실패로 처리되는 bash 동작이고, `install.sh` · `bin/ai-skills`의 10곳을 `count=$((count + 1))`로 바꿈
+
 ## [0.13.0] - 2026-10-23
 
 ### Added

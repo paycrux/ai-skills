@@ -171,7 +171,7 @@ PYEOF
     mode="${all_modes[$idx]}"
     scope="${all_scopes[$idx]}"
     target="${all_dirs[$idx]}"
-    ((total++))
+    total=$((total + 1))
     echo ""
     echo -e "${CYAN}━━━ Updating: ${mode}/${scope} → ${target} ━━━${NC}"
 
@@ -181,7 +181,7 @@ PYEOF
     workdir="$(dirname "$target")"
     if [[ ! -d "$workdir" ]]; then
       warn "대상 디렉터리의 상위 경로가 없습니다: $workdir — 건너뜀"
-      ((failed++))
+      failed=$((failed + 1))
       continue
     fi
 
@@ -189,7 +189,7 @@ PYEOF
       ok "Updated: $target"
     else
       warn "Update 실패: $target"
-      ((failed++))
+      failed=$((failed + 1))
     fi
   done
 

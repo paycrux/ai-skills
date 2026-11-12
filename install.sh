@@ -313,19 +313,19 @@ copy_dir() {
     if [[ -f "$dest_file" ]]; then
       if $UPDATE; then
         if diff -q "$file" "$dest_file" > /dev/null 2>&1; then
-          ((skipped++))
+          skipped=$((skipped + 1))
         else
           info "Updated: $label/$rel"
           cp "$file" "$dest_file"
-          ((count++))
+          count=$((count + 1))
         fi
       else
         warn "Skipped (already exists): $label/$rel"
-        ((skipped++))
+        skipped=$((skipped + 1))
       fi
     else
       cp "$file" "$dest_file"
-      ((count++))
+      count=$((count + 1))
     fi
   done < <(find "$src" -type f -print0)
 
@@ -367,7 +367,7 @@ cleanup_legacy_skills() {
   for skill in "${removed_skills[@]}"; do
     if [[ -d "$skills_dir/$skill" ]]; then
       rm -rf "$skills_dir/$skill"
-      ((cleaned++))
+      cleaned=$((cleaned + 1))
     fi
   done
 
@@ -400,7 +400,7 @@ cleanup_legacy_agents() {
   for agent in "${removed_agents[@]}"; do
     if [[ -f "$agents_dir/$agent" ]]; then
       rm "$agents_dir/$agent"
-      ((cleaned++))
+      cleaned=$((cleaned + 1))
     fi
   done
 
@@ -435,7 +435,7 @@ cleanup_moved_scripts() {
     local full="$skills_dir/$path"
     if [[ -f "$full" ]]; then
       rm -f "$full"
-      ((cleaned++))
+      cleaned=$((cleaned + 1))
       # drop the scripts/ directory too, if nothing else is in it
       local parent
       parent="$(dirname "$full")"
