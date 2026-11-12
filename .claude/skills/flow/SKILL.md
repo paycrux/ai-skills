@@ -348,6 +348,12 @@ flow.py log <docs> --file <file> -m "<한 줄: 무엇을 고쳤는지>" [--sha <
 `--sha` defaults to `HEAD`, so run it after the commit. No covering task → nothing to record; the
 commit message is the record.
 
+That log line is for developers. When the change makes the screen differ from the PRD or Figma, the
+note 기획 · 디자인 see is the `ssot-drift` label and comment `git-pr` puts on the original Jira issue
+after asking in the PR draft (`git-pr/references/ssot-drift.md`). A property the team does not design
+(animation, motion) is declared once in the domain's `screens.json` `codeOwned` with its `file:line`
+and is not drift (`references/sot-map.md`).
+
 ## Sharing outside the flow
 
 The pages are the wrong thing to send to 기획 · 디자인 or 백엔드: they mix both audiences, show

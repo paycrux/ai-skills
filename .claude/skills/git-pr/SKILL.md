@@ -240,8 +240,8 @@ more:
 python3 ~/.claude/skills/flow/scripts/flow.py brief {FLOW_TASK}
 ```
 
-It feeds four steps below: the issue number (resolution.md), the body (R8), the pre-PR review, and
-the test rule. Several task files changed → ask which one the PR closes; none → skip everything
+It feeds five steps below: the issue number (resolution.md), the body (R8), SSOT drift, the
+pre-PR review, and the test rule. Several task files changed → ask which one the PR closes; none → skip everything
 marked `FLOW_TASK`.
 
 ### Draft the PR
@@ -372,6 +372,16 @@ Set `HAS_SHOTS = true` when at least one image landed in the table.
 
 ---
 
+### SSOT drift
+
+Run when the diff changes something a user can see. Follow `${CLAUDE_SKILL_DIR}/references/ssot-drift.md`
+steps 1–2: judge whether visible behavior now departs from the PRD or Figma (properties declared in a
+domain's `screens.json` `codeOwned` are skipped), and prepare the drift lines and the Jira question
+for the draft. Set `DRIFT` to the confirmed lines; it stays empty when nothing drifted, there is no
+Jira key, or the user chose `남기지 않기`. The lines never go in the PR body.
+
+---
+
 ### Confirm and create
 
 Two review modes. Use **preview-file mode** when `--preview` is in `$ARGUMENTS` or the user asked to review the PR as a markdown document (`미리보기 문서로 먼저 보여줘`, `md로 확인하고 생성해줘`, and similar). Otherwise use inline mode.
@@ -380,7 +390,7 @@ Always pass the body via `--body-file`, never `--body "{BODY}"` — a body conta
 
 #### Inline mode
 
-Show the generated title and body to the user in plain conversation (in Korean), then call `AskUserQuestion` with:
+Show the generated title and body to the user in plain conversation (in Korean), with the drift lines and their question (ssot-drift.md step 2) below the body when there are any, then call `AskUserQuestion` with:
 - prompt: `"PR 초안을 확인해주세요. 이대로 생성할까요?"`
 - options: `["생성", "수정할게요 — 수정 후 다시 확인"]`
 
@@ -414,6 +424,8 @@ Write the draft to `{REPO_ROOT}/.pr-preview.md` with this exact layout — the p
 ```
 
 Everything below the `<!-- ↓↓↓ PR 본문 시작 ↓↓↓ -->` marker is the PR body, verbatim. The marker line is the only delimiter — do not rely on `---` separators, which occur inside the body itself.
+
+Drift lines (SSOT drift) go in the preamble, above the marker, so they never reach the PR. Ask the drift question in the conversation alongside the confirmation below.
 
 Then tell the user in Korean: the absolute file path, and that they should open it in their editor's markdown preview to check it. Call `AskUserQuestion` with:
 - prompt: `"미리보기 문서를 확인해주세요. 이대로 PR을 생성할까요?"`
@@ -453,6 +465,11 @@ If `gh pr create` fails, leave both files in place, report the error in Korean, 
 
 Capture and display all PR URLs.
 
+#### Post SSOT drift
+
+When `DRIFT` is set, post it to the Jira issue now that the PR URL exists — ssot-drift.md step 3. A
+failed post does not affect the PR.
+
 ---
 
 ## Report
@@ -465,6 +482,8 @@ Summarize the completed work in Korean:
 - PR: list of URLs (when the PR Phase ran)
 - Screenshots: captured cells, and each blank cell with its reason (when screenshots were captured)
 - Preview file: deleted (when preview-file mode ran)
+- SSOT drift: the Jira key labelled `ssot-drift` and commented on, or the drift lines left for the user
+  to pass on (when drift was found)
 - Flow task: when `FLOW_TASK` is set and `/flow` invoked this skill, hand the primary PR URL back —
   `/flow` puts it in the task's `links` and ticks D5. Run on its own, say that the task can record
   it with `/flow`.
@@ -481,6 +500,7 @@ Summarize the completed work in Korean:
 - Always generate PR title and body from commit log and diff analysis — never use `--fill`
 - Always prefix the PR title with `[{ISSUE_NO}]` when an issue number resolves; never invent one, and never write `[없음]` or an empty bracket
 - Offer a pre-PR review, and never let its findings block PR creation or leak into the PR body
+- Never post to Jira without the drift question answered `남기기`, and never before the PR exists; drift lines stay out of the PR body
 - Follow the PR body authoring rules (R1–R7); they override any habit of filling every section
 - Never write `없음`, an empty checklist, or an empty table — delete the section instead
 - Never leave an unexplained internal term in the body — explain it in a sentence or drop the point to one line (R6)

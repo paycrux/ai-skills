@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- `git-pr`: 화면에 보이는 동작이 기획서·Figma와 달라진 PR이면 초안에서 확인받은 뒤 원래 지라 이슈에 `ssot-drift` 라벨과 무엇이 달라졌는지 댓글을 남김(SSOT를 갱신하면 라벨을 떼서 닫음). 애니메이션처럼 팀이 디자인하지 않는 속성은 `flow`의 `screens.json` `codeOwned`에 `file:line` 근거와 함께 선언해 불일치에서 뺌
 - `skill-report` 스킬 추가 — 작업 중 스킬이 불편하거나 버그 같으면 말한 그대로 `paycrux/ai-skills` GitHub 이슈로 올림. 리포트 작업은 `claude -p` 또는 `codex exec`로 띄운 읽기 전용 별도 세션이 이슈 내용을 쓰고(스킬 소스에서 해당 규칙 찾기, 열린 중복 이슈면 댓글) 스크립트가 `gh`로 올림. 지금 세션에는 URL 한 줄만 돌아옴. 공개 저장소라 프로젝트 · 회사 정보는 빼고 올림
 
 ### Changed
