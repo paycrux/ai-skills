@@ -36,16 +36,37 @@ def home():
     return Path(base) / "flow"
 
 
+def _exists(p):
+    # macOS keeps entries at / (/.resolve, /.vol) whose stat fails with EINVAL instead of ENOENT,
+    # and pathlib only swallows ENOENT-like errors.
+    try:
+        return p.exists()
+    except OSError:
+        return False
+
+
+def _holds_domain(d):
+    try:
+        children = [c for c in d.iterdir() if c.is_dir()]
+    except OSError:
+        return False
+    return any(_exists(c / "domain.json") for c in children)
+
+
 def docs_for(path):
-    """Any path inside a docs tree (docs, domain, task JSON, page) → the docs folder, or None."""
+    """Any path inside a docs tree (docs, domain, task JSON, page) → the docs folder, or None.
+
+    The walk up stops at the repository root, so a repo with no docs tree never scans / or $HOME."""
     if not path:
         return None
     p = Path(path).resolve()
     for d in [p, *p.parents]:
-        if (d / "domain.json").exists():
+        if _exists(d / "domain.json"):
             return d.parent
-        if d.is_dir() and ((d / CONFIG).exists() or any((c / "domain.json").exists() for c in d.iterdir() if c.is_dir())):
+        if _exists(d / CONFIG) or _holds_domain(d):
             return d
+        if _exists(d / ".git"):
+            break
     return None
 
 
