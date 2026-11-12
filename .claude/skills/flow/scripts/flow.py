@@ -475,6 +475,12 @@ def check_domain(d, index, problems):
             if not re.fullmatch(r"X\d+", oid) or oid in seen:
                 problems.append(f"{name}/screens.json: 화면 밖 상태 ID {oid or o.get('state')}가 X + 번호가 아니거나 겹쳐요")
             seen.add(oid)
+    for c in sot.get("codeOwned") or []:
+        if not c.get("what"):
+            problems.append(f"{name}/screens.json codeOwned: what(어떤 속성인지)이 없어요")
+        at = re.fullmatch(r"\S+:([1-9]\d*)(?:-([1-9]\d*))?", c.get("at") or "")
+        if not at or (at.group(2) and int(at.group(2)) < int(at.group(1))):
+            problems.append(f"{name}/screens.json codeOwned {c.get('what', '?')}: at은 file:line 근거여야 해요 ({c.get('at') or '없음'})")
     walk_refs(sot, None, lambda raw, owner: check_ref(raw, name, None, index, problems, f"{name}/screens.json"))
     for f in task_files(d):
         check_task(f, name, index, problems)

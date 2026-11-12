@@ -582,5 +582,33 @@ class WorkflowTest(unittest.TestCase):
             self.assertIn(word, r.stdout)
 
 
+class CodeOwnedTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.fx = Fixture(self.tmp.name)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def owned(self, rows):
+        (self.fx.docs / "d" / "screens.json").write_text(json.dumps({"screens": [], "codeOwned": rows}, ensure_ascii=False))
+        flow(self.fx.root, "build", str(self.fx.docs))
+        return self.fx.check()
+
+    def test_declared_property_with_file_line_passes_and_is_listed(self):
+        r = self.owned([{"what": "Card flip animation", "at": "src/a.ts:12-30", "why": "motion is not designed"}])
+        self.assertNotIn("codeOwned", r.stdout)
+        page = (self.fx.docs / "d" / "index.html").read_text()
+        self.assertIn("Card flip animation", page)
+        self.assertIn("src/a.ts:12-30", page)
+
+    def test_missing_what_or_evidence_fails(self):
+        r = self.owned([{"what": "Fade-in", "at": "src/a.ts"}, {"what": "Slide", "at": "src/a.ts:12-5"}, {"at": "src/b.ts:3"}])
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("codeOwned Fade-in", r.stdout)
+        self.assertIn("codeOwned Slide", r.stdout)
+        self.assertIn("codeOwned: what", r.stdout)
+
+
 if __name__ == "__main__":
     unittest.main()
