@@ -33,6 +33,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Fixed
 
 - 설치 스크립트: `PATH`의 `bash`가 4.1 이상(Homebrew bash, Linux)이면 `ai-skills update`가 설치 배너만 출력한 뒤 `Update 실패`로 끝나던 문제. 지울 예전 스킬(예: `tracker`)이 있거나 파일을 하나라도 복사하면 `install.sh`가 메시지 없이 종료됐음. Linux에서는 `ai-skills update`도 `git pull` 직후, 첫 대상의 `━━━ Updating` 줄이 나오기 전에 멈췄음. 원인은 `set -e` 아래에서 0에서 시작하는 `((count++))`가 실패로 처리되는 bash 동작이고, `install.sh` · `bin/ai-skills`의 10곳을 `count=$((count + 1))`로 바꿈
+- `flow`: `docs/`에 flow 도메인이 없는 저장소에서 macOS로 `flow.py`를 실행하면 서브커맨드가 시작되기 전에 `OSError`로 죽던 문제. docs 폴더를 찾으며 상위 폴더를 `/`까지 올라가다 `/.resolve`처럼 stat이 `EINVAL`로 실패하는 시스템 항목을 만났기 때문. 이제 저장소 루트(`.git`이 있는 폴더)에서 탐색을 멈추고, 읽을 수 없는 항목은 건너뜀
 
 ## [0.13.0] - 2026-10-23
 
