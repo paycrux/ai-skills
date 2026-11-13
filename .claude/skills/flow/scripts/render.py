@@ -802,6 +802,12 @@ def sot_map(ctx, d, only=None):
     for f in sot.get("flows", []) if only is None else []:
         rows = "".join(f"<tr><td>{ctx.rich(a)}</td><td>{ctx.rich(b)}</td></tr>" for a, b in f.get("rows", []))
         parts.append(f'<h2>흐름 · {esc(f.get("title", ""))}</h2><table><thead><tr><th>언제</th><th>결과</th></tr></thead><tbody>{rows}</tbody></table>')
+    owned = sot.get("codeOwned") if only is None else None
+    if owned:
+        rows = "".join(f'<tr><td><b>{ctx.rich(c.get("what", ""))}</b></td><td><code>{esc(c.get("at", ""))}</code></td>'
+                       f'<td>{ctx.rich(c.get("why", ""))}</td></tr>' for c in owned)
+        parts.append('<h2>코드가 SSOT</h2><p class="note">팀이 디자인하지 않는 속성이에요. 기획서 · Figma와 달라도 SSOT 불일치로 보지 않아요.</p>'
+                     f'<table class="tbl"><thead><tr><th>속성</th><th>근거</th><th>이유</th></tr></thead><tbody>{rows}</tbody></table>')
     for s in sot.get("screens", []):
         markers = [m for m in s.get("markers", []) if only is None or m.get("id") in only]
         offscreen = [o for o in s.get("offscreen", []) if only is None or o.get("id") in only]

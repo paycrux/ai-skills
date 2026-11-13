@@ -8,6 +8,7 @@ questions in page 02. The method comes from an earlier in-house `sot-map` skill;
 is now its source.
 
 Contents: when to build · given a Figma section · gather · pick elements · classify · off-screen states · screens.json ·
+ code-owned properties ·
 API, parameters, routes · check · non-screen tasks
 
 ## When to build it
@@ -131,6 +132,24 @@ exist in another frame, features cut from scope. These rows become the 04 verifi
 - A decided `pending` row changes `kind`, and its `note` cites the decision: `… ([[APP-452#R1-Q2]])`.
 - The task's `screen` stage conclusion names the rows it added or changed. The domain page lists under
   each row which task items cite it — that is the history of the row.
+
+## Properties the team does not design — the code is the SSOT
+
+Some visible properties never appear in the PRD or Figma because the team does not design them —
+animation and motion are the usual case. A change to them is not SSOT drift: there is nothing for
+기획 · 디자인 to update. Declare them once in `codeOwned`, at the top level of `screens.json`, and
+`git-pr` leaves them out when it judges drift (`git-pr/references/ssot-drift.md`).
+
+```json
+"codeOwned": [{"what": "선물 카드 넘김 애니메이션", "at": "src/gift/GiftCard.tsx:42-61",
+               "why": "팀이 모션을 디자인하지 않아요"}]
+```
+
+- `what` names the property, `at` is the `file:line` (or `file:line-line`) that defines it — `check`
+  fails without both. `why` says who decided the team does not design it.
+- Declare only what the team really leaves out of design, and only when someone said so. A property
+  that Figma simply forgot is a `pending` row, not `codeOwned`.
+- The domain page lists the declarations under 코드가 SSOT.
 
 ## How the data reaches the element — API, parameters, routes
 
