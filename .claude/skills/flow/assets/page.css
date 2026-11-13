@@ -248,10 +248,15 @@ body.collapsed .step.dot::before { width: 12px; height: 12px; margin: 10px; }
 @media (max-width: 900px) {
   body { padding-left: 0; }
   .nav { position: static; width: auto; padding: 64px 20px 16px; }
-  .page { padding: 32px 20px 120px; }
+  .page { padding: 64px 20px 120px; }
   .page > *, .page > h2, .conclusion h2, .conclusion ul, .stage-card h2, .stage-card ul { grid-column: 1 / 13 !important; }
   .page > h2 + * { margin-top: 12px; }
   .conclusion ul, .stage-card ul { margin-top: 10px; }
+  /* the desktop rail would sit as a 68px strip above the page; collapsed hides the nav instead */
+  body.collapsed { padding-left: 0; }
+  body.collapsed .nav { display: none; }
+  .page > .head h1 { font-size: 26px; padding-right: 96px; }
+  .page code { overflow-wrap: anywhere; }
 }
 
 /* references */
@@ -307,7 +312,7 @@ tbody tr[data-i] { cursor: pointer; scroll-margin-top: 96px; }
 .page > .meta + .cols { margin-top: 0; }
 
 /* case tables: what the person sees in each state, drawn with the app's own pieces */
-.page > h2 small { display: block; font-weight: 400; font-size: 13px; color: var(--muted); margin-top: 4px; }
+.page > h2 small, .intent-card h2 small { display: block; font-weight: 400; font-size: 13px; color: var(--muted); margin-top: 4px; }
 .lead { color: var(--muted); font-size: 14px; margin: 0 0 20px; }
 .sec > h3 { font-size: 15px; font-weight: 700; margin: 0 0 8px; }
 .cases td.sit { width: 22%; }
