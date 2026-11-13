@@ -14,6 +14,7 @@ from model import (CORE_PAGES, DEFAULT_OPTIONS, ITEM_ID, KIND, PAGES, REASON_BY,
 SKILL = Path(__file__).resolve().parent.parent
 ASSETS = SKILL / "assets"
 FONTS = "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
+MARKED = "https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"
 GENERATOR = '<meta name="generator" content="flow">'
 LEGACY_EXT = {".md", ".html"}
 AUDIENCE = {"plan": "기획", "backend": "백엔드"}
@@ -670,6 +671,38 @@ def legacy_files(site):
     return out
 
 
+def legacy_href(rel):
+    """Where the index links a legacy file: a .md gets its rendered view page beside it."""
+    return rel + ".html" if rel.endswith(".md") else rel
+
+
+def legacy_view(site, rel, legacy):
+    """A page that shows one legacy .md rendered. It sits beside the source, so the document's own
+    relative links and images keep working; offline it falls back to the raw text."""
+    page = legacy_href(rel)
+    ctx = Ctx(site, page)
+    base = posixpath.dirname(page) or "."
+    md_links = [posixpath.relpath(m, base) for m in legacy if m.endswith(".md")]
+    raw = (site.docs / rel).read_text(encoding="utf-8", errors="replace")
+    data = json.dumps({"md": raw, "links": md_links}, ensure_ascii=False).replace("</", "<\\/").replace("<!--", "<\\u0021--")
+    body = (f'<div class="head"><h1>{esc(posixpath.basename(rel))}</h1>'
+            f'<p class="meta">그 밖의 문서 · {esc(rel)} · <a href="{esc(posixpath.basename(rel))}">원문</a></p></div>'
+            f'<article class="mdview" id="mdview"><pre>{esc(raw)}</pre></article>'
+            f'<script type="application/json" id="md-data">{data}</script>'
+            f'<script src="{MARKED}"></script>'
+            '<script>(function(){var d=JSON.parse(document.getElementById("md-data").textContent);'
+            'if(!window.marked)return;var el=document.getElementById("mdview");el.innerHTML=marked.parse(d.md);'
+            'var md=new Set(d.links.map(function(l){return new URL(l,location.href).href}));'
+            'el.querySelectorAll("a[href]").forEach(function(a){var u=new URL(a.getAttribute("href"),location.href);'
+            'var h=u.hash;u.hash="";if(md.has(u.href))a.setAttribute("href",a.getAttribute("href").split("#")[0]+".html"+h)});'
+            # marked 12 emits no heading ids; add GitHub-style slugs so links like spec.md#scope land.
+            'var seen={};el.querySelectorAll("h1,h2,h3,h4,h5,h6").forEach(function(x){'
+            'var s=x.textContent.trim().toLowerCase().replace(/[^\\p{L}\\p{N}\\s_-]/gu,"").replace(/\\s/g,"-");'
+            'var n=seen[s]||0;seen[s]=n+1;x.id=n?s+"-"+n:s});'
+            'if(location.hash){var t=document.getElementById(decodeURIComponent(location.hash.slice(1)));if(t)t.scrollIntoView()}})()</script>')
+    return shell(ctx, f"{rel} · {site.repo}", nav_tree(ctx), body)
+
+
 def root_page(site):
     ctx = Ctx(site, site.root)
     rows = []
@@ -690,7 +723,7 @@ def root_page(site):
     leg = ""
     if legacy:
         leg = ("<h2>그 밖의 문서</h2><ul class=\"legacy-list\">"
-               + "".join(f'<li><a href="{esc(ctx.href(p))}">{esc(p)}</a></li>' for p in legacy) + "</ul>")
+               + "".join(f'<li><a href="{esc(ctx.href(legacy_href(p)))}">{esc(p)}</a></li>' for p in legacy) + "</ul>")
     body = (f'<div class="head"><h1>{esc(site.repo)}</h1><p class="meta">도메인 {len(site.domains)} · 그 밖의 문서 {len(legacy)}</p></div>'
             f'{"<h2>기능</h2><div class=cards>" + "".join(frows) + "</div><h2>도메인</h2>" if frows else ""}'
             f'<div class="cards">{"".join(rows) or "<p class=note>아직 flow 도메인이 없어요.</p>"}</div>{leg}')
@@ -1311,6 +1344,10 @@ def render_all(docs):
             for n, (page, _, _, keys) in enumerate(task_pages(task), 1):
                 if any(k in (task.get("stages") or {}) for k in keys) and not site.hidden("page", page):
                     pages[site.task_page(d, t, page)] = stage_page(site, d, t, page, n, shared)
+    legacy = legacy_files(site)
+    for rel in legacy:
+        if rel.endswith(".md"):
+            pages[legacy_href(rel)] = legacy_view(site, rel, legacy)
     return site, pages
 
 
@@ -1329,6 +1366,10 @@ def orphans(site, pages):
             rel = f.relative_to(site.docs).as_posix()
             if rel not in pages and is_generated(f):
                 out.append(rel)
+    for f in sorted(site.docs.rglob("*.md.html")):
+        rel = f.relative_to(site.docs).as_posix()
+        if rel not in pages and is_generated(f):
+            out.append(rel)
     other = "flow-index.html" if site.root == "index.html" else "index.html"
     if (site.docs / other).exists() and is_generated(site.docs / other):
         out.append(other)
@@ -1357,6 +1398,7 @@ def ignore_lines(site):
     for d in site.domains:
         lines += [f"/{d}/index.html", f"/{d}/*/", f"!/{d}/tasks/", f"!/{d}/images/", f"!/{d}/diagrams/", f"!/{d}/verify/", f"/{d}/diagrams/.receipts/"]
     lines.append(f"/{feat.FEATURES}/*/index.html")
+    lines.append("*.md.html")
     return lines
 
 

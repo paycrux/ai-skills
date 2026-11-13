@@ -416,3 +416,17 @@ table.flowmap td:first-child { white-space: nowrap; }
 .intent-card .k { margin-right: 8px; }
 .intent-card .basis { display: block; font-size: 13px; color: var(--muted); }
 .intent-card .was { font-size: 13px; color: var(--muted); text-decoration: line-through; }
+
+/* legacy .md view page */
+.page > .mdview { grid-column: 1 / 11; font-size: 15px; line-height: 1.75; }
+.mdview h1, .mdview h2, .mdview h3, .mdview h4 { line-height: 1.3; letter-spacing: -0.015em; margin: 40px 0 12px; }
+.mdview h1 { font-size: 26px; } .mdview h2 { font-size: 20px; } .mdview h3 { font-size: 16px; } .mdview h4 { font-size: 14px; }
+.mdview p, .mdview ul, .mdview ol, .mdview table, .mdview blockquote, .mdview pre { margin: 0 0 16px; }
+.mdview ul, .mdview ol { padding-left: 22px; }
+.mdview li > input[type=checkbox] { margin-right: 6px; }
+.mdview th, .mdview td { border-bottom: 1px solid var(--hair); padding: 8px 16px 8px 0; }
+.mdview pre { white-space: pre-wrap; font: 13px/1.6 var(--mono); background: var(--tint); padding: 16px; border-radius: 6px; overflow-x: auto; }
+.mdview pre code { background: none; padding: 0; }
+.mdview blockquote { border-left: 3px solid var(--hair); padding-left: 14px; color: var(--muted); }
+.mdview img { max-width: 100%; }
+@media (max-width: 900px) { .page > .mdview { grid-column: 1 / 13; } }
