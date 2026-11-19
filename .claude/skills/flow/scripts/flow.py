@@ -16,7 +16,7 @@
     python3 flow.py routes <task.json> [--src DIR]          route · sheet rows for the files the task names (task route map)
     python3 flow.py open <page.html>                        build, then open the page in the OS default browser
     python3 flow.py current [<dir>]                         the flow task whose branch is the checked-out one (session start)
-    python3 flow.py log <docs> --file PATH... -m "..." [--sha SHA] [--task ID]   one follow-up line on the task that covers the files
+    python3 flow.py log <docs> --file PATH... -m "..." [--sha SHA] [--task ID]   one follow-up line on the finished task that covers the files a commit changed
     python3 flow.py verify <task.json> [--cmd CMD]... [--agent claude|codex] a read-only checker in a fresh context writes <domain>/verify/<task>.json
     python3 flow.py prune <task.json>                       a finished task keeps conclusions and decisions only (run when its last stage turns done)
     python3 flow.py feature <docs> <feature-id> --title "..." --root BRANCH [--prd URL]   a feature document skeleton
@@ -1216,7 +1216,18 @@ def cmd_log(args):
             print(f"  {name}/{t['id']} {t.get('title', '')}")
         sys.exit(1)
     name, task, f = hits[0]
+    if not (task.get("pruned") or finished(task)):
+        sys.exit(f"{name}/{task['id']}은 아직 끝나지 않은 작업이에요 — 후속 수정 기록은 끝난 작업에만 남겨요. "
+                 "새로 찾은 문제의 조사는 plan 단계에, 수정은 tasks 단계 항목으로 적어요")
+    if not args.file:
+        sys.exit("--file이 없어요 — 후속 수정 기록은 커밋으로 바뀐 파일에만 남겨요. 코드 변경 없는 조사는 기록하지 않아요")
     sha = args.sha or git(f.parent, "rev-parse", "--short", "HEAD")
+    top = Path(git(f.parent, "rev-parse", "--show-toplevel") or f.parent).resolve()
+    # tasks_naming matches repo-root-relative paths, so the pathspec is anchored at the root, not the cwd.
+    specs = [":(top)" + (os.path.relpath(Path(p).resolve(), top) if Path(p).is_absolute() else p)
+             for p in args.file]
+    if not git(f.parent, "diff-tree", "--root", "--no-commit-id", "--name-only", "-r", sha, "--", *specs):
+        sys.exit(f"커밋 {sha or '(없음)'}이 {', '.join(args.file)}을 바꾸지 않았어요 — 커밋한 뒤 그 커밋으로 기록해요")
     task.setdefault("followUps", []).append({"date": date.today().isoformat(), "text": args.message,
                                              "files": args.file or [], "sha": sha})
     write_json(f, task)

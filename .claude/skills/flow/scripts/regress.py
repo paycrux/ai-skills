@@ -126,6 +126,13 @@ def judge(repo, fixture, expect, env=None, result=""):
     for key, bad in (expect.get("statusNot") or {}).items():
         if stage(task, key).get("status") == bad:
             fails.append(f"{key} 상태가 {bad}이면 안 돼요")
+    for key, types in (expect.get("blocks") or {}).items():
+        got = {b.get("type") for b in stage(task, key).get("blocks", [])}
+        for t in types:
+            if t not in got:
+                fails.append(f"{key} 단계에 {t} 블록이 없어요")
+    if expect.get("noFollowUps") and task.get("followUps"):
+        fails.append(f"followUps가 생겼어요 — 끝나지 않은 작업의 조사는 plan에: {task['followUps']}")
     if expect.get("checklistEndsWithV"):
         blocks = list(checklist_items(task))
         if not blocks:

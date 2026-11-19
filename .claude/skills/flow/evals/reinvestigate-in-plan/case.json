@@ -1,0 +1,16 @@
+{
+  "from": "paycrux/ai-skills#13 — new problem found in a 버그 수정 task waiting on 04, written to an external doc and followUps",
+  "branch": "fix/gift-total",
+  "prompt": "/flow gift-total-bug — docs/gift/tasks/gift-total-bug.json. 검증하다가 같은 이슈에서 새 문제를 찾았어: 취소된 선물도 합계에 들어가. 원인을 조사하고 수정안을 비교해서 정리해줘. 코드는 아직 고치지 마.",
+  "expect": {
+    "task": "docs/gift/tasks/gift-total-bug.json",
+    "blocks": {
+      "plan": ["table"]
+    },
+    "statusNot": {
+      "plan": "wait"
+    },
+    "noFollowUps": true,
+    "srcUnchanged": true
+  }
+}
