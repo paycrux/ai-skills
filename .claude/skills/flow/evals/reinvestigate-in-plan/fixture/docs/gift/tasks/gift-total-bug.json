@@ -1,0 +1,56 @@
+{
+  "id": "gift-total-bug",
+  "title": "선물 합계에서 첫 선물이 빠짐",
+  "type": "버그 수정",
+  "branch": "fix/gift-total",
+  "links": [],
+  "stages": {
+    "tasks": {
+      "status": "done",
+      "summary": "수정 완료",
+      "conclusion": [
+        "합계 계산이 첫 선물을 건너뛰던 slice(1)을 지워서 모든 선물 가격을 더해요 [[P1]]."
+      ],
+      "blocks": [
+        {
+          "type": "checklist",
+          "id": "P1",
+          "title": "Phase 1 · 합계 수정",
+          "items": [
+            {"id": "P1-1", "title": "합계에서 slice(1) 제거", "done": true,
+             "rows": [["파일", "<code>src/gift/total.ts</code>"]]},
+            {"id": "P1-V", "title": "검증: 화면에서 선물 3개의 합계가 맞음", "done": true}
+          ]
+        }
+      ]
+    },
+    "verify": {
+      "status": "ask",
+      "summary": "사용자 확인 대기",
+      "conclusion": [
+        "선물 3개 목록에서 합계가 세 가격의 합과 같아요 [[V1]]."
+      ],
+      "blocks": [
+        {"type": "checklist", "title": "화면 밖 상태 확인", "items": [
+          {"id": "V1", "title": "선물 3개 목록의 합계가 가격 합과 같음", "done": true}
+        ]},
+        {"type": "checklist", "title": "버그", "items": []}
+      ]
+    },
+    "done": {
+      "status": "wait",
+      "summary": "리뷰 전",
+      "conclusion": [],
+      "blocks": [
+        {"type": "checklist", "title": "PR 전", "items": [
+          {"id": "D1", "title": "SOT 맵 근거를 실제 코드 파일:줄로 바꿈", "done": false},
+          {"id": "D2", "title": "남은 Computed · 계산 행을 서버 · 기획 요청으로 정리", "done": false},
+          {"id": "D3", "title": "<code>/code-review</code> — 크리티컬한 지적을 고침", "done": false},
+          {"id": "D4", "title": "고친 뒤 typecheck · lint · test 다시 통과 (04 검증이 있으면 그것도 완료)", "done": false},
+          {"id": "D5", "title": "PR — <code>/git-pr</code>로 만들거나, 안 만들면 결론에 기록", "done": false}
+        ]},
+        {"type": "text", "title": "서버 · 기획에 요청할 것", "html": "없어요"}
+      ]
+    }
+  }
+}

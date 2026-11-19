@@ -88,7 +88,7 @@ page · reading for tokens · legacy documents · earlier versions
   - `"unknown": "<what is missing>"` on an item nobody could collect. It counts as resolved — the
     stage and the task can finish — and `check` lists it as a note, never as a failure.
   - `brief`, `current` and the task cover show the counts (사람 확인 안 된 추정 · 건너뛴 멈춤 · 모르는 값). `feature` exists when the task came from a feature document; the
-  task pages link up to it. `followUps` are written by `flow.py log`; `pruned` by `flow.py prune`. A task is finished only
+  task pages link up to it. `followUps` are written by `flow.py log` — only on a finished task, only for files the given commit changed; `pruned` by `flow.py prune`. A task is finished only
   when every stage is `done` and the `done` stage's checklist is all ticked — implementation alone
   shows as 진행 중. A finished task without `pruned` fails `check` and is flagged by `flow.py current`.
 - A stage exists only if its key is present (`flow.py task --stages`, `flow.py add`). The pages

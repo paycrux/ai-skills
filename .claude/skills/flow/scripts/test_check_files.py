@@ -260,6 +260,67 @@ class RecommendedReasonTest(unittest.TestCase):
         self.assertIn("by: inferred", flow(self.fx.root, "changes", str(self.fx.docs)).stdout)
 
 
+class LogGuardTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.fx = Fixture(self.tmp.name)
+        self.fx.plan("done", [dict(item("P1-1", "src/a.ts"), done=True)])
+        (self.fx.root / "src" / "a.ts").write_text("export const a = 1\n")
+        self.sha = self.fx.commit("fix")
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def log(self, cwd, *args):
+        return flow(cwd, "log", str(self.fx.docs), "-m", "follow-up", *args)
+
+    def follow_ups(self):
+        return json.loads(self.fx.task.read_text()).get("followUps", [])
+
+    def assert_logged(self, r):
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual([u["sha"] for u in self.follow_ups()], [self.sha])
+
+    def test_finished_task_from_repo_root_is_logged(self):
+        finish(self.fx)
+        self.assert_logged(self.log(self.fx.root, "--file", "src/a.ts"))
+
+    def test_finished_task_from_subfolder_is_logged(self):
+        finish(self.fx)
+        self.assert_logged(self.log(self.fx.root / "src", "--file", "src/a.ts"))
+
+    def test_finished_task_from_outside_the_repo_is_logged(self):
+        finish(self.fx)
+        with tempfile.TemporaryDirectory() as elsewhere:
+            self.assert_logged(self.log(elsewhere, "--file", "src/a.ts"))
+
+    def test_absolute_file_path_is_logged(self):
+        finish(self.fx)
+        self.assert_logged(self.log(self.fx.root, "--task", "t", "--file", str(self.fx.root / "src" / "a.ts")))
+
+    def test_unfinished_task_is_refused(self):
+        r = self.log(self.fx.root, "--file", "src/a.ts")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("아직 끝나지 않은 작업", r.stderr)
+        self.assertEqual(self.follow_ups(), [])
+
+    def test_missing_file_is_refused(self):
+        finish(self.fx)
+        r = self.log(self.fx.root, "--task", "t")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("--file이 없어요", r.stderr)
+        self.assertEqual(self.follow_ups(), [])
+
+    def test_commit_that_did_not_touch_the_file_is_refused(self):
+        finish(self.fx)
+        (self.fx.root / "src" / "b.ts").write_text("export const b = 1\n")
+        other = self.fx.commit("other")
+        r = self.log(self.fx.root, "--file", "src/a.ts", "--sha", other)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("바꾸지 않았어요", r.stderr)
+        self.assertEqual(self.follow_ups(), [])
+
+
 class TaskBaseTest(unittest.TestCase):
     def test_base_limits_drift_to_the_tasks_own_commits(self):
         with tempfile.TemporaryDirectory() as tmp:

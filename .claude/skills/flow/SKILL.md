@@ -81,7 +81,8 @@ worktrees, branches and the task skeletons. Each task is then worked in its own 
 - The argument names an existing task → **resume**: `flow.py pull <docs>` (answers left in the
   pages since last time), `flow.py brief <task.json>`, then `flow.py changes <docs>/<domain>` if
   either reports something, and continue at the first stage that is `ask` or `now`. Do not read the
-  whole JSON.
+  whole JSON. When the request brings a new problem to a task that is not finished, go to § A new
+  problem in an unfinished task before anything else.
 - Otherwise → **new**. Find the domain first — never create a folder for a screen that already has one:
 
 ```bash
@@ -116,6 +117,7 @@ flow.py add <docs>/<domain>/tasks/<id>.json grill        # later, when a questio
 | A question needs the user's answer | `grill` |
 | The work turns out to change what a screen shows from server data | `screen` |
 | A PRD section turns out to cover the task | `plan` |
+| A new problem turns up in an unfinished task and needs investigating | `plan` — § A new problem in an unfinished task |
 | The result has to be checked on a real screen, state by state | `verify` |
 | Requests to the server or PRD remain to hand over at the end | `done` |
 | The work has to be confirmed on a deployed environment, or the Jira issue moved after it | `release` |
@@ -268,8 +270,12 @@ off-screen state (`V3`: `[[X3]] …`), plus the screens' main states.
 - Check each on the real screen — headless browser for web (`/browse`), simulator or device for
   apps. Mark done only what you actually saw. To capture a flow page itself headless, serve `<docs>`
   with `python3 -m http.server` and load it over `http://` — a `file://` load renders blank.
-- A defect → a `B<n>` item in the 버그 checklist (증상 · 재현 · 원인 as rows), a `B<n> 수정` item in
-  `tasks`, fix, re-check. Three failed attempts on one bug → stop and ask.
+- A defect you find while checking an item — the item's own title or `검증:` line is not met → a
+  `B<n>` item in the 버그 checklist (증상 · 재현 · 원인 as rows), a `B<n> 수정` item in `tasks`, fix,
+  re-check. Three failed attempts on one bug → stop and ask.
+- Anything else is not a `B<n>`: a problem the user brings, or one no plan item claimed to handle —
+  its cause has to be investigated, or there is more than one way to fix it. It goes back to the plan
+  (§ A new problem in an unfinished task).
 - Finish with the project's deterministic commands (typecheck, lint, tests); only exit codes count.
 - Then a second look from a fresh context, so the verdict does not inherit this session's
   assumptions: `flow.py verify <task.json> --cmd "<typecheck>" --cmd "<tests>" [--repo <code repo>]`.
@@ -309,6 +315,9 @@ order — each item is ticked only when it actually happened:
   question rounds keep only title, intent, decision and reason, checklist items only their `결정`,
   `파일`, `테스트` and `실패 커밋` rows; it rebuilds the pages. The full record stays in git
   history, and a later fix (PR review included) is a follow-up below, not a reopened task.
+  That holds only once the task is finished: a new problem found before this point — during 04,
+  or with D items still open — goes back to the plan (§ A new problem in an unfinished task), never
+  into `followUps`.
 - `prune` refuses a task that is not finished — no 05 stage, or an unticked D item. A task whose
   other stages are all done but has no finished 05 shows as 진행 중, never 완료, and
   `flow.py current` says what is left. `check` fails on a finished task without `pruned`.
@@ -336,17 +345,47 @@ feature of their own, rename, restyle their pages, keep their own data), follow
 `flow.config.json`, unless they say the change is for the whole team. No stage can be turned off;
 say so and offer what fits.
 
+## A new problem in an unfinished task
+
+A task not yet finished (any stage not `done`, or a D item unticked — `flow.py current` says which)
+can turn up a related new problem the plan did not cover: a symptom seen in 04, a case the fix
+missed, anything whose cause has to be investigated or that has more than one fix. It goes back
+through the plan inside the same task — hypothesis, investigation, plan, then 03 again — and the
+investigation lives in `stages.plan`, never in `grill` blocks, `verify` or `tasks` rows:
+
+1. `flow.py add <task.json> plan` when the task has no `plan`; it makes the stage with status `now`.
+   When `plan` exists, append to its `stages.plan.blocks` and set it back to `now`. Either way set
+   the stage that was `now` to `wait` — `check` fails with two `now` stages.
+2. Write the investigation as blocks under a title naming the problem: the symptom and its cause as a
+   `text` block; the evidence as real `file:line` (`<code>src/foo.ts:42</code>`) read in the code, not
+   guessed; the candidate fixes as one `table` block (`columns` 수정안 · 바꾸는 곳 · 장점 · 단점, one
+   row per option — never an HTML `<table>` inside a `text` block); the recommendation and its reason as a `text` block. Add one `conclusion` item
+   naming the new problem and the recommended fix.
+3. A choice the user has to make (which fix, whether it is in scope) → a `grill` round
+   (§ Step 3) whose question points at the plan's table instead of repeating it, `plan` set to
+   `ask`, and stop. Without one, `plan` is `done`.
+4. Back to 03: add the fix as a new Phase or items in `tasks` (for a `버그 수정` task, test-first as
+   in Step 5), set `tasks` to `ask` for approval, and continue from there; 04 and 05 are worked again
+   for the new items.
+
+Nothing on this path goes outside the task: no external document (Claude Docs, a Notion page, an
+artifact, a separate markdown file) and no `followUps` line. The task page is where it is read.
+
 ## Follow-ups on a finished task
 
-A direct change (no new task) to a file a task covers is recorded on that task, one line:
+A direct change (no new task) to a file a **finished** task covers is recorded on that task, one line:
 
 ```bash
 flow.py find <docs> --path <file>                       # which task covers it
 flow.py log <docs> --file <file> -m "<한 줄: 무엇을 고쳤는지>" [--sha <short sha>] [--task <id>]
 ```
 
-`--sha` defaults to `HEAD`, so run it after the commit. No covering task → nothing to record; the
-commit message is the record.
+`flow.py log` and `followUps` are only for a committed change to files, on a finished task. `--sha`
+defaults to `HEAD`, so run it after the commit. `log` refuses a task that is not finished, a call
+without `--file`, and a commit that did not change the named files — an investigation with no code
+change is never a follow-up; on an unfinished task it goes in the plan (§ above), and on a finished
+task a new problem is a new task. No covering task → nothing to record; the commit message is the
+record.
 
 That log line is for developers. When the change makes the screen differ from the PRD or Figma, the
 note 기획 · 디자인 see is the `ssot-drift` label and comment `git-pr` puts on the original Jira issue
@@ -401,6 +440,8 @@ Chat messages at a stop are two or three lines plus what the user should do; the
 - **A revised answer is re-applied everywhere its `appliedTo` lists** before anything else continues
 - **Never invent user-facing text** — no copy in PRD or Figma means a question, with a `blocker`
 - **A blocker stops only its item** — independent work continues; ask once at a natural pause
+- **A new problem in an unfinished task goes back to its `plan`** — investigation, `file:line`
+  evidence, fix comparison table and recommendation as plan blocks; never `followUps`, never an external document
 - **Never write legacy documents** — anything under `docs/` outside a domain folder is read only
 - **`flow.py check` passes before reporting a stage done**
 - **Create a stage only when the task needs it** — `add` it at the moment the need appears, never "just in case"
