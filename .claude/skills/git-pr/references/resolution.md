@@ -6,6 +6,7 @@ Two lookups the PR phase needs only sometimes. Read this when you reach the step
 
 - [Issue number resolution](#issue-number-resolution)
 - [Base branch resolution](#base-branch-resolution)
+- [Branch policy](#branch-policy)
 
 ## Issue number resolution
 
@@ -76,3 +77,35 @@ When the user selects `master (or main)`, determine which name actually exists i
      `"원격에 master/main 브랜치가 없어요. 브랜치명을 직접 입력해주세요."` and wait for input
 
 3. Store the resolved value in `BASE` and continue.
+
+## Branch policy
+
+A personal file, never committed to any repository: `~/.config/git-pr/branch-policy.json`. It maps
+`owner/repo` to the branch PRs target and whether the PR is merged right after it is created.
+
+```json
+{ "repos": { "owner/repo": { "base": "staging", "merge": "none" } } }
+```
+
+1. Find the repository key:
+
+   ```bash
+   gh repo view --json nameWithOwner -q .nameWithOwner
+   ```
+
+2. Read the entry. No file, or no entry for this key → `POLICY` is empty and every step asks as
+   before. Never create or edit the file on your own; when the user states a new rule for a repo
+   ("이 저장소는 staging으로"), offer to add it.
+
+3. Resolve `base`:
+   - A plain name (`staging`, `main`) → use it.
+   - A pattern ending in `*` (`release/v*`) → the highest version among the matching remote heads:
+
+     ```bash
+     git ls-remote --heads origin 'release/v*' | sed 's#.*refs/heads/##' | sort -V | tail -1
+     ```
+
+     No match → fall back to asking.
+
+4. Store `POLICY_BASE` and `POLICY_MERGE` (`none` or `squash`). `--base` in `$ARGUMENTS` always wins
+   over `POLICY_BASE`.

@@ -1,7 +1,7 @@
 ---
 name: git-pr
-description: "Full Git PR workflow: choose git-only, PR-only, or both. Claude may invoke it itself when the user asks to push a branch or open a PR, and /flow invokes it at 05 완료 once the user agrees to a PR — the draft is always shown for confirmation before anything is created. Branch modes: create fresh branch from base, or commit/push current branch with optional suffix sub-branch and rebase. Handles staged and unstaged changes. Use /git-pr [--mode git|pr|both] [--new <name>] [--suffix <dev|stg>] [--base <branch>] [--no-rebase] [--also-pr <branch>] [--preview] [--issue <no>] [--no-issue] [--review|--no-review] [--shots <both|after|none>]"
-argument-hint: "[--mode git|pr|both] [--new <name>] [--suffix <dev|stg>] [--base <branch>] [--no-rebase] [--also-pr <branch>] [--preview] [--issue <no>] [--no-issue] [--review|--no-review] [--shots <both|after|none>]"
+description: "Full Git PR workflow: choose git-only, PR-only, or both. Claude may invoke it itself when the user asks to push a branch or open a PR, and /flow invokes it at 05 완료 once the user agrees to a PR — the draft is always shown for confirmation before anything is created. Branch modes: create fresh branch from base, or commit/push current branch with optional suffix sub-branch and rebase. Handles staged and unstaged changes. Use /git-pr [--finish] [--mode git|pr|both] [--new <name>] [--suffix <dev|stg>] [--base <branch>] [--no-rebase] [--also-pr <branch>] [--preview] [--issue <no>] [--no-issue] [--review|--no-review] [--shots <both|after|none>]"
+argument-hint: "[--finish] [--mode git|pr|both] [--new <name>] [--suffix <dev|stg>] [--base <branch>] [--no-rebase] [--also-pr <branch>] [--preview] [--issue <no>] [--no-issue] [--review|--no-review] [--shots <both|after|none>]"
 allowed-tools: Bash, AskUserQuestion, Read, Write, Edit, Skill, Grep, Glob
 ---
 
@@ -11,13 +11,35 @@ allowed-tools: Bash, AskUserQuestion, Read, Write, Edit, Skill, Grep, Glob
 > Where the host provides `AskUserQuestion`, use it. Where it does not (Cursor, Codex), ask the same
 > question in plain conversation and list the same options — every step here must work either way.
 
+## Step 0: Branch policy
+
+Before anything else, read the personal branch policy via **Branch policy** in
+`${CLAUDE_SKILL_DIR}/references/resolution.md`. It sets `POLICY_BASE` and `POLICY_MERGE`, or leaves
+them empty. Wherever a step below asks for a base branch, a set `POLICY_BASE` answers it — do not
+ask, and show the base in the draft so the user can still correct it.
+
+### `--finish` — one command to wrap up the current branch
+
+`--finish`, or the user saying 마무리해줘 / 정리해서 올려줘, presets every choice:
+
+- mode `both`, current branch, no suffix, rebase onto `POLICY_BASE`
+- working tree: stage everything (`git add -A`) and commit without asking which files — the user's
+  global rule; write the Korean commit message yourself from the diff
+- pre-PR review runs without asking, at level `low` (`/code-review low`)
+- after the PR is created: `POLICY_MERGE` is `squash` → `gh pr merge <url> --squash --delete-branch`
+  then `git switch {PR_BASE} && git pull --ff-only`; `none` → stop at the PR
+
+`--finish` needs `POLICY_BASE`. Without it, ask for the base once and offer to save it to the policy
+file. The draft confirmation (Confirm and create) still runs — `--finish` removes questions, never
+that check.
+
 ## Step 1: Choose the operation
 
 If `--mode` is not in `$ARGUMENTS`, call `AskUserQuestion` with:
 - prompt: `"어떤 작업을 진행할까요?"`
 - options: `["git — 브랜치 작업만 (PR 생성 없음)", "pr — PR만 생성 (현재 브랜치 기준)", "both — 브랜치 작업 + PR 생성"]`
 
-If `--mode git|pr|both` is provided, skip Step 1.
+If `--mode git|pr|both` or `--finish` is provided, skip Step 1.
 
 ---
 
@@ -113,7 +135,7 @@ If not provided via flags:
 - Call `AskUserQuestion` with:
   - prompt: `"서브 브랜치 suffix를 붙일까요? (예: feat/my-feature-dev)"`
   - options: `["dev — -dev 붙여서 서브 브랜치 생성", "stg — -stg 붙여서 서브 브랜치 생성", "없음 — 서브 브랜치 생성 안 함"]`
-- Call `AskUserQuestion` with:
+- Unless `POLICY_BASE` is set (then rebase onto it), call `AskUserQuestion` with:
   - prompt: `"어느 브랜치 기준으로 리베이스할까요?"`
   - options: `["develop", "master (or main)", "staging", "리베이스 안 함"]`
 
@@ -209,13 +231,13 @@ Set `HEAD_BRANCH` = current branch.
 
 ### Collect PR options
 
-Call `AskUserQuestion` with:
+Set `PR_BASE` from `--base`, else `POLICY_BASE`. Only when both are empty, call `AskUserQuestion` with:
 - prompt: `"PR의 대상 브랜치(base)를 선택해주세요."`
 - options: `["develop", "master (or main)", "staging"]`
 
 > If `master (or main)` is selected, resolve the real branch name via **Base branch resolution** in `${CLAUDE_SKILL_DIR}/references/resolution.md`.
 
-Call `AskUserQuestion` with:
+Skip the next question under `--finish` or a set `POLICY_BASE` unless `--also-pr` was given. Otherwise call `AskUserQuestion` with:
 - prompt: `"추가로 다른 브랜치에도 PR을 생성할까요? (예: develop → staging 동시 PR)"`
 - options: `["없음 — PR 하나만 생성", "직접 입력 — 대상 브랜치를 입력해서 추가 PR 생성"]`
 
@@ -327,7 +349,7 @@ Before showing the draft, offer a review of the branch changes:
 - options: `["리뷰 실행", "건너뛰기 — 바로 초안 확인"]`
 
 Skip this step entirely when `--no-review` is in `$ARGUMENTS`; run it without asking when
-`--review` is. Also skip it when `FLOW_TASK`'s 05 완료 checklist has D3 (`/code-review` and its critical fixes)
+`--review` or `--finish` is (`--finish` runs `/code-review low`). Also skip it when `FLOW_TASK`'s 05 완료 checklist has D3 (`/code-review` and its critical fixes)
 and D4 (tests again after them) ticked — `/flow` already reviewed and re-tested this branch; say so
 in one line.
 
@@ -494,9 +516,11 @@ Summarize the completed work in Korean:
 
 - Never delete remote branches
 - Use `--force-with-lease` — never bare `--force`
+- Never write the branch policy into a repository; it lives only in `~/.config/git-pr/branch-policy.json`
+- Merge right after creation only under `--finish` with `POLICY_MERGE` = `squash`, or when the user asks
 - If rebase has conflicts, resolve them (Read conflicting files → Edit to fix → `git add` → `git rebase --continue`); only abort if resolution is impossible
 - Always return to `{ORIGIN_BRANCH}` after sub-branch work
-- Only auto-stage with explicit user confirmation (`전체 스테이징 후 커밋`)
+- Only auto-stage with explicit user confirmation (`전체 스테이징 후 커밋`) — `--finish` counts as that confirmation
 - Always generate PR title and body from commit log and diff analysis — never use `--fill`
 - Always prefix the PR title with `[{ISSUE_NO}]` when an issue number resolves; never invent one, and never write `[없음]` or an empty bracket
 - Offer a pre-PR review, and never let its findings block PR creation or leak into the PR body
