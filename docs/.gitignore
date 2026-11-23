@@ -8,4 +8,5 @@
 !/flow/verify/
 /flow/diagrams/.receipts/
 /features/*/index.html
+*.md.html
 # flow:end

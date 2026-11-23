@@ -1309,6 +1309,9 @@ def cmd_feature(args):
 def cmd_start(args):
     try:
         lines = feat.start(args.feature, args.row, args.approve, args.dry_run)
+    except feat.WorktreesNeeded as e:
+        print("\n".join(e.lines))
+        sys.exit(2)
     except RuntimeError as e:
         print(f"멈춤: {e}\n끝난 단계는 feature.json에 기록됐어요 — 고친 뒤 같은 명령을 다시 실행하면 이어서 해요")
         sys.exit(1)

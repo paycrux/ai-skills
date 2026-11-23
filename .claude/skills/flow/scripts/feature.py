@@ -9,7 +9,6 @@ Progress on every row is read from that row's flow task JSON — in this checkou
 worktree, or from the row's branch — never written by hand.
 """
 import json
-import os
 import re
 import shutil
 import subprocess
@@ -309,34 +308,21 @@ def common_repo(docs):
     return str(Path(common).parent) if common else git(docs, "rev-parse", "--show-toplevel")
 
 
-def find_path(node):
-    if isinstance(node, dict):
-        if isinstance(node.get("path"), str) and node["path"].startswith("/"):
-            return node["path"]
-        for v in node.values():
-            hit = find_path(v)
-            if hit:
-                return hit
-    elif isinstance(node, list):
-        for v in node:
-            hit = find_path(v)
-            if hit:
-                return hit
-    return None
-
-
-def orca_entry(path):
-    data = json.loads(run(["orca", "worktree", "list", "--json"]))
-    for w in (data.get("result") or {}).get("worktrees", []):
-        if Path(w.get("path", "")).resolve() == Path(path).resolve():
-            return w
-    return None
-
-
 # ---------------------------------------------------------------- start
 
+class WorktreesNeeded(RuntimeError):
+    """Rows whose branch has no worktree yet. The host makes them its own way; a rerun continues."""
+
+    def __init__(self, lines):
+        super().__init__("\n".join(lines))
+        self.lines = lines
+
+
 def start(path, only=None, approve=False, dry=False):
-    """Create, for every approved row: Jira sub-issue, top-level worktree, branch, flow task skeleton.
+    """Create, for every approved row: Jira sub-issue, branch settings and flow task skeleton in its worktree.
+
+    The worktree itself is never made here: a row without one is listed (branch, base) and the run stops
+    with WorktreesNeeded, so the host makes it the way that environment does and reruns.
 
     No judgment: rows come from the approved feature document, results are written back to it.
     Every finished step is saved at once, so a rerun picks up where a failure stopped.
@@ -361,9 +347,9 @@ def start(path, only=None, approve=False, dry=False):
     if isinstance(f.get("home"), dict):
         f["home"].pop("worktree", None)
     rel = docs_rel(docs)
-    has_orca = shutil.which("orca") is not None and not os.environ.get("FLOW_NO_ORCA")
     save = (lambda: None) if dry else (lambda: write_json(path, f))
     save()
+    needed = []
     fetched = False
     for row in todo:
         name = row.get("id") or row.get("title")
@@ -381,17 +367,14 @@ def start(path, only=None, approve=False, dry=False):
             save()
         key = row["issue"]
         branch = row.get("branch") or f"feat/{key}"
-        # 2. worktree (top-level, from origin/<root>) — found by branch, its path is never written down
+        # 2. worktree — made by the host, found by branch; its path is never written down
         wt = worktree_of(repo, branch)
         if not wt:
-            if dry:
-                lines.append(f"{key}: 워크트리 {'orca 최상위' if has_orca else 'git worktree'} + {branch} ← origin/{f['root']} 예정")
-                continue
-            if not fetched:
+            if not dry and not fetched:
                 run(["git", "-C", repo, "fetch", "origin", f["root"]])
                 fetched = True
-            wt = create_worktree(repo, key, branch, f["root"], has_orca)
-            lines.append(f"{key}: 워크트리 {wt}" + (" — 최상위 확인" if has_orca else ""))
+            needed.append(f"{key}: 워크트리 필요 — 브랜치 {branch}, 기준 origin/{f['root']}")
+            continue
         # 3. branch name, no upstream
         current = git(wt, "branch", "--show-current")
         if current and current != branch:
@@ -408,6 +391,9 @@ def start(path, only=None, approve=False, dry=False):
             make_task(Path(wt) / rel, f, row, home_branch(f, todo))
             lines.append(f"{key}: flow 작업 {tfile}")
         save()
+    if needed and not dry:
+        raise WorktreesNeeded(lines + needed + ["워크트리를 이 환경의 방식으로 만든 뒤 같은 명령을 다시 실행하세요"])
+    lines += needed
     if not lines:
         lines.append("승인된 줄은 모두 만들어져 있어요 — 할 것 없음")
     if not dry:
@@ -451,25 +437,6 @@ def create_issue(f, row, fdir):
     if not key:
         raise RuntimeError(f"만든 이슈 키를 읽지 못했어요: {out[:300]}")
     return key
-
-
-def create_worktree(repo, key, branch, root, has_orca):
-    if not has_orca:
-        wt = str(Path(repo).parent / f"{Path(repo).name}-{key}")
-        run(["git", "-C", repo, "worktree", "add", "-b", branch, wt, f"origin/{root}"])
-        return wt
-    out = run(["orca", "worktree", "create", "--name", key, "--repo", f"path:{repo}", "--base-branch", f"origin/{root}",
-               "--branch", branch, "--no-parent", "--json"])
-    wt = find_path(json.loads(out))
-    if not wt:
-        raise RuntimeError(f"orca가 만든 워크트리 경로를 읽지 못했어요: {out[:300]}")
-    entry = orca_entry(wt)
-    if entry and entry.get("parentWorktreeId"):
-        run(["orca", "worktree", "set", "--worktree", f"path:{wt}", "--no-parent", "--json"])
-        entry = orca_entry(wt)
-        if entry and entry.get("parentWorktreeId"):
-            raise RuntimeError(f"{wt}: 상위 워크트리가 남아 있어요 — 중첩된 워크트리에서는 시작하지 않아요")
-    return wt
 
 
 def home_branch(f, rows):

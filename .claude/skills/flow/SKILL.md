@@ -72,7 +72,8 @@ git (`git rm --cached`, files stay) — that removal is part of the next commit.
 **Several Jira stories → feature document first.** A PRD with several story links is cut in a
 feature document draft (`references/feature.md`): write it, open its page, and stop. On approval run
 `flow.py start <docs>/features/<id>/feature.json --approve` in the same turn; it creates the issues,
-worktrees, branches and the task skeletons. Each task is then worked in its own worktree from
+branches and task skeletons. Worktrees are made the way this environment makes them, not by
+`start` — it lists the missing ones and stops, then a rerun continues (`references/feature.md` § Start). Each task is then worked in its own worktree from
 **resume** below.
 
 - First run `flow.py current` (a host with a session-start hook may already have printed it). It

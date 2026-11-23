@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-11-23
+
+### Changed
+
+- `flow`: `flow.py start`가 워크트리를 직접 만들지 않음(orca 연동 제거). 워크트리가 없는 줄은 브랜치와 기준(`origin/<루트>`)을 보여 주고 종료 코드 2로 멈추며, 에이전트가 세션 환경의 워크트리 스킬·규칙대로(없으면 `git worktree add`) 만든 뒤 같은 명령을 다시 실행하면 이어서 진행함. `FLOW_NO_ORCA` 환경 변수는 없어짐
+
 ## [0.13.8] - 2026-11-23
 
 ### Added
