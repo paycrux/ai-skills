@@ -3,7 +3,12 @@
   "title": "flow.py start가 워크트리를 만들지 않고 세션 환경에 맡기기",
   "type": "기능 수정",
   "branch": "feat/flow-worktree-tool",
-  "links": [],
+  "links": [
+    {
+      "label": "PR #30",
+      "url": "https://github.com/paycrux/ai-skills/pull/30"
+    }
+  ],
   "stages": {
     "tasks": {
       "status": "done",
@@ -27,10 +32,6 @@
                 [
                   "파일",
                   "<code>.claude/skills/flow/scripts/test_worktree_tool.py</code>"
-                ],
-                [
-                  "패턴",
-                  "가짜 orca·paseo를 PATH에 두고 호출되지 않는지 확인"
                 ]
               ]
             },
@@ -42,10 +43,6 @@
                 [
                   "파일",
                   "<code>.claude/skills/flow/scripts/feature.py</code>"
-                ],
-                [
-                  "재사용",
-                  "<code>worktree_of(repo, branch)</code> — 원래도 경로를 브랜치로 찾음"
                 ]
               ]
             },
@@ -97,17 +94,18 @@
             {
               "id": "P2-V",
               "title": "검증: <code>grep -rn 'orca\\|worktree-tool' .claude/skills/flow</code> 결과 없음, regress feature-copy-context 통과, <code>flow.py check docs/flow</code> 통과",
-              "done": true,
-              "rows": []
+              "done": true
             }
           ]
         }
       ]
     },
     "done": {
-      "status": "wait",
-      "summary": "리뷰 전",
-      "conclusion": [],
+      "status": "done",
+      "summary": "PR #30",
+      "conclusion": [
+        "PR #30으로 main에 올렸다. 서버·기획 요청으로 남은 것은 없다."
+      ],
       "blocks": [
         {
           "type": "checklist",
@@ -160,7 +158,7 @@
             {
               "id": "D5",
               "title": "PR — <code>/git-pr</code>로 만들거나, 안 만들면 결론에 기록",
-              "done": false
+              "done": true
             }
           ]
         },
@@ -188,5 +186,6 @@
       "stop": "계획 승인",
       "why": "채팅에서 같은 계획을 보고 사용자가 \"진행해\"라고 함"
     }
-  ]
+  ],
+  "pruned": "2026-11-23"
 }
