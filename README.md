@@ -254,7 +254,7 @@ flow.py open docs/index.html  # build 후 문서 보기
 
 **대형 문서 분할**
 
-큰 마크다운 문서(로컬 파일 또는 Notion URL/page ID)를 H2 제목 기준으로 분할해 `docs/<name>/prd/`에 섹션별 파일과, 각 파일로 링크된 `0-overview.md`를 생성합니다. Notion 소스는 `notion-cli`로 먼저 마크다운으로 가져온 뒤 분할합니다(가져오기 스크립트는 `/notion-do`와 공유 — `skills/_shared/notion/`).
+큰 마크다운 문서(로컬 파일 또는 Notion URL/page ID)를 H2 제목 기준으로 분할해 `docs/<name>/prd/`에 섹션별 파일과, 각 파일로 링크된 `0-overview.md`를 생성합니다. Notion 소스는 `notion-cli`로 먼저 마크다운으로 가져온 뒤 분할합니다(가져오기 스크립트는 `/notion-do`와 공유 — `skills/_shared/notion/`). `notion-cli`는 npm 패키지 `@coastal-programs/notion-cli`이고, 없으면 처음 쓸 때 알린 뒤 설치합니다. `brew install --cask notion-cli`는 공식 CLI(`ntn`)라 쓸 수 없습니다.
 
 ```
 /create-prd <마크다운 파일 경로 또는 Notion URL/page ID>
@@ -264,7 +264,7 @@ flow.py open docs/index.html  # build 후 문서 보기
 
 **Notion 문서 읽고 임의 작업 수행**
 
-`notion-cli`로 Notion 링크를 읽어온 뒤, 요약·필드 추출·질문 답변·포맷 변환·번역·체크리스트 작성 등 사용자가 요청하는 작업을 자유롭게 수행합니다.
+`notion-cli`(npm `@coastal-programs/notion-cli`, 없으면 처음 쓸 때 설치)로 Notion 링크를 읽어온 뒤, 요약·필드 추출·질문 답변·포맷 변환·번역·체크리스트 작성 등 사용자가 요청하는 작업을 자유롭게 수행합니다.
 
 ```
 /notion-do <notion-url-or-page-id> <하고 싶은 작업>

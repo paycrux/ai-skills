@@ -337,6 +337,28 @@ class TaskBaseTest(unittest.TestCase):
             self.assertNotIn("src/a.ts", fx.check().stdout)
 
 
+class SharedBranchTest(unittest.TestCase):
+    def test_files_a_sibling_task_on_the_branch_planned_are_not_drift(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            fx = Fixture(tmp)
+            fx.plan("done", [dict(item("P1-1", "src/a.ts"), done=True)])
+            flow(fx.root, "task", str(fx.docs / "d"), "u", "--title", "Second", "--type", "기능 수정", "--stages", "tasks")
+            second = fx.docs / "d" / "tasks" / "u.json"
+            t = json.loads(second.read_text())
+            t["stages"]["tasks"] = {"status": "done", "summary": "s", "conclusion": ["c"], "blocks": [
+                {"type": "checklist", "id": "P1", "title": "P1", "items": [dict(item("P1-1", "src/b.ts"), done=True)]}]}
+            second.write_text(json.dumps(t, ensure_ascii=False))
+            flow(fx.root, "build", str(fx.docs))
+            for name in ("a.ts", "b.ts"):
+                (fx.root / "src" / name).write_text("export const x = 1\n")
+            fx.commit("both tasks")
+            r = fx.check()
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            self.assertNotIn("계획에 없는", r.stdout)
+            (fx.root / "src" / "c.ts").write_text("export const c = 1\n")
+            self.assertIn("src/c.ts", fx.check().stdout)
+
+
 class ConfigTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()

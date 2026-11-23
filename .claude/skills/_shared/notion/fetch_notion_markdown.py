@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
-"""Fetch Notion page markdown through notion-cli."""
+"""Fetch Notion page markdown through notion-cli (npm package @coastal-programs/notion-cli).
+
+The official Notion CLI (Homebrew cask `notion-cli`, binary `ntn`) is a different tool with other
+commands; this script cannot use it. Exit codes the calling skill acts on:
+    3  notion-cli missing or not the expected tool — run the printed `install:` command
+    4  notion-cli not logged in — the user runs the printed `login:` command
+"""
 
 from __future__ import annotations
 
@@ -14,6 +20,11 @@ from pathlib import Path
 UUID_RE = re.compile(
     r"(?i)([0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12})"
 )
+PACKAGE = "@coastal-programs/notion-cli"
+INSTALL_CMD = f"npm i -g {PACKAGE}"
+LOGIN_CMD = "notion-cli auth login"
+EXIT_INSTALL = 3
+EXIT_LOGIN = 4
 SIGNED_IMAGE_RE = re.compile(r"!\[([^\]]*)\]\((https?://[^)\s]*X-Amz-[^)\s]*)\)")
 
 
@@ -49,6 +60,32 @@ def fail(message: str, code: int = 1) -> None:
     sys.exit(code)
 
 
+def need_install(reason: str) -> None:
+    print(f"error: {reason}\ninstall: {INSTALL_CMD}", file=sys.stderr)
+    sys.exit(EXIT_INSTALL)
+
+
+def find_cli(timeout: int) -> str:
+    """The notion-cli this script can drive, told apart by the command it needs — never by name alone."""
+    cli = shutil.which("notion-cli")
+    if not cli:
+        if shutil.which("ntn"):
+            need_install(f"only the official Notion CLI (ntn) is installed; this skill needs {PACKAGE}, a different tool")
+        need_install(f"notion-cli ({PACKAGE}) is not installed")
+    probe = run([cli, "markdown", "get", "--help"], timeout)
+    if probe.returncode != 0:
+        need_install(f"{cli} is not {PACKAGE} (it has no `markdown get` command)")
+    return cli
+
+
+def check_login(cli: str, timeout: int) -> None:
+    auth = run([cli, "whoami"], timeout)
+    if auth.returncode != 0:
+        stderr = auth.stderr.strip() or auth.stdout.strip() or "no stderr"
+        print(f"error: notion-cli is not logged in\n{stderr}\nlogin: {LOGIN_CMD}", file=sys.stderr)
+        sys.exit(EXIT_LOGIN)
+
+
 def write_command_output(command: list[str], output_path: Path, timeout: int) -> None:
     result = run(command, timeout)
     if result.returncode != 0:
@@ -62,7 +99,12 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Fetch a Notion page as markdown using notion-cli."
     )
-    parser.add_argument("source", help="Notion page URL or page ID")
+    parser.add_argument("source", nargs="?", help="Notion page URL or page ID")
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="Only check that notion-cli is installed and logged in; fetch nothing",
+    )
     parser.add_argument(
         "-o",
         "--output",
@@ -94,15 +136,14 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    cli = shutil.which("notion-cli")
-    if not cli:
-        fail("notion-cli was not found on PATH")
-
-    if args.check_auth:
-        auth = run([cli, "whoami"], args.timeout)
-        if auth.returncode != 0:
-            stderr = auth.stderr.strip() or auth.stdout.strip() or "no stderr"
-            fail(f"notion-cli authentication check failed\n{stderr}", auth.returncode)
+    cli = find_cli(args.timeout)
+    if args.check or args.check_auth:
+        check_login(cli, args.timeout)
+    if args.check:
+        print("ok: notion-cli installed and logged in")
+        return
+    if not args.source:
+        parser.error("source is required unless --check is given")
 
     page_id = extract_page_id(args.source)
     markdown_command = [cli, "markdown", "get", page_id or args.source]

@@ -128,6 +128,7 @@ repository; otherwise ask once. Never derive it from a rule like "develop, else 
 ## Snapshot
 
 ```bash
+python3 "<skill>/../_shared/notion/fetch_notion_markdown.py" --check   # exit 3/4 → _shared/README.md § Notion CLI
 python3 "<skill>/../_shared/notion/fetch_notion_markdown.py" "<notion-url>" \
   --output "<docs>/features/<id>/prd.md" --metadata /tmp/flow-prd-meta.json --check-auth
 ```

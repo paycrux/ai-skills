@@ -138,8 +138,10 @@ first, then the screens under a 화면 · SOT 맵 divider. Either one alone stil
 
 **Read the PRD.**
 - Notion: use the host's Notion connector when one is available; otherwise
-  `python3 <skill>/../_shared/notion/fetch_notion_markdown.py <url> -o <docs>/<domain>/prd.md --check-auth`
-  (needs `notion-cli`). Neither available → ask the user to paste the section.
+  `python3 <skill>/../_shared/notion/fetch_notion_markdown.py <url> -o <docs>/<domain>/prd.md --check-auth`,
+  after `fetch_notion_markdown.py --check` — exit 3 or 4 means notion-cli is missing or logged out;
+  follow **Notion CLI** in `_shared/README.md` (announce and install, or ask for the login). When it
+  cannot be installed (no npm) → ask the user to paste the section.
 - A long PRD covers many features. Save the full text to the domain's `prd.md`, list its headings,
   and read only the section(s) this task covers — never the whole document into context.
 - Notion exports attachments as signed S3 URLs carrying a temporary security token. Replace each

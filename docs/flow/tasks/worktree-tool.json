@@ -82,7 +82,7 @@
             },
             {
               "id": "P2-2",
-              "title": "SKILL.md·README 설명 갱신, CHANGELOG [Unreleased] 항목 · bump-version.py --minor",
+              "title": "SKILL.md·README 설명 갱신, CHANGELOG [Unreleased] 항목 · bump-version.py",
               "done": true,
               "rows": [
                 [

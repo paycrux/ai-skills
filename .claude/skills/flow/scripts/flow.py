@@ -763,29 +763,32 @@ def plan_drift(docs, doms):
     top = Path(top_s).resolve()
     branch = git(top, "branch", "--show-current")
     changed = {}
+    mine = []
     for d in doms:
         for f in task_files(d):
             t = read_json(f)
             st = (t.get("stages") or {}).get("tasks") or {}
-            if t.get("branch") != branch or st.get("status") not in ("now", "ask", "done"):
-                continue
-            planned = planned_files(t, top)
-            if not planned:
-                continue
-            since = t.get("base") or None
-            if since not in changed:
-                changed[since] = changed_files(top, docs, since)
-            files = changed[since]
-            if files is None:
-                return notes, problems
-            extra = sorted(c for c in files if not covers(planned, c))
-            untouched = sorted(p for p in planned if not any(covers({p}, c) for c in files))
-            out = problems if st.get("status") == "done" else notes
-            rel = f"{d.name}/tasks/{f.name}"
-            if extra:
-                out.append(f"{rel}: 계획에 없는 변경 파일 {len(extra)}개 — {', '.join(extra)}")
-            if untouched:
-                out.append(f"{rel}: 계획에 있는데 안 바뀐 파일 {len(untouched)}개 — {', '.join(untouched)}")
+            if t.get("branch") == branch and st.get("status") in ("now", "ask", "done"):
+                mine.append((d, f, t, st, planned_files(t, top)))
+    for d, f, t, st, planned in mine:
+        if not planned:
+            continue
+        # Several tasks can share one branch; a file another of them planned is not this one's drift.
+        siblings = set().union(*(p for _, g, _, _, p in mine if g != f))
+        since = t.get("base") or None
+        if since not in changed:
+            changed[since] = changed_files(top, docs, since)
+        files = changed[since]
+        if files is None:
+            return notes, problems
+        extra = sorted(c for c in files if not covers(planned, c) and not covers(siblings, c))
+        untouched = sorted(p for p in planned if not any(covers({p}, c) for c in files))
+        out = problems if st.get("status") == "done" else notes
+        rel = f"{d.name}/tasks/{f.name}"
+        if extra:
+            out.append(f"{rel}: 계획에 없는 변경 파일 {len(extra)}개 — {', '.join(extra)}")
+        if untouched:
+            out.append(f"{rel}: 계획에 있는데 안 바뀐 파일 {len(untouched)}개 — {', '.join(untouched)}")
     return notes, problems
 
 

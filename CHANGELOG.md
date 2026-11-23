@@ -6,11 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-## [0.14.0] - 2026-11-23
+## [0.13.9] - 2026-11-23
 
 ### Changed
 
 - `flow`: `flow.py start`가 워크트리를 직접 만들지 않음(orca 연동 제거). 워크트리가 없는 줄은 브랜치와 기준(`origin/<루트>`)을 보여 주고 종료 코드 2로 멈추며, 에이전트가 세션 환경의 워크트리 스킬·규칙대로(없으면 `git worktree add`) 만든 뒤 같은 명령을 다시 실행하면 이어서 진행함. `FLOW_NO_ORCA` 환경 변수는 없어짐
+
+### Fixed
+
+- `notion-do` · `create-prd` · `flow`: Notion을 읽기 전에 `fetch_notion_markdown.py --check`로 `notion-cli` 설치·로그인을 먼저 확인함. 없으면 한 줄로 알리고 바로 `npm i -g @coastal-programs/notion-cli`로 설치하고, 로그인이 안 돼 있으면 `! notion-cli auth login`을 안내함. 공식 Notion CLI(`brew install --cask notion-cli`, 실행 파일 `ntn`)만 있거나 이름만 같은 다른 도구가 있으면 그 사실을 알리고 같은 패키지를 설치함. 패키지 정체와 설치 절차는 `_shared/README.md`에 정리 (#29)
+- `flow`: 한 브랜치에 flow 작업이 둘 이상 있으면 `flow.py check`가 다른 작업이 계획한 파일을 계획에 없는 변경으로 잡던 문제 수정
 
 ## [0.13.8] - 2026-11-23
 
