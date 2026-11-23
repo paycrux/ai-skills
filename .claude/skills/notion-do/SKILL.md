@@ -1,6 +1,6 @@
 ---
 name: notion-do
-description: "Read a Notion link via notion-cli and then do whatever the user asks with it — summarize, extract, answer questions, convert, draft, translate, build a checklist, and more. Use when a Notion URL or page ID is present in the chat and the user wants an action performed on that document."
+description: "Read a Notion link via @coastal-programs/notion-cli (installed on first use) and then do whatever the user asks with it — summarize, extract, answer questions, convert, draft, translate, build a checklist, and more. Use when a Notion URL or page ID is present in the chat and the user wants an action performed on that document."
 argument-hint: "[notion-url-or-page-id] [what to do]"
 allowed-tools: Bash, Read, Grep, Glob, Write, Edit
 ---
@@ -30,14 +30,18 @@ Rules:
 
 ### Step 1: Confirm access
 
-Verify `notion-cli` is available and, if auth state is uncertain, check connectivity.
+Check that `notion-cli` is installed and logged in, installing it when it is missing:
 
 ```bash
-notion-cli whoami
+python3 "${CLAUDE_SKILL_DIR}/../_shared/notion/fetch_notion_markdown.py" --check
 ```
 
-If this fails, tell the user that authentication or page-share permission is required,
-and include the failing command plus a short stderr excerpt.
+Exit 3 or 4 → follow **Notion CLI** in `_shared/README.md` (exit 3: announce and install with the
+printed command; exit 4: ask the user to log in). Never install the Homebrew cask `notion-cli` — it
+is the official CLI (`ntn`), a different tool.
+
+A fetch that fails after a passing check is a page-share permission problem: tell the user, with the
+failing command and a short stderr excerpt.
 
 ### Step 2: Fetch the document
 

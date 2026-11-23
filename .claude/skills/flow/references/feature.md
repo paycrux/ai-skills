@@ -128,6 +128,7 @@ repository; otherwise ask once. Never derive it from a rule like "develop, else 
 ## Snapshot
 
 ```bash
+python3 "<skill>/../_shared/notion/fetch_notion_markdown.py" --check   # exit 3/4 → _shared/README.md § Notion CLI
 python3 "<skill>/../_shared/notion/fetch_notion_markdown.py" "<notion-url>" \
   --output "<docs>/features/<id>/prd.md" --metadata /tmp/flow-prd-meta.json --check-auth
 ```
@@ -148,10 +149,13 @@ in order, saving after each step so a rerun continues where a failure stopped:
 
 1. **Jira** — a sub-issue titled with the row's `title` under `story` (`acli`, description converted by
    `_shared/jira/md_to_adf.py`, assignee `@me`); an existing sub-issue with the same summary is reused.
-2. **Worktree** — `git fetch origin <root>`, then an orca **top-level** worktree
-   (`--no-parent`, base `origin/<root>`, branch `feat/<KEY>`), then `orca worktree list --json` to
-   confirm it has no parent worktree (`orca worktree set --no-parent` once, else stop). Without orca:
-   `git worktree add` beside the repository.
+2. **Worktree** — made by the host, never by `start`. `start` runs `git fetch origin <root>`, lists
+   each row whose branch has no worktree (`워크트리 필요 — 브랜치 feat/<KEY>, 기준 origin/<root>`)
+   and exits 2. Make each one the way this environment makes worktrees — a worktree skill or rule
+   the host or the user's own instructions already have; with none, `git worktree add -b feat/<KEY>
+   <repo>-<KEY> origin/<root>` beside the repository. The branch always starts from `origin/<root>`,
+   never from another feature branch. Then rerun the same `start` in the same turn; it finds the
+   worktree by branch in `git worktree list`, whoever made it.
 3. **Branch** — renamed to `feat/<KEY>` if needed, upstream removed so a bare `git push` can never
    reach the root; `base` records the starting commit.
 4. **Task** — `docs/<domain>/tasks/<KEY>.json` in the new worktree with `branch` set exactly, the
@@ -162,8 +166,8 @@ The first time, the feature folder moves to the first row's worktree (`home`) an
 with that branch's next commit; the other worktrees find it through the worktree of `home.branch`. It makes no judgment:
 anything not approved in the document is not created.
 
-The root is never committed to, pushed, or force-pushed. orca's setup hook may rewrite a lockfile;
-that byproduct is not committed unless the user says so.
+The root is never committed to, pushed, or force-pushed. A worktree tool's setup hook may rewrite a
+lockfile; that byproduct is not committed unless the user says so.
 
 ## Jira
 

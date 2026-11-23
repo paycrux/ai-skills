@@ -1,0 +1,229 @@
+{
+  "id": "notion-cli-install",
+  "title": "notion-cli가 없으면 알리고 바로 설치, 공식 CLI(ntn)와 구분",
+  "type": "버그 수정",
+  "branch": "feat/flow-worktree-tool",
+  "links": [
+    {
+      "label": "이슈 #29",
+      "url": "https://github.com/paycrux/ai-skills/issues/29"
+    },
+    {
+      "label": "PR #30",
+      "url": "https://github.com/paycrux/ai-skills/pull/30"
+    }
+  ],
+  "stages": {
+    "tasks": {
+      "status": "done",
+      "summary": "설치 확인 후 자동 설치",
+      "conclusion": [
+        "fetch_notion_markdown.py --check가 설치·로그인을 먼저 확인한다. 도구가 없거나 다른 도구면 종료 코드 3과 install: 줄을, 로그인이 안 돼 있으면 종료 코드 4와 login: 줄을 출력한다.",
+        "notion-do · create-prd · flow는 fetch 전에 --check를 돌리고, 3이면 한 줄로 알린 뒤 출력된 npm 명령으로 설치하고, 4면 사용자에게 로그인을 부탁한다.",
+        "실제 Notion 페이지 fetch는 이 세션에서 돌려 보지 않았다. 실제 notion-cli로는 --check만 확인했다.",
+        "한 브랜치에 flow 작업이 둘 이상이면 flow.py check는 다른 작업이 계획한 파일을 계획 밖 변경으로 세지 않는다."
+      ],
+      "blocks": [
+        {
+          "type": "checklist",
+          "id": "P1",
+          "title": "Phase 1 · 재현과 수정 (fetch_notion_markdown.py)",
+          "items": [
+            {
+              "id": "P1-1",
+              "title": "재현 테스트: 도구 없음 · ntn만 있음 · 이름만 같은 도구 · 로그아웃에서 설치/로그인 안내가 없음",
+              "done": true,
+              "rows": [
+                [
+                  "테스트",
+                  "<code>.claude/skills/_shared/notion/test_fetch_notion_markdown.py</code>"
+                ],
+                [
+                  "실패 커밋",
+                  "<code>4ccf3db</code>"
+                ]
+              ]
+            },
+            {
+              "id": "P1-2",
+              "title": "--check, find_cli(명령으로 도구 판별), check_login, 종료 코드 3·4",
+              "done": true,
+              "rows": [
+                [
+                  "파일",
+                  "<code>.claude/skills/_shared/notion/fetch_notion_markdown.py</code>"
+                ],
+                [
+                  "결정",
+                  "도구 판별은 이름이 아니라 <code>markdown get --help</code> 성공 여부로 한다 — 공식 CLI가 나중에 같은 이름을 쓸 수 있어서"
+                ]
+              ]
+            },
+            {
+              "id": "P1-V",
+              "title": "검증: <code>python3 -m unittest test_fetch_notion_markdown</code> 통과, 실제 notion-cli로 <code>--check</code> 종료 코드 0",
+              "done": true
+            }
+          ]
+        },
+        {
+          "type": "checklist",
+          "id": "P2",
+          "title": "Phase 2 · 문서",
+          "items": [
+            {
+              "id": "P2-1",
+              "title": "_shared/README.md에 Notion CLI 절(패키지 정체, ntn과 차이, 종료 코드별 처리)",
+              "done": true,
+              "rows": [
+                [
+                  "파일",
+                  "<code>.claude/skills/_shared/README.md</code>"
+                ]
+              ]
+            },
+            {
+              "id": "P2-2",
+              "title": "notion-do · create-prd · flow 문서가 fetch 전에 --check를 돌리고 README 절을 따름",
+              "done": true,
+              "rows": [
+                [
+                  "파일",
+                  "<code>.claude/skills/notion-do/SKILL.md</code> <code>.claude/skills/create-prd/SKILL.md</code> <code>.claude/skills/flow/SKILL.md</code> <code>.claude/skills/flow/references/feature.md</code>"
+                ]
+              ]
+            },
+            {
+              "id": "P2-3",
+              "title": "README · CHANGELOG, 버전을 patch(0.13.9)로",
+              "done": true,
+              "rows": [
+                [
+                  "파일",
+                  "<code>README.md</code> <code>CHANGELOG.md</code> <code>install.sh</code>"
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "type": "checklist",
+          "id": "P3",
+          "title": "Phase 3 · 한 브랜치에 작업 둘 (flow check)",
+          "items": [
+            {
+              "id": "P3-1",
+              "title": "flow.py check가 같은 브랜치의 다른 작업이 계획한 파일을 '계획에 없는 변경'으로 세지 않음",
+              "done": true,
+              "rows": [
+                [
+                  "파일",
+                  "<code>.claude/skills/flow/scripts/flow.py</code> <code>.claude/skills/flow/scripts/test_check_files.py</code>"
+                ],
+                [
+                  "결정",
+                  "이 PR에 worktree-tool과 이 작업을 함께 넣으면서 두 작업이 서로의 파일을 drift로 잡아 추가함"
+                ]
+              ]
+            },
+            {
+              "id": "P3-V",
+              "title": "검증: <code>python3 -m unittest test_check_files</code> 통과, <code>flow.py check docs</code> 통과",
+              "done": true
+            }
+          ]
+        }
+      ]
+    },
+    "done": {
+      "status": "done",
+      "summary": "PR #30",
+      "conclusion": [
+        "PR #30(워크트리 변경과 함께)으로 main에 올렸다."
+      ],
+      "blocks": [
+        {
+          "type": "checklist",
+          "title": "PR 전",
+          "items": [
+            {
+              "id": "D1",
+              "title": "SOT 맵 근거를 실제 코드 파일:줄로 바꿈",
+              "done": true,
+              "rows": [
+                [
+                  "결정",
+                  "화면 · SOT 맵이 없는 스크립트 작업이라 해당 없음"
+                ]
+              ]
+            },
+            {
+              "id": "D2",
+              "title": "남은 Computed · 계산 행을 서버 · 기획 요청으로 정리",
+              "done": true,
+              "rows": [
+                [
+                  "결정",
+                  "서버 · 기획 요청 없음"
+                ]
+              ]
+            },
+            {
+              "id": "D3",
+              "title": "<code>/code-review</code> — 크리티컬한 지적을 고침",
+              "done": true,
+              "rows": [
+                [
+                  "결정",
+                  "/code-review low 지적 1건(버전 0.14.0→0.13.9) — 0.14.0은 머지 전 브랜치에만 있었고 main 0.13.8보다 높아 사용자가 정한 patch 유지"
+                ]
+              ]
+            },
+            {
+              "id": "D4",
+              "title": "고친 뒤 typecheck · lint · test 다시 통과 (04 검증이 있으면 그것도 완료)",
+              "done": true,
+              "rows": [
+                [
+                  "결정",
+                  "unittest(flow · notion) 통과, regress.py 12/12 통과, flow.py check 통과"
+                ]
+              ]
+            },
+            {
+              "id": "D5",
+              "title": "PR — <code>/git-pr</code>로 만들거나, 안 만들면 결론에 기록",
+              "done": true,
+              "rows": [
+                [
+                  "결정",
+                  "PR #30에 함께 올림"
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "title": "서버 · 기획에 요청할 것",
+          "html": "없어요"
+        }
+      ]
+    }
+  },
+  "intent": [
+    {
+      "text": "처음 쓰는 사람이 Notion 스킬을 실행했을 때, 맞는 notion-cli가 알아서 설치되고 공식 CLI(ntn)를 잘못 설치하는 일이 없게 한다.",
+      "state": "confirmed",
+      "basis": "이슈 #29, 사용자: \"설치하겠다고 통보하고 바로 설치\", \"있는지 여부 확인한 다음에\""
+    }
+  ],
+  "skipped": [
+    {
+      "stage": "tasks",
+      "stop": "계획 승인",
+      "why": "채팅에서 확인→설치 통보→로그인 안내 순서를 사용자가 정하고 \"모든 수정사항 전부 포함해줘\"라고 함"
+    }
+  ],
+  "pruned": "2026-11-23"
+}

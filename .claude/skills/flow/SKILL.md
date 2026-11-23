@@ -72,7 +72,8 @@ git (`git rm --cached`, files stay) — that removal is part of the next commit.
 **Several Jira stories → feature document first.** A PRD with several story links is cut in a
 feature document draft (`references/feature.md`): write it, open its page, and stop. On approval run
 `flow.py start <docs>/features/<id>/feature.json --approve` in the same turn; it creates the issues,
-worktrees, branches and the task skeletons. Each task is then worked in its own worktree from
+branches and task skeletons. Worktrees are made the way this environment makes them, not by
+`start` — it lists the missing ones and stops, then a rerun continues (`references/feature.md` § Start). Each task is then worked in its own worktree from
 **resume** below.
 
 - First run `flow.py current` (a host with a session-start hook may already have printed it). It
@@ -137,8 +138,10 @@ first, then the screens under a 화면 · SOT 맵 divider. Either one alone stil
 
 **Read the PRD.**
 - Notion: use the host's Notion connector when one is available; otherwise
-  `python3 <skill>/../_shared/notion/fetch_notion_markdown.py <url> -o <docs>/<domain>/prd.md --check-auth`
-  (needs `notion-cli`). Neither available → ask the user to paste the section.
+  `python3 <skill>/../_shared/notion/fetch_notion_markdown.py <url> -o <docs>/<domain>/prd.md --check-auth`,
+  after `fetch_notion_markdown.py --check` — exit 3 or 4 means notion-cli is missing or logged out;
+  follow **Notion CLI** in `_shared/README.md` (announce and install, or ask for the login). When it
+  cannot be installed (no npm) → ask the user to paste the section.
 - A long PRD covers many features. Save the full text to the domain's `prd.md`, list its headings,
   and read only the section(s) this task covers — never the whole document into context.
 - Notion exports attachments as signed S3 URLs carrying a temporary security token. Replace each

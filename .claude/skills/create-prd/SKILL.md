@@ -1,6 +1,6 @@
 ---
 name: create-prd
-description: "Split a large markdown document into per-section files under docs/<name>/prd/ and generate an overview file with links. Accepts a local markdown path OR a Notion URL/page ID (fetched via notion-cli)."
+description: "Split a large markdown document into per-section files under docs/<name>/prd/ and generate an overview file with links. Accepts a local markdown path OR a Notion URL/page ID (fetched via @coastal-programs/notion-cli, installed on first use)."
 argument-hint: "[markdown file path OR notion url/page id]"
 allowed-tools: Bash, Read, Write, Grep, Glob
 ---
@@ -28,13 +28,16 @@ Decide what the target is:
 For a **Notion source**, fetch it as markdown first:
 
 ```bash
-notion-cli whoami
+python3 "${CLAUDE_SKILL_DIR}/../_shared/notion/fetch_notion_markdown.py" --check
 python3 "${CLAUDE_SKILL_DIR}/../_shared/notion/fetch_notion_markdown.py" "<notion-url-or-id>" \
   --output /tmp/create-prd-source.md --metadata /tmp/create-prd-source.json --check-auth
 ```
 
-- If `whoami` or the fetch fails, tell the user authentication or page-share permission is
-  required, include the failing command and a short stderr excerpt, and stop.
+- `--check` exiting 3 or 4 → follow **Notion CLI** in `_shared/README.md`: exit 3, announce and
+  install with the printed command (never the Homebrew cask, which is the official `ntn`); exit 4,
+  ask the user to log in.
+- If the fetch fails after a passing check, tell the user page-share permission is required,
+  include the failing command and a short stderr excerpt, and stop.
 - Set the working source file to `/tmp/create-prd-source.md`.
 - The fetch script lives in `skills/_shared/notion/` because `notion-do` uses the same one. If the
   path does not exist, the install is incomplete — tell the user to run `ai-skills update`.
