@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.13.8] - 2026-11-23
+
+### Added
+
+- `git-pr`: `--finish`(또는 "마무리해줘" · "정리해서 올려줘")로 전체 커밋 → `/code-review low` → PR 초안 확인 → PR까지 질문 없이 진행. base 브랜치와 머지 여부는 개인 파일 `~/.config/git-pr/branch-policy.json`에서 읽고(`release/v*`는 가장 높은 버전으로 해석), 정책이 `squash`인 저장소만 PR 직후 머지함. 정책 파일이 없으면 기존처럼 질문함
+
 ## [0.13.7] - 2026-11-19
 
 ### Changed
