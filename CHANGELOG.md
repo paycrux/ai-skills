@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- `git-pr`: PR 초안 확인 질문에서 리뷰 요청 상태로 만들지 draft로 만들지 함께 고름(`생성 — 리뷰 요청 상태로` / `생성 — draft로`). `--draft` · `--ready`로 미리 정하면 확인 질문에는 생성·수정만 나옴. 스크린샷을 올린 PR도 draft를 골랐으면 `gh pr ready`를 건너뜀
 - `rules/writing.md`: 항목 하나에 결과와 결정이 있으면 나눠 쓰기(6), 표와 줄 고르기(7), 의미가 사라지는 표시·메타 문장 금지(8), `Structure` / `Tables` / `Documents that report results` 묶음 추가. 비교는 열로, 표 하나에 질문 하나, 열 하나에 속성 하나, 섹션은 효과 요약으로 시작, 회고·측정 문서의 `개요`와 `결과` 모양
 
 ## [0.13.9] - 2026-11-23
