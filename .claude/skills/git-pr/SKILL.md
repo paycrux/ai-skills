@@ -1,7 +1,7 @@
 ---
 name: git-pr
-description: "Full Git PR workflow: choose git-only, PR-only, or both. Claude may invoke it itself when the user asks to push a branch or open a PR, and /flow invokes it at 05 완료 once the user agrees to a PR — the draft is always shown for confirmation before anything is created. Branch modes: create fresh branch from base, or commit/push current branch with optional suffix sub-branch and rebase. Handles staged and unstaged changes. Use /git-pr [--finish] [--mode git|pr|both] [--new <name>] [--suffix <dev|stg>] [--base <branch>] [--no-rebase] [--also-pr <branch>] [--preview] [--issue <no>] [--no-issue] [--review|--no-review] [--shots <both|after|none>]"
-argument-hint: "[--finish] [--mode git|pr|both] [--new <name>] [--suffix <dev|stg>] [--base <branch>] [--no-rebase] [--also-pr <branch>] [--preview] [--issue <no>] [--no-issue] [--review|--no-review] [--shots <both|after|none>]"
+description: "Full Git PR workflow: choose git-only, PR-only, or both. Claude may invoke it itself when the user asks to push a branch or open a PR, and /flow invokes it at 05 완료 once the user agrees to a PR — the draft is always shown for confirmation before anything is created. Branch modes: create fresh branch from base, or commit/push current branch with optional suffix sub-branch and rebase. Handles staged and unstaged changes. Use /git-pr [--finish] [--mode git|pr|both] [--new <name>] [--suffix <dev|stg>] [--base <branch>] [--no-rebase] [--also-pr <branch>] [--preview] [--issue <no>] [--no-issue] [--review|--no-review] [--shots <both|after|none>] [--draft|--ready]"
+argument-hint: "[--finish] [--mode git|pr|both] [--new <name>] [--suffix <dev|stg>] [--base <branch>] [--no-rebase] [--also-pr <branch>] [--preview] [--issue <no>] [--no-issue] [--review|--no-review] [--shots <both|after|none>] [--draft|--ready]"
 allowed-tools: Bash, AskUserQuestion, Read, Write, Edit, Skill, Grep, Glob
 ---
 
@@ -410,11 +410,17 @@ Two review modes. Use **preview-file mode** when `--preview` is in `$ARGUMENTS` 
 
 Always pass the body via `--body-file`, never `--body "{BODY}"` — a body containing backticks, quotes, or `$` does not survive shell interpolation.
 
+The confirmation also decides `PR_STATE`: `ready` (open for review) or `draft`. `--ready` or
+`--draft` in `$ARGUMENTS` presets it — then show only the `생성` and `수정할게요` options, with the
+preset state named in the `생성` label. Otherwise both `생성` options below are shown and the one the
+user picks sets `PR_STATE`. The state is asked in the same question as the confirmation, never as a
+separate one.
+
 #### Inline mode
 
 Show the generated title and body to the user in plain conversation (in Korean), with the drift lines and their question (ssot-drift.md step 2) below the body when there are any, then call `AskUserQuestion` with:
 - prompt: `"PR 초안을 확인해주세요. 이대로 생성할까요?"`
-- options: `["생성", "수정할게요 — 수정 후 다시 확인"]`
+- options: `["생성 — 리뷰 요청 상태로", "생성 — draft로", "수정할게요 — 수정 후 다시 확인"]`
 
 If `수정할게요` is chosen, ask what to change in plain conversation, apply the edits, and show the updated draft again. Repeat until confirmed.
 
@@ -451,7 +457,7 @@ Drift lines (SSOT drift) go in the preamble, above the marker, so they never rea
 
 Then tell the user in Korean: the absolute file path, and that they should open it in their editor's markdown preview to check it. Call `AskUserQuestion` with:
 - prompt: `"미리보기 문서를 확인해주세요. 이대로 PR을 생성할까요?"`
-- options: `["생성 — 미리보기 파일은 삭제됨", "수정할게요 — 파일을 직접 고쳤거나 요청할 내용이 있음"]`
+- options: `["생성 — 리뷰 요청 상태로 (미리보기 파일은 삭제됨)", "생성 — draft로 (미리보기 파일은 삭제됨)", "수정할게요 — 파일을 직접 고쳤거나 요청할 내용이 있음"]`
 
 If `수정할게요` is chosen: **re-read `.pr-preview.md` first** — the user may have edited it directly. Apply any additional requests they state in conversation on top of the file's current content, rewrite the file, and ask again. Repeat until confirmed.
 
@@ -465,9 +471,9 @@ On confirmation, re-read `.pr-preview.md` one final time, and write everything a
 gh pr create --head {HEAD_BRANCH} --base {PR_BASE} --title "{TITLE}" --body-file "{REPO_ROOT}/.pr-body.tmp.md"
 ```
 
-When `HAS_SHOTS` is true, add `--draft` to this command, then follow step 7 of `${CLAUDE_SKILL_DIR}/references/screenshots.md`: upload the images, swap local paths for URLs, `gh pr edit`, `gh pr ready`. The secondary PR is created only after that, from the finished body.
+Add `--draft` when `PR_STATE` is `draft` or `HAS_SHOTS` is true. When `HAS_SHOTS` is true, follow step 7 of `${CLAUDE_SKILL_DIR}/references/screenshots.md`: upload the images, swap local paths for URLs, `gh pr edit`, then `gh pr ready` — skip `gh pr ready` when `PR_STATE` is `draft`. The secondary PR is created only after that, from the finished body.
 
-**Secondary PR** (only when an additional PR was requested):
+**Secondary PR** (only when an additional PR was requested; add `--draft` when `PR_STATE` is `draft`):
 
 ```bash
 gh pr create --head {ORIGIN_BRANCH} --base {ALSO_PR_TARGET} --title "{TITLE}" --body-file "{REPO_ROOT}/.pr-body.tmp.md"
@@ -481,7 +487,7 @@ Only after every requested PR has been created successfully:
 rm -f "{REPO_ROOT}/.pr-body.tmp.md" "{REPO_ROOT}/.pr-preview.md"
 ```
 
-When `HAS_SHOTS` is true, the PR must also be published (`gh pr ready`) before cleanup; delete the shots directory named in `references/screenshots.md` at the same time.
+When `HAS_SHOTS` is true and `PR_STATE` is `ready`, the PR must also be published (`gh pr ready`) before cleanup; delete the shots directory named in `references/screenshots.md` at the same time.
 
 If `gh pr create` fails, leave both files in place, report the error in Korean, and let the user retry from the existing preview.
 
@@ -501,7 +507,7 @@ Summarize the completed work in Korean:
 - Branch: created or pushed (include name and base)
 - Sub-branch: created and pushed (when a suffix was used)
 - Rebase: onto `origin/{BASE}` (when a rebase ran)
-- PR: list of URLs (when the PR Phase ran)
+- PR: list of URLs, each marked draft or ready for review (when the PR Phase ran)
 - Screenshots: captured cells, and each blank cell with its reason (when screenshots were captured)
 - Preview file: deleted (when preview-file mode ran)
 - SSOT drift: the Jira key labelled `ssot-drift` and commented on, or the drift lines left for the user

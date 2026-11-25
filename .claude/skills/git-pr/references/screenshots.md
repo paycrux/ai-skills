@@ -258,7 +258,9 @@ after the upload starts.
    gh pr ready {PR_NO}
    ```
 
-6. Create any secondary PR afterwards, not as a draft, from the same finished body file.
+   Skip `gh pr ready` when the user chose `draft` at the confirmation (`PR_STATE` in `SKILL.md`).
+6. Create any secondary PR afterwards from the same finished body file, as a draft only when
+   `PR_STATE` is `draft`.
 
 If the upload fails, leave the PR as a draft, report the error in Korean, and call
 `AskUserQuestion`:
